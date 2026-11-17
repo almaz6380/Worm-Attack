@@ -42,6 +42,10 @@ Im Menü über den Knopf „Wurm: …“ wählbar. Die Designs ändern nur das A
 
 Wählen beide Spieler dasselbe Design, bekommt der Gegner automatisch ein anderes.
 
+**Eigene Designs:** Im Ordner `skins/` kannst du eigene Würmer als Bilder ablegen (Kopf, Glied, Schwanzspitze),
+zum Beispiel aus einer Bild-KI. Wie das geht, steht mit fertigen Prompts in [`skins/ANLEITUNG.md`](skins/ANLEITUNG.md).
+Als Vorlage liegt das Design „Drache“ in `skins/beispiel/` bei.
+
 ## Modi
 - **Gegen Computer:** Jeder Sieg schaltet die nächste Stufe frei. Mit jeder Stufe schaut der Computer weiter voraus,
   reagiert schneller, macht weniger Fehler und greift ab Stufe 5 aktiv an. Ab Stufe 10 wird er nicht mehr stärker.

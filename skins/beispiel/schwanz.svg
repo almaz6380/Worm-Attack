@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Spitze zeigt nach hinten (links) -->
+  <path d="M236 128 C236 70 180 50 150 62 L14 128 L150 194 C180 206 236 186 236 128 Z" fill="#4fc85a" stroke="#145228" stroke-width="9" stroke-linejoin="round"/>
+  <path d="M60 128 L22 100 L34 128 L22 156 Z" fill="#ff8a3d" stroke="#8a3a10" stroke-width="6" stroke-linejoin="round"/>
+  <ellipse cx="170" cy="108" rx="34" ry="18" fill="#c2f89a" opacity="0.7"/>
+</svg>

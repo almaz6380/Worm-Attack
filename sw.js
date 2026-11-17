@@ -1,5 +1,5 @@
 // Worm Attack Service-Worker: macht das Spiel installierbar und (gegen den Computer) offline spielbar.
-const VERSION = "snakeduell-v3";
+const VERSION = "snakeduell-v4";
 const PEER = "https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-180.png", "./icons/icon-192.png", "./icons/icon-512.png"];
 
@@ -25,6 +25,14 @@ self.addEventListener("fetch", event => {
     event.respondWith((async () => {
       try { const res = await fetch(req); (await caches.open(VERSION)).put("./index.html", res.clone()); return res; }
       catch { return (await caches.match("./index.html")) || Response.error(); }
+    })());
+    return;
+  }
+  // Wurm-Bilder und ihre Liste: erst Netz, damit neu hochgeladene Designs sofort erscheinen; offline aus dem Speicher
+  if (url.origin === self.location.origin && url.pathname.includes("/skins/")) {
+    event.respondWith((async () => {
+      try { const res = await fetch(req, { cache: "no-cache" }); if (res.ok) (await caches.open(VERSION)).put(req, res.clone()); return res; }
+      catch { return (await caches.match(req, { ignoreSearch: true })) || Response.error(); }
     })());
     return;
   }

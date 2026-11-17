@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <radialGradient id="g" cx="38%" cy="32%" r="72%"><stop offset="0" stop-color="#c2f89a"/><stop offset="0.5" stop-color="#4fc85a"/><stop offset="1" stop-color="#1c6e34"/></radialGradient>
+  </defs>
+  <circle cx="128" cy="128" r="118" fill="url(#g)" stroke="#145228" stroke-width="10"/>
+  <!-- rundum gleich: Ring aus Schuppen und Stachel in der Mitte -->
+  <circle cx="128" cy="128" r="78" fill="none" stroke="#2f9c48" stroke-width="12" stroke-dasharray="34 27"/>
+  <circle cx="128" cy="128" r="34" fill="#ff8a3d" stroke="#8a3a10" stroke-width="8"/>
+  <circle cx="118" cy="118" r="10" fill="#ffd0a0"/>
+</svg>

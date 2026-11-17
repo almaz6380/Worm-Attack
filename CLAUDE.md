@@ -18,8 +18,10 @@ Handys in verschiedenen Netzen. Bisher liefen nur Bots und zwei Browser-Fenster 
 
 ## Feste Regeln (nicht verhandelbar)
 
-- **Eine Datei:** Das ganze Spiel bleibt in `index.html` (HTML + CSS + JavaScript). Keine Build-Tools,
+- **Eine Datei:** Der ganze Code bleibt in `index.html` (HTML + CSS + JavaScript). Keine Build-Tools,
   keine Frameworks. Einzige fremde Bibliothek: `peerjs`, fest gepinnt, nur für den Online-Modus nachgeladen.
+  **Ausnahme (vom User freigegeben):** Bilder für Wurm-Designs liegen als Dateien im Ordner `skins/`, so wie die
+  Icons in `icons/`. Das Spiel muss auch ohne diese Bilder starten.
 - **Keine Kosten:** keine API-Keys, kein eigener Server, keine Käufe, keine Werbung ohne ausdrückliche Anweisung.
 - **Deutsch** für alle Texte im Spiel, in Kommentaren und in Commit-Nachrichten.
 - **Handy zuerst:** Hochformat 9:16, Bedienung mit dem Daumen, muss in iPhone-Safari und Android-Chrome laufen.
@@ -37,6 +39,7 @@ Handys in verschiedenen Netzen. Bisher liefen nur Bots und zwei Browser-Fenster 
 | --- | --- |
 | `index.html` | Das komplette Spiel |
 | `manifest.webmanifest`, `sw.js`, `icons/` | Installierbare Web-App, offline spielbar gegen den Computer |
+| `skins/` | Bild-Designs: `liste.json`, pro Design ein Ordner mit `kopf.png`, `glied.png`, optional `schwanz.png`. `ANLEITUNG.md` erklärt dem User das Gestalten (kie.ai-Prompts, Hochladen) |
 | `README.md` | Regeln und Anleitung für Menschen |
 | `CLAUDE.md` | Diese Arbeitsanweisung |
 | `tests/sim.test.js` | Simulation ohne Browser: Determinismus, Rundenverlauf, Bot-Stufen |
@@ -146,6 +149,14 @@ Im Menü läuft im Hintergrund ein Demo-Duell Bot gegen Bot.
 - Designs: `SKINS` (Minze, Bonbon, Tiger frei; Eis ab Stufe 3, Lava ab 5, Regenbogen ab 8), gespeichert als
   `sd_skin`. `app.skins[i]` gilt pro Schlange. Online schickt der Gast sein Design in `hello` (`sk`), der
   Gastgeber das Paar in vollen Spielständen (`sk`). Beides sind freiwillige Felder, alte Versionen ignorieren sie.
+- **Bild-Designs:** `loadImageSkins()` liest beim Start `skins/liste.json`, hängt die Designs hinter die
+  eingebauten an `SKINS` an und verkleinert die Bilder einmal auf Stempel (`stamp()`: Kopf 64 px, Glied 28 px,
+  Schwanz 40 px). Hat ein Design `skin.img`, stempelt `drawSnake` das Glied-Bild ungedreht, dreht Kopf und
+  Schwanzspitze und lässt das gezeichnete Gesicht weg. Lädt ein Pflichtbild nicht, bleibt `skin.img = null` und
+  das Design nutzt die eingebaute Darstellung in seiner Hauptfarbe. `sw.js` holt `skins/` zuerst aus dem Netz,
+  damit neu hochgeladene Bilder sofort erscheinen. Der User pflegt `liste.json` selbst auf GitHub: Einträge
+  werden deshalb streng geprüft (Ordnername, Farbcode) und fehlerhafte übersprungen.
+- Nur selbst erzeugte Bilder ins Repo, keine Figuren aus bestehenden Spielen, Filmen oder Serien.
 - Gemessen im simulierten Handy ohne Grafikkarte: zwei Würmer mit Höchstlänge kosten etwa 6 ms pro Bild, bei
   üblicher Länge etwa ein Drittel. Auf echten Handys noch nicht gemessen.
 

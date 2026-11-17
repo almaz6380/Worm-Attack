@@ -44,10 +44,20 @@ fs.mkdirSync(shots, { recursive: true });
   await page.waitForTimeout(600);
   await page.screenshot({ path: path.join(shots, "1c-menue-design.png") });
 
+  // Bild-Design aus dem Ordner skins/: erscheint hinter den eingebauten Designs und ist wählbar
+  await page.waitForFunction(() => SD.skinsReady, null, { timeout: 10000 });
+  await page.click("#skinBtn");                          // Lava (gesperrt)
+  await page.click("#skinBtn");                          // Regenbogen (gesperrt)
+  await page.click("#skinBtn");                          // Drache (Bild-Design, frei)
+  const pic = await page.evaluate(() => { const k = SD.SKINS.find(x => x.id === "beispiel"); return { btn: document.getElementById("skinBtn").textContent, skin: SD.state.skin, img: !!(k && k.img), tail: !!(k && k.img && k.img.tail) }; });
+  check(pic.skin === "beispiel" && pic.img && pic.tail && pic.btn.includes("Drache"), `Bild-Design geladen und gewählt: „${pic.btn}“`);
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(shots, "1d-menue-bilddesign.png") });
+
   await page.click("#soloBtn");
   await page.waitForFunction(() => SD.app.match.phase === "count");
   const sk = await page.evaluate(() => SD.app.skins);
-  check(sk[0] === "tiger" && sk[1] !== "tiger", `Im Spiel: eigenes Design ${sk[0]}, Gegner ${sk[1]}`);
+  check(sk[0] === "beispiel" && sk[1] !== "beispiel", `Im Spiel: eigenes Design ${sk[0]}, Gegner ${sk[1]}`);
   await page.waitForTimeout(1200);
   await page.screenshot({ path: path.join(shots, "3-countdown.png") });
   await page.waitForFunction(() => SD.app.match.phase === "play", null, { timeout: 8000 });
@@ -112,6 +122,23 @@ fs.mkdirSync(shots, { recursive: true });
   await page.click("#menuBtn");
   check(await page.isVisible("#menuPanel"), "Zurück im Menü");
   check(errors.length === 0, `Keine Konsolenfehler${errors.length ? ": " + errors.join("; ") : ""}`);
+
+  // Fehlt ein Bild, fällt das Design auf die eingebaute Darstellung zurück und das Spiel läuft trotzdem
+  // (eigener Browser-Kontext ohne Service-Worker, damit das Bild wirklich fehlt)
+  const ctx2 = await browser.newContext({ ...devices["iPhone 13"], serviceWorkers: "block" });
+  const page2 = await ctx2.newPage();
+  const crashes = [];
+  page2.on("pageerror", e => crashes.push(e.message));
+  await page2.route("**/skins/beispiel/glied.png", r => r.abort());
+  await page2.goto(URL);
+  await page2.waitForFunction(() => SD.skinsReady, null, { timeout: 10000 });
+  const fb = await page2.evaluate(() => { const k = SD.SKINS.find(x => x.id === "beispiel"); return { there: !!k, img: k && k.img }; });
+  await page2.evaluate(() => { SD.state.skin = "beispiel"; });
+  await page2.click("#soloBtn");
+  await page2.waitForFunction(() => SD.app.match.phase === "play", null, { timeout: 8000 });
+  await page2.waitForTimeout(500);
+  await page2.screenshot({ path: path.join(shots, "6-bild-fehlt.png") });
+  check(fb.there && fb.img === null && crashes.length === 0, `Fehlendes Bild: Design bleibt mit eingebauter Darstellung spielbar${crashes.length ? " – " + crashes.join("; ") : ""}`);
   console.log(`Screenshots: ${shots}`);
   await browser.close();
   process.exit(failed ? 1 : 0);
