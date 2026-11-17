@@ -1,0 +1,1076 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#05060a">
+<title>Worm Attack</title>
+<meta name="description" content="Schlangen-Duell 1 gegen 1: gegen den Computer oder online gegen Freunde. Kostenlos, ohne Anmeldung.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Worm Attack">
+<style>
+  :root {
+    --bg: #05060a;
+    --panel: rgba(16, 18, 28, 0.94);
+    --line: rgba(255, 255, 255, 0.13);
+    --text: #f4f5fa;
+    --muted: #9aa0b4;
+    --accent: #ffd34d;
+    --p0: #2ee6d6;
+    --p1: #ff5a8a;
+    --good: #3ddc84;
+    --bad: #ff5a5a;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #stage { position: relative; margin: 0 auto; height: 100vh; aspect-ratio: 9 / 16; max-width: 100vw; background: var(--bg); }
+  @supports (height: 100dvh) { #stage { height: 100dvh; } }
+  @media (max-aspect-ratio: 9/16) { #stage { width: 100vw; height: auto; } }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .hidden { display: none !important; }
+
+  .panel { position: absolute; left: 10px; right: 10px; bottom: max(10px, env(safe-area-inset-bottom));
+    background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 14px;
+    display: flex; flex-direction: column; gap: 9px; }
+  .btn { width: 100%; padding: 14px; border-radius: 14px; border: 0; font: inherit; font-size: 17px; font-weight: 800;
+    background: var(--accent); color: #1a1400; cursor: pointer; }
+  .btn.alt { background: var(--p0); color: #04201d; }
+  .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); font-weight: 700; font-size: 15px; padding: 11px; }
+  .btn:disabled { background: #34374a; color: #8b8fa0; }
+  .row { display: flex; gap: 8px; }
+  .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .note { font-size: 13px; color: var(--muted); line-height: 1.4; text-align: center; }
+  .note b { color: var(--text); }
+  input.code { flex: 1; min-width: 0; padding: 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,0.06);
+    color: var(--text); font: inherit; font-size: 22px; font-weight: 800; letter-spacing: .3em; text-align: center; user-select: text; -webkit-user-select: text; }
+  .bigcode { font-size: 54px; font-weight: 900; letter-spacing: .18em; text-align: center; color: var(--accent); line-height: 1.1; }
+  .title { font-size: 22px; font-weight: 800; text-align: center; }
+  .win { color: var(--good); } .lose { color: var(--bad); }
+  .status { font-size: 14px; font-weight: 600; text-align: center; min-height: 20px; color: var(--muted); }
+  .status.err { color: var(--bad); }
+  .help { font-size: 13.5px; line-height: 1.45; color: #d6d9e4; max-height: 52vh; overflow: auto; touch-action: pan-y; }
+  .help h3 { margin: 4px 0 6px; font-size: 16px; color: var(--text); }
+  .help ul { margin: 0 0 8px; padding-left: 18px; }
+
+  .toast { position: absolute; top: 15%; left: 50%; transform: translateX(-50%); background: var(--panel); border: 1px solid var(--line);
+    padding: 8px 14px; border-radius: 999px; font-size: 14px; font-weight: 700; white-space: nowrap; transition: opacity .3s; pointer-events: none; opacity: 0; }
+  .sprint { position: absolute; right: 16px; bottom: max(18px, env(safe-area-inset-bottom)); width: 84px; height: 84px; border-radius: 50%;
+    border: 3px solid var(--accent); background: rgba(10,12,20,0.8); color: var(--text); font: inherit; font-size: 30px; line-height: 1;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; }
+  .sprint span { font-size: 11px; font-weight: 800; color: var(--muted); }
+  .sprint.on { background: var(--accent); }
+  .sprint.on span { color: #1a1400; }
+  .quit { position: absolute; left: 12px; top: max(10px, env(safe-area-inset-top)); width: 38px; height: 38px; border-radius: 50%;
+    border: 1px solid var(--line); background: rgba(10,12,20,0.7); color: var(--muted); font: inherit; font-size: 16px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div class="toast" id="toast"></div>
+  <button class="quit hidden" id="quitBtn" aria-label="Spiel verlassen">✕</button>
+  <button class="sprint hidden" id="sprintBtn" aria-label="Sprint">⚡<span>SPRINT</span></button>
+
+  <!-- Menü -->
+  <div class="panel" id="menuPanel">
+    <button class="btn" id="soloBtn">🤖 Gegen Computer</button>
+    <button class="btn alt" id="hostBtn">👥 Online: Freund einladen</button>
+    <div class="row">
+      <input class="code" id="codeInput" inputmode="numeric" maxlength="4" placeholder="Code" autocomplete="off">
+      <button class="btn ghost" id="joinBtn" style="flex:1">Beitreten</button>
+    </div>
+    <div class="status" id="menuStatus"></div>
+    <button class="btn ghost" id="helpBtn">Regeln &amp; Steuerung</button>
+  </div>
+
+  <!-- Online-Lobby (Gastgeber) -->
+  <div class="panel hidden" id="lobbyPanel">
+    <div class="label" style="text-align:center">Dein Spiel-Code</div>
+    <div class="bigcode" id="lobbyCode">····</div>
+    <div class="status" id="lobbyStatus">Verbinde …</div>
+    <button class="btn" id="shareBtn">📤 Einladungslink teilen</button>
+    <div class="note">Dein Freund öffnet den Link oder gibt den Code im Menü ein. Das Spiel startet dann automatisch.</div>
+    <button class="btn ghost" id="lobbyCancel">Abbrechen</button>
+  </div>
+
+  <!-- Ergebnis -->
+  <div class="panel hidden" id="endPanel">
+    <div class="title" id="endTitle"></div>
+    <div class="note" id="endSub"></div>
+    <button class="btn" id="againBtn">Nochmal</button>
+    <button class="btn ghost" id="menuBtn">Menü</button>
+  </div>
+
+  <!-- Regeln -->
+  <div class="panel hidden" id="helpPanel">
+    <div class="help">
+      <h3>So funktioniert Worm Attack</h3>
+      <ul>
+        <li><b>Ziel:</b> Wer zuerst 3 Runden gewinnt, gewinnt das Duell.</li>
+        <li><b>Lenken:</b> Finger irgendwo aufsetzen und ziehen – die Zugrichtung ist die Fahrtrichtung. Am Computer: Pfeiltasten.</li>
+        <li><b>Sprint:</b> ⚡-Knopf halten oder mit einem zweiten Finger tippen (Computer: Leertaste). Macht schneller, kostet aber Länge.</li>
+        <li><b>Verloren</b> hat, wer mit dem Kopf die Wand, den Körper des Gegners oder sich selbst berührt.</li>
+        <li><b>Kopf an Kopf:</b> Die längere Schlange gewinnt. Gleich lang = unentschieden.</li>
+        <li><b>Futter</b> macht länger. Mit mehr Körper kannst du dem Gegner den Weg abschneiden.</li>
+        <li><b>Sudden Death:</b> Ab Sekunde 40 schrumpft die Arena. Nach 60 Sekunden gewinnt die längere Schlange.</li>
+      </ul>
+      <h3>Joker</h3>
+      <ul>
+        <li>⚡ <b>Turbo:</b> 3 Sekunden Sprint ohne Längenverlust.</li>
+        <li>👻 <b>Geist:</b> 2 Sekunden durch Körper hindurchfahren (nicht durch die Wand).</li>
+        <li>✂️ <b>Schere:</b> kürzt den Gegner um ein Drittel.</li>
+        <li>🧱 <b>Mauer:</b> Deine Spur bleibt 4 Sekunden als Hindernis für den Gegner stehen.</li>
+      </ul>
+      <h3>Online</h3>
+      <ul>
+        <li>Die Handys verbinden sich direkt miteinander. In manchen Netzen (z. B. Firmen-WLAN) klappt das nicht – dann hilft meist ein anderes WLAN oder mobile Daten.</li>
+        <li>Das Handy des Gastgebers berechnet das Spiel und muss die Seite offen lassen.</li>
+      </ul>
+    </div>
+    <button class="btn ghost" id="helpClose">Verstanden</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* SIM-START ===================================================================
+   Simulation, Bot und Match – deterministisch, ohne Grafik (auch für Node-Tests)
+   Arena-Radius = 1. Alle Längen in Arena-Einheiten.
+   ============================================================================ */
+const DT = 1 / 60;
+const SPEED = 0.42, SPRINT = 0.68, TURN = 3.6;
+const HEAD_R = 0.028, BODY_R = 0.021, SEG = 0.012;
+const START_LEN = 0.55, MIN_LEN = 0.28, MAX_LEN = 3, SPRINT_COST = 0.11;
+const FOOD_N = 7, FOOD_R = 0.016, FOOD_V = 0.07;
+const POWER_R = 0.042, POWER_TYPES = ["turbo", "ghost", "scissors", "wall"];
+const TURBO_T = 3, GHOST_T = 2, WALL_T = 4;
+const SD_START = 40, DURATION = 60, R_MIN = 0.45;
+const SELF_SKIP = 20;                       // die neuesten Spurpunkte zählen nicht als Selbst-Treffer
+const HIT2 = (HEAD_R + BODY_R) ** 2;
+const WIN_ROUNDS = 3, MAX_ROUNDS = 9, COUNT_T = 3, END_T = 2.2;
+const PI2 = Math.PI * 2;
+
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function angDiff(a, b) {
+  let d = (a - b) % PI2;
+  if (d > Math.PI) d -= PI2; else if (d < -Math.PI) d += PI2;
+  return d;
+}
+const arenaR = t => (t < SD_START ? 1 : 1 - (1 - R_MIN) * Math.min(1, (t - SD_START) / (DURATION - SD_START)));
+
+function hitTrail(x, y, tr, end) {
+  for (let k = 0; k < end; k += 2) {
+    const dx = tr[k] - x, dy = tr[k + 1] - y;
+    if (dx * dx + dy * dy < HIT2) return true;
+  }
+  return false;
+}
+
+class Sim {
+  constructor(seed, record = false) {
+    this.rng = mulberry32(seed >>> 0);
+    this.record = record; this.events = [];
+    this.t = 0; this.R = 1; this.done = false; this.winner = -2; this.reason = "";
+    this.snakes = [this.makeSnake(0, -0.5, 0.1, -Math.PI / 2), this.makeSnake(1, 0.5, -0.1, Math.PI / 2)];
+    this.foods = []; this.power = null; this.nextPower = 5 + this.rng() * 2; this.walls = [];
+    for (let i = 0; i < FOOD_N; i++) this.spawnFood();
+  }
+
+  makeSnake(i, x, y, dir) {
+    const trail = [], n = Math.floor(START_LEN / SEG);
+    for (let k = n; k >= 1; k--) trail.push(x - Math.cos(dir) * SEG * k, y - Math.sin(dir) * SEG * k);
+    return { i, x, y, dir, len: START_LEN, trail, acc: 0, drop: 0, alive: true, target: null, sprint: false, sprinting: false,
+      turboUntil: -1, ghostUntil: -1, inBody: false };
+  }
+
+  ev(e) { if (this.record) this.events.push(e); }
+
+  randomSpot(maxR) {
+    const a = this.rng() * PI2, d = Math.sqrt(this.rng()) * maxR * this.R;
+    return [Math.cos(a) * d, Math.sin(a) * d];
+  }
+  spawnFood() { const [x, y] = this.randomSpot(0.88); this.foods.push({ x, y, v: FOOD_V, n: 1 }); }
+
+  step() {
+    if (this.done) return;
+    const t = (this.t += DT);
+    const R = (this.R = arenaR(t));
+    const S = this.snakes;
+
+    // Bewegung
+    for (const s of S) {
+      if (!s.alive) continue;
+      if (s.target != null) {
+        const d = angDiff(s.target, s.dir), mx = TURN * DT;
+        s.dir += d > mx ? mx : d < -mx ? -mx : d;
+      }
+      const turbo = s.turboUntil > t;
+      s.sprinting = turbo || (s.sprint && s.len > MIN_LEN + 0.02);
+      const v = s.sprinting ? SPRINT : SPEED;
+      s.x += Math.cos(s.dir) * v * DT; s.y += Math.sin(s.dir) * v * DT;
+      s.acc += v * DT;
+      if (s.acc >= SEG) { s.acc -= SEG; s.trail.push(s.x, s.y); }
+      if (s.sprinting && !turbo) {
+        s.len -= SPRINT_COST * DT; s.drop += SPRINT_COST * DT;
+        if (s.drop >= 0.055) { s.drop -= 0.055; this.foods.push({ x: s.trail[0], y: s.trail[1], v: 0.04, n: 0 }); }
+      }
+      this.trim(s);
+    }
+
+    // Futter
+    const eat2 = (HEAD_R + FOOD_R) ** 2;
+    for (let k = this.foods.length - 1; k >= 0; k--) {
+      const f = this.foods[k];
+      if (f.x * f.x + f.y * f.y > (R - 0.03) ** 2) { this.foods.splice(k, 1); continue; }
+      for (const s of S) {
+        if (!s.alive) continue;
+        const dx = f.x - s.x, dy = f.y - s.y;
+        if (dx * dx + dy * dy < eat2) {
+          s.len = Math.min(MAX_LEN, s.len + f.v);
+          this.foods.splice(k, 1);
+          this.ev({ type: "eat", i: s.i, x: f.x, y: f.y });
+          break;
+        }
+      }
+    }
+    let natural = 0;
+    for (const f of this.foods) natural += f.n;
+    while (natural < FOOD_N) { this.spawnFood(); natural++; }
+
+    // Joker
+    if (this.power && Math.hypot(this.power.x, this.power.y) > R - 0.06) this.power = null;
+    if (!this.power && t >= this.nextPower) {
+      const [x, y] = this.randomSpot(0.6);
+      this.power = { x, y, type: POWER_TYPES[Math.floor(this.rng() * POWER_TYPES.length)] };
+      this.ev({ type: "spawn", x, y });
+    }
+    if (this.power) {
+      const p = this.power, r2 = (HEAD_R + POWER_R) ** 2;
+      for (const s of S) {
+        if (!s.alive) continue;
+        if ((p.x - s.x) ** 2 + (p.y - s.y) ** 2 < r2) { this.applyPower(s, p); break; }
+      }
+    }
+    for (let k = this.walls.length - 1; k >= 0; k--) if (this.walls[k].until <= t) this.walls.splice(k, 1);
+
+    // Kollisionen
+    const dead = [false, false];
+    for (const s of S) {
+      if (!s.alive) continue;
+      const o = S[1 - s.i];
+      if (Math.hypot(s.x, s.y) + HEAD_R > R) { dead[s.i] = "wall"; continue; }
+      let raw = hitTrail(s.x, s.y, o.trail, o.alive ? o.trail.length : 0) ? "body" :
+                hitTrail(s.x, s.y, s.trail, s.trail.length - SELF_SKIP * 2) ? "self" : false;
+      if (!raw) for (const w of this.walls) if (w.owner !== s.i && hitTrail(s.x, s.y, w.pts, w.pts.length)) { raw = "mauer"; break; }
+      if (s.ghostUntil > t) s.inBody = !!raw;                             // Geist: nichts passiert
+      else if (raw && s.inBody && t < s.ghostUntil + 0.8) { /* Schonfrist, bis der Kopf wieder frei ist */ }
+      else { s.inBody = false; if (raw) dead[s.i] = raw; }
+    }
+    const a = S[0], b = S[1];
+    if (a.alive && b.alive && !dead[0] && !dead[1] && a.ghostUntil <= t && b.ghostUntil <= t &&
+        (a.x - b.x) ** 2 + (a.y - b.y) ** 2 < (2 * HEAD_R) ** 2) {
+      const diff = a.len - b.len;
+      if (Math.abs(diff) < 0.05) { dead[0] = dead[1] = "head"; }
+      else dead[diff > 0 ? 1 : 0] = "head";
+      this.ev({ type: "clash", x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    }
+    for (const s of S) if (dead[s.i]) { s.alive = false; this.ev({ type: "die", i: s.i, x: s.x, y: s.y, why: dead[s.i] }); }
+
+    if (!a.alive || !b.alive) {
+      this.done = true; this.reason = "crash";
+      this.winner = a.alive ? 0 : b.alive ? 1 : -1;
+    } else if (t >= DURATION) {
+      const diff = a.len - b.len;
+      this.done = true; this.reason = "time";
+      this.winner = Math.abs(diff) < 0.02 ? -1 : diff > 0 ? 0 : 1;
+    }
+  }
+
+  trim(s) {
+    const max = Math.max(2, Math.floor(s.len / SEG)), n = s.trail.length / 2;
+    if (n > max) s.trail.splice(0, (n - max) * 2);
+  }
+
+  applyPower(s, p) {
+    const o = this.snakes[1 - s.i], t = this.t;
+    if (p.type === "turbo") s.turboUntil = t + TURBO_T;
+    else if (p.type === "ghost") { s.ghostUntil = t + GHOST_T; s.inBody = false; }
+    else if (p.type === "scissors") {
+      if (o.alive) {
+        const cut = Math.floor((o.trail.length / 2) / 3);
+        for (let k = 0; k < cut; k += 5) this.foods.push({ x: o.trail[k * 2], y: o.trail[k * 2 + 1], v: 0.035, n: 0 });
+        o.len = Math.max(MIN_LEN, o.len * 2 / 3);
+        this.trim(o);
+      }
+    } else if (p.type === "wall") this.walls.push({ owner: s.i, pts: s.trail.slice(), until: t + WALL_T });
+    this.ev({ type: "power", i: s.i, p: p.type, x: p.x, y: p.y });
+    this.power = null;
+    this.nextPower = t + 6 + this.rng() * 3;
+  }
+}
+
+/* ---------- Computer-Gegner ----------
+   Probiert mehrere Lenkrichtungen in einer kurzen Vorschau aus und wählt die beste. */
+const BOT_DELTAS = [0, 0.45, -0.45, 1.1, -1.1, 2.3, -2.3];
+class Bot {
+  constructor(level, seed) {
+    const k = Math.min(1, Math.max(0, (level - 1) / 9));
+    this.k = k; this.level = level;
+    this.rng = mulberry32((seed ^ 0xB07B07) >>> 0);
+    this.horizon = 0.55 + 0.6 * k;                // Vorschau in Sekunden
+    this.interval = Math.round(10 - 7 * k);       // Reaktionszeit in Ticks
+    this.err = 0.11 * Math.pow(1 - k, 1.5);       // Fehlerquote pro Entscheidung
+    this.deep = k >= 0.45;                        // zweite Vorschau-Stufe: gibt es danach noch einen Ausweg?
+    this.predict = k >= 0.3;                      // rechnet den Weg des Gegners als Hindernis voraus
+    this.tick = 0; this.out = { a: null, s: false };
+  }
+
+  think(sim, i) {
+    if (this.tick++ % this.interval) return this.out;
+    const me = sim.snakes[i], op = sim.snakes[1 - i];
+    if (!me.alive) return this.out;
+    const k = this.k, t = sim.t, R = sim.R;
+    const dOp = Math.hypot(op.x - me.x, op.y - me.y);
+    const longer = me.len > op.len + 0.06;
+
+    // Ziel wählen: Joker > Gegner abschneiden > Futter > Mitte
+    let tx = 0, ty = 0, mode = "center", best = -1;
+    for (const f of sim.foods) {
+      if (f.x * f.x + f.y * f.y > (R - 0.09) ** 2) continue;
+      const sc = f.v / (Math.hypot(f.x - me.x, f.y - me.y) + 0.06);
+      if (sc > best) { best = sc; tx = f.x; ty = f.y; mode = "food"; }
+    }
+    let racing = false;
+    if (sim.power) {
+      const p = sim.power, dm = Math.hypot(p.x - me.x, p.y - me.y), dop = Math.hypot(p.x - op.x, p.y - op.y);
+      if (k < 0.3 || dm < dop * 1.25 + 0.1) { tx = p.x; ty = p.y; mode = "power"; racing = dop < dm * 1.6; }
+    }
+    if (mode !== "power" && k >= 0.35 && op.alive && dOp < 0.75 && me.len >= op.len * 0.75) {
+      const lead = longer && k >= 0.6 ? Math.min(0.25, dOp * 0.5) : Math.min(0.45, Math.max(0.12, dOp * 0.9));
+      const cx = op.x + Math.cos(op.dir) * lead, cy = op.y + Math.sin(op.dir) * lead;
+      if (cx * cx + cy * cy < (R - 0.12) ** 2) { tx = cx; ty = cy; mode = "cut"; }
+    }
+    const want = angDiff(Math.atan2(ty - me.y, tx - me.x), me.dir);
+    const wantSprint = k >= 0.25 && me.len > 0.6 && ((mode === "cut" && dOp < 0.5) || (mode === "power" && racing));
+    const v = wantSprint || me.turboUntil > t ? SPRINT : SPEED;
+    const fearHead = !longer && op.alive;
+    const ghostLeft = Math.max(0, me.ghostUntil - t);
+
+    let pick = 0, pickScore = -1e9, pickClear = 0;
+    const ok = [];
+    const n1 = Math.ceil(this.horizon / (DT * 2)), n2 = Math.ceil(n1 * 0.6);
+    for (const d of BOT_DELTAS) {
+      const r = this.roll(sim, me, op, me.x, me.y, me.dir, 0, me.dir + d, n1, v, fearHead, ghostLeft);
+      let score;
+      if (r.surv < 1) score = r.surv * 100 + r.clear * 10;
+      else {
+        score = 140 + Math.min(r.clear, 0.1) * 150 - Math.abs(d - want) * 12;
+        if (this.deep) {
+          // Sackgasse? Nur gut, wenn es vom Endpunkt aus in irgendeine Richtung weitergeht
+          let out = 0;
+          for (const d2 of [0, 1.4, -1.4]) {
+            const r2 = this.roll(sim, me, op, r.x, r.y, r.dir, n1 * DT * 2, r.dir + d2, n2, v, fearHead, ghostLeft);
+            if (r2.surv > out) out = r2.surv;
+            if (out >= 1) break;
+          }
+          if (out < 1) score = 100 + out * 35 - Math.abs(d - want) * 3;
+        }
+      }
+      if (r.surv > 0.35) ok.push(d);
+      if (score > pickScore) { pickScore = score; pick = d; pickClear = r.clear; }
+    }
+    if (ok.length && this.rng() < this.err) pick = ok[Math.floor(this.rng() * ok.length)];
+    this.out = { a: me.dir + pick, s: wantSprint && pickClear > 0.04 };
+    return this.out;
+  }
+
+  roll(sim, me, op, x, y, dir, tau0, goal, n, v, fearHead, ghostLeft) {
+    const dt = DT * 2;
+    const ot = op.trail, oEnd = op.alive ? ot.length : 0, mt = me.trail, mEnd = mt.length - SELF_SKIP * 2;
+    const ocx = Math.cos(op.dir) * SPEED, ocy = Math.sin(op.dir) * SPEED, predict = this.predict && op.alive;
+    let clear = 0.2, min2 = 1;
+    for (let s = 1; s <= n; s++) {
+      const tau = tau0 + s * dt, d = angDiff(goal, dir), mx = TURN * dt;
+      dir += d > mx ? mx : d < -mx ? -mx : d;
+      x += Math.cos(dir) * v * dt; y += Math.sin(dir) * v * dt;
+      const wd = arenaR(sim.t + tau) - Math.hypot(x, y) - HEAD_R;
+      if (wd < 0.012) return { surv: (s - 1) / n, clear: 0, x, y, dir };
+      if (wd < clear) clear = wd;
+      if (tau <= ghostLeft) continue;
+      for (let q = 0; q < oEnd; q += 4) { const dx = ot[q] - x, dy = ot[q + 1] - y, d2 = dx * dx + dy * dy; if (d2 < min2) min2 = d2; }
+      for (let q = 0; q < mEnd; q += 4) { const dx = mt[q] - x, dy = mt[q + 1] - y, d2 = dx * dx + dy * dy; if (d2 < min2) min2 = d2; }
+      for (const w of sim.walls) {
+        if (w.owner === me.i || w.until < sim.t + tau) continue;
+        const p = w.pts;
+        for (let q = 0; q < p.length; q += 4) { const dx = p[q] - x, dy = p[q + 1] - y, d2 = dx * dx + dy * dy; if (d2 < min2) min2 = d2; }
+      }
+      if (predict) {
+        // der Gegner fährt vermutlich geradeaus weiter: sein künftiger Körper ist ein Hindernis
+        const steps = Math.min(12, Math.ceil(tau / 0.06));
+        for (let q = 1; q <= steps; q++) {
+          const f = (tau * q) / steps, dx = op.x + ocx * f - x, dy = op.y + ocy * f - y, d2 = dx * dx + dy * dy;
+          if (d2 < min2) min2 = d2;
+        }
+      }
+      if (min2 < HIT2 * 1.2) return { surv: (s - 1) / n, clear: 0, x, y, dir };
+      if (fearHead) {
+        const ox = op.x + ocx * tau, oy = op.y + ocy * tau;
+        const rr = Math.min(0.16, 2 * HEAD_R + tau * 0.22);
+        if ((ox - x) ** 2 + (oy - y) ** 2 < rr * rr) return { surv: (s - 1) / n, clear: 0, x, y, dir };
+      }
+    }
+    return { surv: 1, clear: Math.min(clear, Math.sqrt(min2) - HEAD_R - BODY_R), x, y, dir };
+  }
+}
+
+/* ---------- Match: mehrere Runden, wer zuerst WIN_ROUNDS hat, gewinnt ---------- */
+class Match {
+  constructor(seed, bots) {
+    this.rng = mulberry32(seed >>> 0);
+    this.bots = bots;                              // [Bot|null, Bot|null]; null = Mensch
+    this.scores = [0, 0]; this.round = 0;
+    this.inputs = [{ a: null, s: false }, { a: null, s: false }];
+    this.over = false; this.matchWinner = -2;
+    this.events = []; this.netEvents = []; this.full = true; this.ticks = 0;
+    this.nextRound();
+  }
+  nextRound() {
+    this.round++;
+    this.sim = new Sim((this.rng() * 4294967296) >>> 0, true);
+    this.phase = "count"; this.phaseT = 0; this.full = true;
+    for (const inp of this.inputs) { inp.a = null; inp.s = false; }
+    for (const b of this.bots) if (b) b.out = { a: null, s: false };
+  }
+  tick() {
+    this.ticks++;
+    this.phaseT += DT;
+    if (this.phase === "count") {
+      if (this.phaseT >= COUNT_T) { this.phase = "play"; this.phaseT = 0; }
+    } else if (this.phase === "play") {
+      const sim = this.sim;
+      for (let i = 0; i < 2; i++) {
+        const inp = this.bots[i] ? this.bots[i].think(sim, i) : this.inputs[i];
+        sim.snakes[i].target = inp.a; sim.snakes[i].sprint = !!inp.s;
+      }
+      sim.step();
+      for (const e of sim.events) {
+        this.events.push(e); this.netEvents.push(e);
+        if (e.type === "power" && (e.p === "scissors" || e.p === "wall")) this.full = true;
+      }
+      sim.events.length = 0;
+      if (sim.done) {
+        this.phase = "end"; this.phaseT = 0;
+        if (sim.winner >= 0) this.scores[sim.winner]++;
+        const [a, b] = this.scores;
+        if (a >= WIN_ROUNDS || b >= WIN_ROUNDS || this.round >= MAX_ROUNDS) this.matchWinner = a === b ? -1 : a > b ? 0 : 1;
+      }
+    } else if (this.phase === "end") {
+      if (this.phaseT >= END_T) {
+        if (this.matchWinner !== -2) { this.phase = "over"; this.over = true; }
+        else this.nextRound();
+      }
+    }
+  }
+}
+/* SIM-END */
+
+/* ================================================================
+   Speicher, Sound
+   ================================================================ */
+const $ = id => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("sd_" + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("sd_" + k, JSON.stringify(v)); } catch {} },
+};
+const state = { level: store.get("level", 1), wins: store.get("wins", 0) };
+const save = () => { store.set("level", state.level); store.set("wins", state.wins); };
+
+const audio = { ctx: null, master: null };
+function initAudio() {
+  if (audio.ctx) { audio.ctx.resume && audio.ctx.resume(); return; }
+  try {
+    audio.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    audio.master = audio.ctx.createGain(); audio.master.gain.value = 0.3; audio.master.connect(audio.ctx.destination);
+  } catch { audio.ctx = null; }
+}
+function tone(freq, dur = 0.1, type = "sine", vol = 0.4, slide = 0) {
+  const ac = audio.ctx; if (!ac || !inGame()) return;
+  const now = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, now);
+  if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq * slide), now + dur);
+  g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(vol, now + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  o.connect(g); g.connect(audio.master); o.start(now); o.stop(now + dur + 0.02);
+}
+
+/* ================================================================
+   Zustand der App
+   ================================================================ */
+const cv = $("cv"), ctx = cv.getContext("2d");
+const W = 720, H = 1280, CX = W / 2;
+cv.width = W; cv.height = H;
+let CY = 420, SC = 250;
+const COLORS = ["#2ee6d6", "#ff5a8a"];
+const POWER_ICON = { turbo: "⚡", ghost: "👻", scissors: "✂️", wall: "🧱" };
+const POWER_NAME = { turbo: "Turbo", ghost: "Geist", scissors: "Schere", wall: "Mauer" };
+const WHY = { wall: "in die Wand gefahren", body: "in den Gegner gefahren", self: "in sich selbst gefahren", mauer: "in die Mauer gefahren", head: "Kopf an Kopf verloren" };
+const NET_PREFIX = "snakeduell-v1-";
+const PEER_URL = "https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js";
+const params = new URLSearchParams(location.search);
+const LOCAL_NET = params.get("net") === "local";      // Test-Verbindung zwischen zwei Tabs, ohne Internet
+
+const app = {
+  mode: "menu",            // menu | lobby | solo | host | guest
+  match: null, me: 0, net: null, code: "", gv: null,
+  acc: 0, lastTs: 0, endShown: false, sentOver: false, snaps: 0, lastInput: 0, lastSent: "",
+  oppName: "Computer", why: [null, null], particles: [],
+};
+const input = { a: null, s: false };
+const inGame = () => app.mode === "solo" || app.mode === "host" || app.mode === "guest";
+
+/* ================================================================
+   Darstellung
+   ================================================================ */
+const stars = (() => { const r = mulberry32(4711), s = []; for (let i = 0; i < 130; i++) s.push([r() * W, r() * H, r() * 1.4 + 0.3, r()]); return s; })();
+const PANELS = ["menuPanel", "lobbyPanel", "endPanel", "helpPanel"];
+
+function targetLayout() {
+  if (inGame() && !app.endShown) return [600, 335];
+  const stage = $("stage");
+  let frac = 0.6;
+  for (const id of PANELS) { const p = $(id); if (!p.classList.contains("hidden") && p.offsetHeight) frac = p.offsetTop / stage.clientHeight; }
+  const top = 0.125, bottom = Math.max(top + 0.15, frac - 0.02);
+  return [((top + bottom) / 2) * H, Math.min(335, ((bottom - top) * H) / 2)];
+}
+
+function drawBackground(now) {
+  ctx.fillStyle = "#05060a"; ctx.fillRect(0, 0, W, H);
+  const g = ctx.createRadialGradient(CX, CY, 0, CX, CY, W * 0.7);
+  g.addColorStop(0, "rgba(50,70,110,0.20)"); g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "#fff";
+  for (const [x, y, r, p] of stars) { ctx.globalAlpha = 0.2 + 0.3 * (0.5 + 0.5 * Math.sin(now * 1.3 + p * 20)); ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
+  ctx.globalAlpha = 1;
+}
+
+function text(str, x, y, size, color = "#fff", align = "center", weight = 800) {
+  ctx.font = `${weight} ${size}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`;
+  ctx.textAlign = align; ctx.textBaseline = "middle"; ctx.fillStyle = color; ctx.fillText(str, x, y);
+}
+
+function drawArena(R, hot) {
+  ctx.save();
+  ctx.beginPath(); ctx.arc(CX, CY, R * SC, 0, PI2);
+  ctx.fillStyle = "rgba(255,255,255,0.025)"; ctx.fill();
+  ctx.lineWidth = 7; ctx.strokeStyle = hot ? "rgba(255,120,120,0.95)" : "rgba(235,225,255,0.95)";
+  ctx.shadowColor = hot ? "#ff4d5e" : "#b9a6ff"; ctx.shadowBlur = 22;
+  ctx.beginPath(); ctx.arc(CX, CY, R * SC + 3.5, 0, PI2); ctx.stroke();
+  ctx.restore();
+}
+
+function drawFoods(view, now) {
+  for (const f of view.foods) {
+    const big = f.v >= FOOD_V - 0.001, r = (big ? FOOD_R : FOOD_R * 0.7) * SC * (1 + 0.12 * Math.sin(now * 5 + f.x * 40));
+    ctx.fillStyle = big ? "#ffe9a8" : "#c9d4ff";
+    ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(CX + f.x * SC, CY + f.y * SC, r, 0, 7); ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+}
+
+function drawPower(p, now) {
+  if (!p) return;
+  const x = CX + p.x * SC, y = CY + p.y * SC, r = POWER_R * SC * (1 + 0.08 * Math.sin(now * 6));
+  ctx.save();
+  ctx.shadowColor = "#ffd34d"; ctx.shadowBlur = 24;
+  ctx.fillStyle = "#1a1c2c"; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = "#ffd34d"; ctx.stroke();
+  ctx.restore();
+  text(POWER_ICON[p.type], x, y + 1, r * 1.15);
+}
+
+function drawWalls(view) {
+  ctx.save();
+  ctx.lineCap = "butt"; ctx.lineJoin = "round"; ctx.strokeStyle = "#d9773f"; ctx.lineWidth = BODY_R * 2 * SC;
+  ctx.setLineDash([12, 5]); ctx.shadowColor = "#d9773f"; ctx.shadowBlur = 10;
+  for (const w of view.walls) {
+    const p = w.pts; if (p.length < 4) continue;
+    ctx.beginPath(); ctx.moveTo(CX + p[0] * SC, CY + p[1] * SC);
+    for (let k = 2; k < p.length; k += 2) ctx.lineTo(CX + p[k] * SC, CY + p[k + 1] * SC);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawSnake(sn, i) {
+  const tr = sn.trail, col = COLORS[i], hx = CX + sn.hx * SC, hy = CY + sn.hy * SC, w = BODY_R * 2 * SC;
+  ctx.save();
+  ctx.globalAlpha = !sn.alive ? 0.28 : sn.ghost ? 0.45 : 1;
+  ctx.lineCap = ctx.lineJoin = "round";
+  if (tr.length >= 2) {
+    ctx.beginPath(); ctx.moveTo(CX + tr[0] * SC, CY + tr[1] * SC);
+    for (let k = 2; k < tr.length; k += 2) ctx.lineTo(CX + tr[k] * SC, CY + tr[k + 1] * SC);
+    ctx.lineTo(hx, hy);
+    ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.lineWidth = w + 6; ctx.stroke();
+    ctx.shadowColor = col; ctx.shadowBlur = sn.turbo || sn.sprint ? 28 : 12;
+    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = w * 0.25; ctx.stroke();
+  }
+  const r = HEAD_R * SC;
+  ctx.fillStyle = col; ctx.beginPath(); ctx.arc(hx, hy, r, 0, 7); ctx.fill();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.stroke();
+  for (const side of [-1, 1]) {
+    const a = sn.hdir + side * 0.65, ex = hx + Math.cos(a) * r * 0.55, ey = hy + Math.sin(a) * r * 0.55;
+    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, r * 0.34, 0, 7); ctx.fill();
+    ctx.fillStyle = "#0b0c12"; ctx.beginPath(); ctx.arc(ex + Math.cos(sn.hdir) * r * 0.13, ey + Math.sin(sn.hdir) * r * 0.13, r * 0.17, 0, 7); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function burst(x, y, c, n = 10, sp = 240) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * PI2, v = sp * (0.3 + Math.random() * 0.7);
+    app.particles.push({ x: CX + x * SC, y: CY + y * SC, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.4 + Math.random() * 0.4, max: 0.8, s: 2 + Math.random() * 3, c });
+  }
+}
+function drawParticles(dt) {
+  const P = app.particles;
+  for (let k = P.length - 1; k >= 0; k--) {
+    const p = P[k]; p.life -= dt; if (p.life <= 0) { P.splice(k, 1); continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.95; p.vy *= 0.95;
+    ctx.globalAlpha = Math.min(1, (p.life / p.max) * 1.5); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawHud(view) {
+  const me = app.me, op = 1 - me, sd = view.t >= SD_START && view.phase === "play";
+  const side = (i, x, align, label) => {
+    const sn = view.snakes[i], dir = align === "left" ? 1 : -1;
+    ctx.fillStyle = COLORS[i]; ctx.beginPath(); ctx.arc(x + dir * 12, 62, 12, 0, 7); ctx.fill();
+    text(label + (sn.turbo ? " ⚡" : "") + (sn.ghost ? " 👻" : ""), x + dir * 34, 63, 26, "#fff", align);
+    for (let k = 0; k < WIN_ROUNDS; k++) {
+      ctx.beginPath(); ctx.arc(x + dir * (14 + k * 34), 108, 11, 0, 7);
+      if (k < view.scores[i]) { ctx.fillStyle = COLORS[i]; ctx.fill(); } else { ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 3; ctx.stroke(); }
+    }
+  };
+  side(me, 120, "left", "DU");
+  side(op, W - 30, "right", app.oppName);
+  const left = Math.max(0, DURATION - view.t);
+  text(sd ? left.toFixed(1) : `${Math.ceil(left)}`, CX, 100, 40, sd ? "#ff6b6b" : "rgba(255,255,255,0.9)");
+  if (sd) text("SUDDEN DEATH", CX, 140, 20, "#ff6b6b");
+  if (app.endShown) return;
+  // Längen-Balken
+  const y = CY + SC + 48, maxLen = Math.max(1.2, view.snakes[0].len, view.snakes[1].len), bw = 250;
+  text("LÄNGE", CX, y, 18, "rgba(255,255,255,0.55)", "center", 700);
+  for (const [i, dir] of [[me, -1], [op, 1]]) {
+    const x0 = CX + dir * 50, wv = bw * (view.snakes[i].len / maxLen);
+    ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(dir > 0 ? x0 : x0 - bw, y - 8, bw, 16);
+    ctx.fillStyle = COLORS[i]; ctx.fillRect(dir > 0 ? x0 : x0 - wv, y - 8, wv, 16);
+  }
+}
+
+function drawBanner(view, now) {
+  const me = app.me;
+  if (view.phase === "count") {
+    const n = Math.ceil(COUNT_T - view.phaseT);
+    text(`Runde ${view.round}`, CX, CY - 70, 34, "rgba(255,255,255,0.8)");
+    text(String(Math.max(1, n)), CX, CY + 10, 130);
+    const sn = view.snakes[me];
+    text("DU ▼", CX + sn.hx * SC, CY + sn.hy * SC - 44 - 6 * Math.sin(now * 6), 26, COLORS[me]);
+  } else if (view.phase === "end" || view.phase === "over") {
+    const w = view.winner;
+    const title = w === -1 ? "Unentschieden" : w === me ? "Runde für DICH!" : "Runde verloren";
+    const loser = w === -1 ? null : 1 - w;
+    let sub = view.t >= DURATION ? "Zeit um – die längere Schlange gewinnt" : "";
+    if (!sub && loser != null && app.why[loser]) sub = (loser === me ? "Du bist " : "Gegner ist ") + WHY[app.why[loser]];
+    if (!sub && w === -1) sub = "Beide gleichzeitig raus";
+    ctx.fillStyle = "rgba(5,6,10,0.72)"; ctx.beginPath(); ctx.roundRect(CX - 300, CY - 80, 600, 150, 24); ctx.fill();
+    text(title, CX, CY - 28, 50, w === -1 ? "#fff" : w === me ? "#3ddc84" : "#ff6b6b");
+    text(sub, CX, CY + 32, 24, "rgba(255,255,255,0.8)", "center", 600);
+  } else if (view.phase === "wait") {
+    text("Verbinde …", CX, CY, 40, "rgba(255,255,255,0.8)");
+  }
+}
+
+let joy = null, sprintHeld = false; const sprintTouches = new Set();
+function drawJoystick() {
+  if (!joy) return;
+  const r = cv.getBoundingClientRect(), k = W / r.width;
+  const ox = (joy.ox - r.left) * k, oy = (joy.oy - r.top) * k, x = (joy.x - r.left) * k, y = (joy.y - r.top) * k;
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(ox, oy, 60, 0, 7); ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.beginPath(); ctx.arc(x, y, 26, 0, 7); ctx.fill();
+  ctx.restore();
+}
+
+function render(view, now, dt) {
+  const [ty, ts] = targetLayout(), k = Math.min(1, dt * 6);
+  CY += (ty - CY) * k; SC += (ts - SC) * k;
+  drawBackground(now);
+  if (!inGame()) text("WORM ATTACK", CX, 84, 58);
+  if (!view) return;
+  drawArena(view.R, view.t >= SD_START && view.phase === "play");
+  ctx.save(); ctx.beginPath(); ctx.arc(CX, CY, view.R * SC + 8, 0, PI2); ctx.clip();
+  drawWalls(view); drawFoods(view, now); drawPower(view.power, now);
+  if (view.snakes[0].trail.length || view.phase !== "wait") { drawSnake(view.snakes[1 - app.me], 1 - app.me); drawSnake(view.snakes[app.me], app.me); }
+  ctx.restore();
+  drawParticles(dt);
+  if (inGame()) { drawHud(view); drawBanner(view, now); drawJoystick(); }
+}
+
+/* ================================================================
+   Ansicht aufbauen: lokal (Solo/Gastgeber) oder aus dem Netz (Gast)
+   ================================================================ */
+function hostView(m) {
+  const s = m.sim, t = s.t;
+  return { phase: m.phase, phaseT: m.phaseT, scores: m.scores, round: m.round, t, R: s.R, winner: s.winner, matchWinner: m.matchWinner,
+    snakes: s.snakes.map(n => ({ trail: n.trail, hx: n.x, hy: n.y, hdir: n.dir, len: n.len, alive: n.alive, ghost: n.ghostUntil > t, turbo: n.turboUntil > t, sprint: n.sprinting })),
+    foods: s.foods, power: s.power, walls: s.walls };
+}
+const q = v => Math.round(v * 1000);
+function buildSnap(m) {
+  const s = m.sim, full = m.full || app.snaps % 15 === 0;
+  const o = { k: "s", ph: m.phase, pt: +m.phaseT.toFixed(2), sc: m.scores, rd: m.round, t: +s.t.toFixed(3), R: q(s.R), w: s.winner, mw: m.matchWinner,
+    sn: s.snakes.map(n => [q(n.x), q(n.y), q(n.dir), q(n.len), (n.alive ? 1 : 0) | (n.ghostUntil > s.t ? 2 : 0) | (n.turboUntil > s.t ? 4 : 0) | (n.sprinting ? 8 : 0)]),
+    f: [], p: s.power ? [q(s.power.x), q(s.power.y), POWER_TYPES.indexOf(s.power.type)] : 0, ev: m.netEvents };
+  for (const f of s.foods) o.f.push(q(f.x), q(f.y), q(f.v));
+  if (full) {
+    o.tr = s.snakes.map(n => n.trail.map(q));
+    o.wl = s.walls.map(w => [w.owner, +(w.until - s.t).toFixed(2)].concat(w.pts.map(q)));
+  }
+  m.netEvents = []; m.full = false; app.snaps++;
+  return o;
+}
+
+function newGuestView() {
+  return { phase: "wait", phaseT: 0, scores: [0, 0], round: 0, t: 0, R: 1, winner: -2, matchWinner: -2, stamp: 0,
+    snakes: [0, 1].map(() => ({ trail: [], x: 0, y: 0, dir: 0, px: 0, py: 0, pdir: 0, hx: 0, hy: 0, hdir: 0, len: 0, alive: true, ghost: false, turbo: false, sprint: false })),
+    foods: [], power: null, walls: [] };
+}
+function trimByLength(tr, hx, hy, len) {
+  let acc = 0, px = hx, py = hy, k = tr.length - 2;
+  for (; k >= 0; k -= 2) { acc += Math.hypot(tr[k] - px, tr[k + 1] - py); if (acc > len) break; px = tr[k]; py = tr[k + 1]; }
+  if (k >= 0) tr.splice(0, k + 2);
+}
+function applySnap(o) {
+  const v = app.gv; if (!v || !o || !Array.isArray(o.sn)) return;
+  const newRound = o.rd !== v.round;
+  v.phase = o.ph; v.phaseT = o.pt; v.scores = o.sc; v.round = o.rd; v.t = o.t; v.R = o.R / 1000; v.winner = o.w; v.matchWinner = o.mw;
+  if (newRound) { app.why = [null, null]; input.a = null; }
+  for (let i = 0; i < 2; i++) {
+    const sn = v.snakes[i], a = o.sn[i];
+    if (o.tr) sn.trail = o.tr[i].map(u => u / 1000);
+    else {
+      const tr = sn.trail, n = tr.length;
+      if (!n || Math.hypot(tr[n - 2] - sn.x, tr[n - 1] - sn.y) > SEG * 0.7) tr.push(sn.x, sn.y);
+    }
+    sn.px = sn.x; sn.py = sn.y; sn.pdir = sn.dir;
+    sn.x = a[0] / 1000; sn.y = a[1] / 1000; sn.dir = a[2] / 1000; sn.len = a[3] / 1000;
+    sn.alive = !!(a[4] & 1); sn.ghost = !!(a[4] & 2); sn.turbo = !!(a[4] & 4); sn.sprint = !!(a[4] & 8);
+    if (o.tr || newRound) { sn.px = sn.x; sn.py = sn.y; sn.pdir = sn.dir; }
+    else trimByLength(sn.trail, sn.x, sn.y, sn.len);
+  }
+  v.foods = []; for (let k = 0; k < o.f.length; k += 3) v.foods.push({ x: o.f[k] / 1000, y: o.f[k + 1] / 1000, v: o.f[k + 2] / 1000 });
+  v.power = o.p ? { x: o.p[0] / 1000, y: o.p[1] / 1000, type: POWER_TYPES[o.p[2]] } : null;
+  if (o.wl) v.walls = o.wl.map(w => ({ owner: w[0], until: o.t + w[1], pts: w.slice(2).map(u => u / 1000) }));
+  else v.walls = v.walls.filter(w => w.until > o.t);
+  v.stamp = performance.now();
+  for (const e of o.ev || []) fx(e);
+}
+function guestView(nowMs) {
+  const v = app.gv, a = Math.min(1, Math.max(0, (nowMs - v.stamp) / (1000 / 30)));
+  for (const sn of v.snakes) {
+    sn.hx = sn.px + (sn.x - sn.px) * a; sn.hy = sn.py + (sn.y - sn.py) * a; sn.hdir = sn.pdir + angDiff(sn.dir, sn.pdir) * a;
+  }
+  return v;
+}
+
+/* Ereignisse → Töne, Funken, Hinweise */
+function fx(e) {
+  if (e.type === "eat") { burst(e.x, e.y, COLORS[e.i], 5, 120); if (e.i === app.me) tone(660, 0.07, "triangle", 0.25, 1.4); }
+  else if (e.type === "spawn") { burst(e.x, e.y, "#ffd34d", 10, 160); tone(520, 0.25, "sine", 0.2, 1.5); }
+  else if (e.type === "power") {
+    burst(e.x, e.y, "#ffd34d", 22, 300); tone(440, 0.35, "square", 0.18, 2);
+    if (inGame()) showToast(`${POWER_ICON[e.p]} ${POWER_NAME[e.p]} für ${e.i === app.me ? "dich" : "den Gegner"}!`);
+  }
+  else if (e.type === "clash") { burst(e.x, e.y, "#fff", 26, 380); tone(140, 0.3, "sawtooth", 0.3, 0.5); }
+  else if (e.type === "die") { app.why[e.i] = e.why; burst(e.x, e.y, COLORS[e.i], 46, 420); tone(380, 0.5, "sawtooth", 0.3, 0.25); }
+}
+
+/* ================================================================
+   Netz: direkte Verbindung zwischen zwei Handys
+   ================================================================ */
+function makeTransport(code, role) {
+  const t = { open: false, onready: null, onopen: null, onmessage: null, onclose: null, onerror: null, send() {}, close() {} };
+  if (LOCAL_NET) {
+    const ch = new BroadcastChannel(NET_PREFIX + code);
+    t.send = o => ch.postMessage({ from: role, d: o });
+    t.close = () => { try { ch.postMessage({ from: role, bye: 1 }); ch.close(); } catch {} };
+    ch.onmessage = e => {
+      const m = e.data; if (!m || m.from === role) return;
+      if (m.hello) { if (role === "host") ch.postMessage({ from: role, hello: 1 }); if (!t.open) { t.open = true; t.onopen && t.onopen(); } return; }
+      if (m.bye) { t.onclose && t.onclose(); return; }
+      t.onmessage && t.onmessage(m.d);
+    };
+    let tries = 0;
+    const iv = setInterval(() => {
+      if (t.open || role === "host") return clearInterval(iv);
+      if (++tries > 40) { clearInterval(iv); t.onerror && t.onerror("peer-unavailable"); return; }
+      try { ch.postMessage({ from: role, hello: 1 }); } catch { clearInterval(iv); }
+    }, 200);
+    setTimeout(() => t.onready && t.onready(), 0);
+    return t;
+  }
+  t.close = () => { t.closed = true; };
+  (async () => {
+    try {
+      if (!window.Peer) await new Promise((res, rej) => { const s = document.createElement("script"); s.src = PEER_URL; s.onload = res; s.onerror = () => rej(new Error("lib")); document.head.appendChild(s); });
+    } catch { t.onerror && t.onerror("lib"); return; }
+    if (t.closed) return;
+    const peer = role === "host" ? new Peer(NET_PREFIX + code) : new Peer();
+    let conn = null;
+    const bind = c => {
+      conn = c;
+      c.on("open", () => { t.open = true; t.onopen && t.onopen(); });
+      c.on("data", d => t.onmessage && t.onmessage(d));
+      c.on("close", () => t.onclose && t.onclose());
+      c.on("error", () => t.onclose && t.onclose());
+    };
+    peer.on("open", () => { if (role === "host") t.onready && t.onready(); else bind(peer.connect(NET_PREFIX + code, { reliable: true, serialization: "json" })); });
+    peer.on("connection", c => { if (conn) { try { c.close(); } catch {} return; } bind(c); });
+    peer.on("error", e => t.onerror && t.onerror((e && e.type) || "error"));
+    t.send = o => { if (conn && conn.open) conn.send(o); };
+    t.close = () => { t.closed = true; try { peer.destroy(); } catch {} };
+  })();
+  return t;
+}
+
+/* ================================================================
+   Ablauf
+   ================================================================ */
+let toastTimer = 0;
+function showToast(msg) { const t = $("toast"); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.style.opacity = 0), 1700); }
+function showPanel(id) { for (const p of PANELS) $(p).classList.toggle("hidden", p !== id); }
+const rndSeed = () => (Math.random() * 4294967296) >>> 0;
+
+function startDemo() { const s = rndSeed(); app.match = new Match(s, [new Bot(7, s + 1), new Bot(7, s + 2)]); app.me = 0; }
+function toMenu(msg) {
+  if (app.net) { try { app.net.send({ k: "bye" }); app.net.close(); } catch {} app.net = null; }
+  app.mode = "menu"; app.gv = null; app.endShown = false; app.particles = [];
+  startDemo();
+  $("sprintBtn").classList.add("hidden"); $("quitBtn").classList.add("hidden");
+  $("soloBtn").textContent = `🤖 Gegen Computer · Stufe ${state.level}`;
+  const st = $("menuStatus"); st.textContent = msg || ""; st.className = "status" + (msg ? " err" : "");
+  showPanel("menuPanel");
+}
+function begin() {
+  initAudio();
+  app.endShown = false; app.sentOver = false; app.why = [null, null]; app.particles = []; app.acc = 0; app.snaps = 0;
+  input.a = null; input.s = false; joy = null; sprintTouches.clear(); sprintHeld = false;
+  showPanel(null);
+  $("sprintBtn").classList.remove("hidden"); $("quitBtn").classList.remove("hidden");
+}
+function startSolo() {
+  const s = rndSeed();
+  app.mode = "solo"; app.me = 0; app.oppName = `Computer · St. ${state.level}`;
+  app.match = new Match(s, [null, new Bot(state.level, s)]);
+  begin();
+}
+function startNetMatch() {
+  app.mode = "host"; app.me = 0; app.oppName = "Freund";
+  app.match = new Match(rndSeed(), [null, null]);
+  begin();
+}
+
+function hostGame() {
+  initAudio();
+  app.code = String(1000 + Math.floor(Math.random() * 9000));
+  app.mode = "lobby";
+  $("lobbyCode").textContent = app.code; $("lobbyStatus").textContent = "Verbinde …"; $("lobbyStatus").className = "status";
+  showPanel("lobbyPanel");
+  const net = (app.net = makeTransport(app.code, "host"));
+  net.onready = () => { if (app.net === net) $("lobbyStatus").textContent = "Warte auf deinen Freund …"; };
+  net.onopen = () => { if (app.net === net) startNetMatch(); };
+  net.onmessage = m => {
+    if (app.net !== net || !m || app.mode !== "host") return;
+    if (m.k === "i") { const inp = app.match.inputs[1]; inp.a = typeof m.a === "number" && isFinite(m.a) ? m.a : null; inp.s = !!m.s; }
+    else if (m.k === "again" && app.match.over) startNetMatch();
+    else if (m.k === "bye") toMenu("Dein Freund hat das Spiel verlassen.");
+  };
+  net.onclose = () => { if (app.net === net) toMenu("Verbindung getrennt."); };
+  net.onerror = type => {
+    if (app.net !== net) return;
+    if (type === "unavailable-id") { net.close(); app.net = null; hostGame(); return; }      // Code schon vergeben → neuer Code
+    if (app.mode === "lobby") { $("lobbyStatus").textContent = type === "lib" || type === "network" || type === "server-error" ? "Keine Verbindung zum Vermittlungsdienst. Internet prüfen und nochmal versuchen." : "Verbindung nicht möglich (" + type + ")."; $("lobbyStatus").className = "status err"; }
+  };
+}
+function joinGame(code) {
+  code = String(code || "").replace(/\D/g, "");
+  const st = $("menuStatus");
+  if (code.length !== 4) { st.textContent = "Bitte den 4-stelligen Code eingeben."; st.className = "status err"; return; }
+  initAudio();
+  st.textContent = "Verbinde …"; st.className = "status";
+  if (app.net) { try { app.net.close(); } catch {} }
+  app.code = code;
+  const net = (app.net = makeTransport(code, "guest"));
+  const timeout = setTimeout(() => { if (app.net === net && !net.open) { net.close(); app.net = null; toMenu("Keine Verbindung zustande gekommen. Anderes WLAN oder mobile Daten probieren."); } }, 20000);
+  net.onopen = () => {
+    if (app.net !== net) return;
+    clearTimeout(timeout);
+    app.mode = "guest"; app.me = 1; app.oppName = "Freund"; app.match = null; app.gv = newGuestView();
+    begin();
+    net.send({ k: "hello" });
+  };
+  net.onmessage = m => {
+    if (app.net !== net || !m) return;
+    if (m.k === "s") applySnap(m);
+    else if (m.k === "bye") toMenu("Dein Freund hat das Spiel verlassen.");
+  };
+  net.onclose = () => { if (app.net === net) { clearTimeout(timeout); toMenu("Verbindung getrennt."); } };
+  net.onerror = type => {
+    if (app.net !== net || net.open) return;
+    clearTimeout(timeout); net.close(); app.net = null;
+    toMenu(type === "peer-unavailable" ? `Kein offenes Spiel mit Code ${code} gefunden.` : "Verbindung nicht möglich. Internet prüfen und nochmal versuchen.");
+  };
+}
+
+function showEnd(view) {
+  app.endShown = true;
+  $("sprintBtn").classList.add("hidden");
+  const w = view.matchWinner, won = w === app.me, draw = w === -1;
+  const score = `${view.scores[app.me]} : ${view.scores[1 - app.me]}`;
+  let sub = `Endstand ${score}`;
+  if (app.mode === "solo") {
+    if (won) { state.wins++; state.level++; save(); sub += ` · Stufe ${state.level} freigeschaltet`; }
+    $("againBtn").textContent = won ? `Weiter: Stufe ${state.level}` : "Nochmal versuchen";
+  } else $("againBtn").textContent = "Revanche";
+  $("endTitle").innerHTML = draw ? "Unentschieden" : won ? '<span class="win">Duell gewonnen! 🏆</span>' : '<span class="lose">Duell verloren</span>';
+  $("endSub").textContent = sub;
+  showPanel("endPanel");
+  tone(won ? 660 : 220, 0.6, "triangle", 0.3, won ? 2 : 0.5);
+}
+
+function frame(ts) {
+  const nowMs = ts, now = ts / 1000, dt = Math.min(0.1, now - (app.lastTs || now));
+  app.lastTs = now;
+  let view = null;
+  if (app.mode === "guest") {
+    view = guestView(nowMs);
+    const key = `${input.a == null ? "n" : input.a.toFixed(2)}|${input.s ? 1 : 0}`;
+    if (app.net && (key !== app.lastSent || nowMs - app.lastInput > 100) && nowMs - app.lastInput > 30) {
+      app.net.send({ k: "i", a: input.a == null ? null : +input.a.toFixed(3), s: input.s });
+      app.lastSent = key; app.lastInput = nowMs;
+    }
+    if (view.phase !== "over" && app.endShown) { app.endShown = false; showPanel(null); $("sprintBtn").classList.remove("hidden"); }
+    if (view.phase === "over" && !app.endShown) showEnd(view);
+  } else if (app.match) {
+    const m = app.match;
+    app.acc = Math.min(0.25, app.acc + dt);
+    while (app.acc >= DT) {
+      app.acc -= DT;
+      if (m.over) break;
+      if (inGame()) { const inp = m.inputs[app.me]; if (!m.bots[app.me]) { inp.a = input.a; inp.s = input.s; } }
+      const round = m.round;
+      m.tick();
+      if (m.round !== round) { app.why = [null, null]; input.a = null; }
+      if (app.mode === "host" && app.net && m.ticks % 2 === 0) app.net.send(buildSnap(m));
+    }
+    if (inGame()) for (const e of m.events) fx(e); else for (const e of m.events) if (e.type === "die") app.why[e.i] = e.why;
+    m.events.length = 0;
+    if (m.over) {
+      if (!inGame()) startDemo();
+      else {
+        if (app.mode === "host" && app.net && !app.sentOver) { m.full = true; app.net.send(buildSnap(m)); app.sentOver = true; }
+        if (!app.endShown) showEnd(hostView(m));
+      }
+    }
+    view = hostView(app.match);
+  }
+  render(view, now, dt);
+  requestAnimationFrame(frame);
+}
+
+/* ================================================================
+   Steuerung: schwebender Joystick, Sprint, Tastatur
+   ================================================================ */
+const refreshSprint = () => { input.s = sprintHeld || sprintTouches.size > 0 || keys.has(" "); $("sprintBtn").classList.toggle("on", input.s); };
+const keys = new Set();
+cv.addEventListener("pointerdown", e => {
+  if (!inGame() || app.endShown) return;
+  e.preventDefault();
+  if (!joy) joy = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY };
+  else { sprintTouches.add(e.pointerId); refreshSprint(); }
+});
+cv.addEventListener("pointermove", e => {
+  if (!joy || e.pointerId !== joy.id) return;
+  joy.x = e.clientX; joy.y = e.clientY;
+  const dx = joy.x - joy.ox, dy = joy.y - joy.oy, d = Math.hypot(dx, dy);
+  if (d > 12) input.a = Math.atan2(dy, dx);
+  if (d > 60) { joy.ox = joy.x - (dx / d) * 60; joy.oy = joy.y - (dy / d) * 60; }
+});
+const pointerEnd = e => {
+  if (joy && e.pointerId === joy.id) joy = null;
+  if (sprintTouches.delete(e.pointerId)) refreshSprint();
+};
+cv.addEventListener("pointerup", pointerEnd); cv.addEventListener("pointercancel", pointerEnd);
+const sb = $("sprintBtn");
+sb.addEventListener("pointerdown", e => { e.preventDefault(); sprintHeld = true; refreshSprint(); });
+for (const ev of ["pointerup", "pointercancel", "pointerleave"]) sb.addEventListener(ev, () => { sprintHeld = false; refreshSprint(); });
+const KEY_DIR = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], a: [-1, 0], d: [1, 0], w: [0, -1], s: [0, 1] };
+addEventListener("keydown", e => {
+  if (!inGame() || e.target.tagName === "INPUT") return;
+  if (KEY_DIR[e.key] || e.key === " ") { e.preventDefault(); keys.add(e.key); }
+  let x = 0, y = 0; for (const k of keys) if (KEY_DIR[k]) { x += KEY_DIR[k][0]; y += KEY_DIR[k][1]; }
+  if (x || y) input.a = Math.atan2(y, x);
+  refreshSprint();
+});
+addEventListener("keyup", e => { keys.delete(e.key); refreshSprint(); });
+
+/* Knöpfe */
+$("soloBtn").onclick = startSolo;
+$("hostBtn").onclick = hostGame;
+$("joinBtn").onclick = () => joinGame($("codeInput").value);
+$("codeInput").addEventListener("keydown", e => { if (e.key === "Enter") joinGame($("codeInput").value); });
+$("lobbyCancel").onclick = () => toMenu();
+$("helpBtn").onclick = () => showPanel("helpPanel");
+$("helpClose").onclick = () => showPanel("menuPanel");
+$("menuBtn").onclick = () => toMenu();
+$("quitBtn").onclick = () => { if (confirm("Spiel wirklich verlassen?")) toMenu(); };
+$("againBtn").onclick = () => {
+  if (app.mode === "solo") startSolo();
+  else if (app.mode === "host") startNetMatch();
+  else if (app.mode === "guest" && app.net) { app.net.send({ k: "again" }); showToast("Revanche angefragt …"); }
+};
+$("shareBtn").onclick = async () => {
+  const url = `${location.origin}${location.pathname}?join=${app.code}${LOCAL_NET ? "&net=local" : ""}`;
+  const textMsg = `Worm Attack gegen mich? Code ${app.code}`;
+  try {
+    if (navigator.share) await navigator.share({ title: "Worm Attack", text: textMsg, url });
+    else { await navigator.clipboard.writeText(url); showToast("Link kopiert"); }
+  } catch (e) { if (e && e.name !== "AbortError") { try { await navigator.clipboard.writeText(url); showToast("Link kopiert"); } catch { showToast(url); } } }
+};
+
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
+window.SD = { app, state, input, Sim, Bot, Match };
+
+toMenu();
+if (params.get("join")) { $("codeInput").value = params.get("join"); joinGame(params.get("join")); history.replaceState(null, "", location.pathname + (LOCAL_NET ? "?net=local" : "")); }
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

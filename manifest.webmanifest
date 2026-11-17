@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "Worm Attack",
+  "short_name": "Worm Attack",
+  "description": "Schlangen-Duell 1 gegen 1: gegen den Computer oder online gegen Freunde. Kostenlos, ohne Anmeldung.",
+  "lang": "de",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#05060a",
+  "theme_color": "#05060a",
+  "categories": ["games"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
