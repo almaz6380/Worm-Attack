@@ -30,6 +30,18 @@ Dazu:
 - **Sprint:** ⚡-Knopf halten.
 - **Am Computer:** Pfeiltasten oder WASD, Leertaste für Sprint.
 
+## Wurm-Designs
+Im Menü über den Knopf „Wurm: …“ wählbar. Die Designs ändern nur das Aussehen.
+
+| Design | Frei ab |
+| --- | --- |
+| Minze (gestreift), Bonbon (gepunktet), Tiger | sofort |
+| Eis | Stufe 3 |
+| Lava | Stufe 5 |
+| Regenbogen | Stufe 8 |
+
+Wählen beide Spieler dasselbe Design, bekommt der Gegner automatisch ein anderes.
+
 ## Modi
 - **Gegen Computer:** Jeder Sieg schaltet die nächste Stufe frei. Mit jeder Stufe schaut der Computer weiter voraus,
   reagiert schneller, macht weniger Fehler und greift ab Stufe 5 aktiv an. Ab Stufe 10 wird er nicht mehr stärker.

@@ -44,6 +44,7 @@
   .btn.alt { background: var(--p0); color: #04201d; }
   .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); font-weight: 700; font-size: 15px; padding: 11px; }
   .btn:disabled { background: #34374a; color: #8b8fa0; }
+  .btn.small2 { flex: 1; white-space: nowrap; font-size: 13.5px; padding: 11px 4px; overflow: hidden; text-overflow: ellipsis; }
   .row { display: flex; gap: 8px; }
   .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
   .note { font-size: 13px; color: var(--muted); line-height: 1.4; text-align: center; }
@@ -53,7 +54,8 @@
   .bigcode { font-size: 54px; font-weight: 900; letter-spacing: .18em; text-align: center; color: var(--accent); line-height: 1.1; }
   .title { font-size: 22px; font-weight: 800; text-align: center; }
   .win { color: var(--good); } .lose { color: var(--bad); }
-  .status { font-size: 14px; font-weight: 600; text-align: center; min-height: 20px; color: var(--muted); }
+  .status { font-size: 14px; font-weight: 600; text-align: center; min-height: 18px; color: var(--muted); }
+  .status:empty { min-height: 0; }
   .status.err { color: var(--bad); }
   .help { font-size: 13.5px; line-height: 1.45; color: #d6d9e4; max-height: 52vh; overflow: auto; touch-action: pan-y; }
   .help h3 { margin: 4px 0 6px; font-size: 16px; color: var(--text); }
@@ -88,9 +90,10 @@
     </div>
     <div class="status" id="menuStatus"></div>
     <div class="row">
-      <button class="btn ghost" id="steerBtn" style="flex:1.6; white-space:nowrap; font-size:14px; padding:11px 6px">🕹️ Lenkung: Kreis</button>
-      <button class="btn ghost" id="helpBtn" style="flex:1">Regeln</button>
+      <button class="btn ghost small2" id="skinBtn">🐛 Wurm: Minze</button>
+      <button class="btn ghost small2" id="steerBtn">🕹️ Lenkung: Kreis</button>
     </div>
+    <button class="btn ghost" id="helpBtn" style="padding:9px">Regeln &amp; Steuerung</button>
   </div>
 
   <!-- Online-Lobby (Gastgeber) -->
@@ -500,8 +503,8 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem("sd_" + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem("sd_" + k, JSON.stringify(v)); } catch {} },
 };
-const state = { level: store.get("level", 1), wins: store.get("wins", 0), steer: store.get("steer", "kreis") === "finger" ? "finger" : "kreis" };
-const save = () => { store.set("level", state.level); store.set("wins", state.wins); store.set("steer", state.steer); };
+const state = { level: store.get("level", 1), wins: store.get("wins", 0), steer: store.get("steer", "kreis") === "finger" ? "finger" : "kreis", skin: store.get("skin", "minze") };
+const save = () => { store.set("level", state.level); store.set("wins", state.wins); store.set("steer", state.steer); store.set("skin", state.skin); };
 
 const audio = { ctx: null, master: null };
 function initAudio() {
@@ -527,7 +530,45 @@ const cv = $("cv"), ctx = cv.getContext("2d");
 const W = 720, H = 1280, CX = W / 2;
 cv.width = W; cv.height = H;
 let CY = 420, SC = 250;
-const COLORS = ["#2ee6d6", "#ff5a8a"];
+/* ---------- Designs (Skins): nur Aussehen, keine Wirkung aufs Spiel ---------- */
+const mix = (a, b, t) => { const pa = [1, 3, 5].map(k => parseInt(a.slice(k, k + 2), 16)), pb = [1, 3, 5].map(k => parseInt(b.slice(k, k + 2), 16));
+  return "#" + pa.map((v, k) => Math.round(v + (pb[k] - v) * t).toString(16).padStart(2, "0")).join(""); };
+const ramp = (stops, n) => { const out = []; for (let k = 0; k < n; k++) { const f = (k / n) * stops.length, a = Math.floor(f) % stops.length; out.push(mix(stops[a], stops[(a + 1) % stops.length], f - Math.floor(f))); } return out; };
+const SKINS = [
+  { id: "minze",  name: "Minze",      unlock: 1, main: "#2ee6d6", pal: ["#2ee6d6", "#2ee6d6", "#2ee6d6", "#14a89c", "#14a89c"] },
+  { id: "bonbon", name: "Bonbon",     unlock: 1, main: "#ff5a8a", pal: ["#ff5a8a"], dot: "#ffe1ea" },
+  { id: "tiger",  name: "Tiger",      unlock: 1, main: "#ffa62b", pal: ["#ffa62b", "#ffa62b", "#ffa62b", "#3b2412"] },
+  { id: "eis",    name: "Eis",        unlock: 3, main: "#8fd3ff", pal: ramp(["#f2fbff", "#8fd3ff", "#3f8fe0", "#8fd3ff"], 16) },
+  { id: "lava",   name: "Lava",       unlock: 5, main: "#ff6a2b", pal: ramp(["#ffe04a", "#ff8a1f", "#d81f26", "#ff8a1f"], 16) },
+  { id: "regenbogen", name: "Regenbogen", unlock: 8, main: "#b06bff", pal: ramp(["#ff4d5e", "#ffae3d", "#ffe94a", "#3ddc5a", "#3fb2ff", "#b06bff"], 24) },
+];
+const skinById = id => SKINS.find(k => k.id === id) || SKINS[0];
+const skinFree = k => state.level >= k.unlock;
+if (!skinFree(skinById(state.skin)) || skinById(state.skin).id !== state.skin) state.skin = "minze";
+/** Gegner-Design: bei gleichem Design automatisch ein anderes, damit man die Würmer unterscheiden kann */
+const otherSkin = (mine, theirs) => (theirs && skinById(theirs).id === theirs && theirs !== mine ? theirs : SKINS.find(k => k.id !== mine && k.id !== theirs).id);
+const skinOf = i => skinById(app.skins[i]);
+const COLORS = { get 0() { return skinOf(0).main; }, get 1() { return skinOf(1).main; } };
+
+const discCache = new Map();
+/** Ein Körperglied als kleines Bild: Grundfarbe, Glanzlicht oben links, dunkler Rand. Wird einmal gezeichnet und dann gestempelt. */
+function disc(color) {
+  let c = discCache.get(color);
+  if (c) return c;
+  const D = 28, h = D / 2;                                // klein halten: wird hundertfach pro Bild gestempelt
+  c = document.createElement("canvas"); c.width = c.height = D;
+  const g = c.getContext("2d");
+  g.fillStyle = color; g.beginPath(); g.arc(h, h, h - 1, 0, 7); g.fill();
+  g.globalCompositeOperation = "source-atop";
+  const sh = g.createRadialGradient(h * 0.7, h * 0.62, 0.5, h, h, h);
+  sh.addColorStop(0, "rgba(255,255,255,0.75)"); sh.addColorStop(0.35, "rgba(255,255,255,0.12)");
+  sh.addColorStop(0.7, "rgba(0,0,0,0.05)"); sh.addColorStop(1, "rgba(0,0,0,0.5)");
+  g.fillStyle = sh; g.fillRect(0, 0, D, D);
+  g.globalCompositeOperation = "source-over";
+  g.strokeStyle = "rgba(0,0,0,0.45)"; g.lineWidth = 1; g.beginPath(); g.arc(h, h, h - 1, 0, 7); g.stroke();
+  discCache.set(color, c);
+  return c;
+}
 const POWER_ICON = { turbo: "⚡", ghost: "👻", scissors: "✂️", wall: "🧱" };
 const POWER_NAME = { turbo: "Turbo", ghost: "Geist", scissors: "Schere", wall: "Mauer" };
 const WHY = { wall: "in die Wand gefahren", body: "in den Gegner gefahren", self: "in sich selbst gefahren", mauer: "in die Mauer gefahren", head: "Kopf an Kopf verloren" };
@@ -541,6 +582,7 @@ const app = {
   match: null, me: 0, net: null, code: "", gv: null,
   acc: 0, lastTs: 0, endShown: false, sentOver: false, snaps: 0, lastInput: 0, lastSent: "",
   oppName: "Computer", why: [null, null], particles: [],
+  skins: ["minze", "bonbon"], guestSkin: null, preview: null, bulges: [[], []], look: [0, 0], lastDir: [0, 0], deadAt: [0, 0],
 };
 const input = { a: null, s: false };
 const inGame = () => app.mode === "solo" || app.mode === "host" || app.mode === "guest";
@@ -619,30 +661,96 @@ function drawWalls(view) {
   ctx.restore();
 }
 
-function drawSnake(sn, i) {
-  const tr = sn.trail, col = COLORS[i], hx = CX + sn.hx * SC, hy = CY + sn.hy * SC, w = BODY_R * 2 * SC;
-  ctx.save();
-  ctx.globalAlpha = !sn.alive ? 0.28 : sn.ghost ? 0.45 : 1;
-  ctx.lineCap = ctx.lineJoin = "round";
-  if (tr.length >= 2) {
-    ctx.beginPath(); ctx.moveTo(CX + tr[0] * SC, CY + tr[1] * SC);
-    for (let k = 2; k < tr.length; k += 2) ctx.lineTo(CX + tr[k] * SC, CY + tr[k + 1] * SC);
-    ctx.lineTo(hx, hy);
-    ctx.strokeStyle = "rgba(0,0,0,0.55)"; ctx.lineWidth = w + 6; ctx.stroke();
-    ctx.shadowColor = col; ctx.shadowBlur = sn.turbo || sn.sprint ? 28 : 12;
-    ctx.strokeStyle = col; ctx.lineWidth = w; ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.lineWidth = w * 0.25; ctx.stroke();
+const SEG_GAP = 0.021;                      // Abstand der Glieder entlang des Körpers (Arena-Einheiten)
+const segBuf = [];
+/** Positionen der Glieder vom Kopf zum Schwanz, gleichmäßig entlang der Spur (in Bildschirm-Pixeln, flach x,y). */
+function segPositions(sn) {
+  const tr = sn.trail, out = segBuf; out.length = 0;
+  let px = sn.hx, py = sn.hy, need = SEG_GAP * 0.9;
+  for (let k = tr.length - 2; k >= 0; k -= 2) {
+    let dx = tr[k] - px, dy = tr[k + 1] - py, d = Math.hypot(dx, dy);
+    while (d >= need && d > 0) {
+      px += (dx / d) * need; py += (dy / d) * need;
+      out.push(CX + px * SC, CY + py * SC);
+      dx = tr[k] - px; dy = tr[k + 1] - py; d = Math.hypot(dx, dy); need = SEG_GAP;
+    }
+    need -= d; px = tr[k]; py = tr[k + 1];
   }
-  const r = HEAD_R * SC;
-  ctx.fillStyle = col; ctx.beginPath(); ctx.arc(hx, hy, r, 0, 7); ctx.fill();
-  ctx.lineWidth = 2.5; ctx.strokeStyle = "rgba(255,255,255,0.9)"; ctx.stroke();
+  return out;
+}
+
+function drawHead(sn, i, skin, now, hx, hy) {
+  const r = HEAD_R * SC * 1.32, d = sn.hdir, cos = Math.cos(d), sin = Math.sin(d);
+  ctx.drawImage(disc(skin.main), hx - r, hy - r, r * 2, r * 2);
+  ctx.lineWidth = 2; ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.beginPath(); ctx.arc(hx, hy, r, 0, 7); ctx.stroke();
+  // Blickrichtung: Pupillen wandern beim Lenken zur Seite
+  const turn = angDiff(sn.hdir, app.lastDir[i]); app.lastDir[i] = sn.hdir;
+  app.look[i] += (Math.max(-1, Math.min(1, turn * 14)) - app.look[i]) * 0.2;
+  const look = d + app.look[i] * 0.9;
+  const blink = sn.alive && (now * 0.9 + i * 1.7) % 3.4 < 0.13;
   for (const side of [-1, 1]) {
-    const a = sn.hdir + side * 0.65, ex = hx + Math.cos(a) * r * 0.55, ey = hy + Math.sin(a) * r * 0.55;
-    ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, r * 0.34, 0, 7); ctx.fill();
-    ctx.fillStyle = "#0b0c12"; ctx.beginPath(); ctx.arc(ex + Math.cos(sn.hdir) * r * 0.13, ey + Math.sin(sn.hdir) * r * 0.13, r * 0.17, 0, 7); ctx.fill();
+    const ex = hx + cos * r * 0.3 - sin * side * r * 0.48, ey = hy + sin * r * 0.3 + cos * side * r * 0.48, er = r * 0.42;
+    if (!sn.alive) {
+      ctx.strokeStyle = "#0b0c12"; ctx.lineWidth = 2.5; ctx.beginPath();
+      ctx.moveTo(ex - er * 0.6, ey - er * 0.6); ctx.lineTo(ex + er * 0.6, ey + er * 0.6);
+      ctx.moveTo(ex + er * 0.6, ey - er * 0.6); ctx.lineTo(ex - er * 0.6, ey + er * 0.6); ctx.stroke();
+    } else if (blink) {
+      ctx.strokeStyle = "#0b0c12"; ctx.lineWidth = 2.5; ctx.beginPath();
+      ctx.moveTo(ex + sin * er * 0.8, ey - cos * er * 0.8); ctx.lineTo(ex - sin * er * 0.8, ey + cos * er * 0.8); ctx.stroke();
+    } else {
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(ex, ey, er, 0, 7); ctx.fill();
+      ctx.strokeStyle = "rgba(0,0,0,0.35)"; ctx.lineWidth = 1; ctx.stroke();
+      const px = ex + Math.cos(look) * er * 0.36, py = ey + Math.sin(look) * er * 0.36;
+      ctx.fillStyle = "#0b0c12"; ctx.beginPath(); ctx.arc(px, py, er * 0.55, 0, 7); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(px - er * 0.18, py - er * 0.2, er * 0.17, 0, 7); ctx.fill();
+    }
   }
+  // Mund: geht auf, wenn Futter nah ist
+  let hungry = false;
+  if (sn.alive && app.view) for (const f of app.view.foods) if ((f.x - sn.hx) ** 2 + (f.y - sn.hy) ** 2 < 0.0121) { hungry = true; break; }
+  const mx = hx + cos * r * 0.78, my = hy + sin * r * 0.78;
+  if (hungry) { ctx.fillStyle = "#3a0d18"; ctx.beginPath(); ctx.arc(mx, my, r * 0.27, 0, 7); ctx.fill(); }
+  else if (sn.alive) { ctx.strokeStyle = "rgba(11,12,18,0.75)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(hx + cos * r * 0.45, hy + sin * r * 0.45, r * 0.42, d - 0.7, d + 0.7); ctx.stroke(); }
+}
+
+function drawSnake(sn, i, now) {
+  const skin = skinOf(i), hx = CX + sn.hx * SC, hy = CY + sn.hy * SC;
+  ctx.save();
+  if (!sn.alive) {                                        // Körper ist in Glieder zerfallen (siehe fx), nur der Kopf bleibt kurz liegen
+    ctx.globalAlpha = Math.max(0, 1 - (now - app.deadAt[i]) / 1.6);
+    if (ctx.globalAlpha > 0) drawHead(sn, i, skin, now, hx, hy);
+    ctx.restore(); return;
+  }
+  const tr = sn.trail, segR = BODY_R * SC * 1.13;
+  // weiches Leuchten unter dem Körper
+  if (tr.length >= 2) {
+    ctx.lineCap = ctx.lineJoin = "round";
+    const g0 = Math.min(tr.length - 2, 16);                // Leuchten erst hinter der Schwanzspitze beginnen
+    ctx.beginPath(); ctx.moveTo(CX + tr[g0] * SC, CY + tr[g0 + 1] * SC);
+    for (let k = g0 + 2; k < tr.length; k += 2) ctx.lineTo(CX + tr[k] * SC, CY + tr[k + 1] * SC);
+    ctx.lineTo(hx, hy);
+    ctx.globalAlpha = sn.ghost ? 0.12 : sn.sprint || sn.turbo ? 0.42 : 0.24;
+    ctx.strokeStyle = sn.turbo ? "#ffd34d" : skin.main; ctx.lineWidth = segR * 3.4; ctx.stroke();
+    if (sn.ghost) { ctx.globalAlpha = 0.7; ctx.strokeStyle = "#fff"; ctx.lineWidth = segR * 2 + 3; ctx.stroke(); }
+  }
+  ctx.globalAlpha = sn.ghost ? 0.4 : 1;
+  const P = segPositions(sn), n = P.length / 2, pal = skin.pal, B = app.bulges[i];
+  for (let q = B.length - 1; q >= 0; q--) if ((now - B[q]) * 30 > n + 4) B.splice(q, 1);
+  for (let k = n - 1; k >= 0; k--) {                      // vom Schwanz zum Kopf, damit vordere Glieder oben liegen
+    let sc = k > n - 7 ? 0.45 + 0.55 * ((n - 1 - k) / 6) : 1;          // spitzer Schwanz
+    for (const t0 of B) { const dk = k - (now - t0) * 30; sc *= 1 + 0.38 * Math.exp(-dk * dk / 3); }   // Futter-Beule
+    const r = segR * sc, x = P[k * 2], y = P[k * 2 + 1];
+    ctx.drawImage(disc(pal[k % pal.length]), x - r, y - r, r * 2, r * 2);
+    if (skin.dot && k % 3 === 1) ctx.drawImage(disc(skin.dot), x - r * 0.42, y - r * 0.42, r * 0.84, r * 0.84);
+  }
+  drawHead(sn, i, skin, now, hx, hy);
   ctx.restore();
+  // Sprint-Funken und Turbo-Flammen hinter dem Kopf
+  if (sn.sprint || sn.turbo) {
+    const back = sn.hdir + Math.PI + (Math.random() - 0.5) * 1.1, v = 90 + Math.random() * 120;
+    app.particles.push({ x: hx, y: hy, vx: Math.cos(back) * v, vy: Math.sin(back) * v, life: 0.3 + Math.random() * 0.25, max: 0.55,
+      s: sn.turbo ? 3 + Math.random() * 4 : 1.5 + Math.random() * 2.5, c: sn.turbo ? (Math.random() < 0.5 ? "#ffd34d" : "#ff7a2b") : "#ffffff" });
+  }
 }
 
 function burst(x, y, c, n = 10, sp = 240) {
@@ -656,7 +764,9 @@ function drawParticles(dt) {
   for (let k = P.length - 1; k >= 0; k--) {
     const p = P[k]; p.life -= dt; if (p.life <= 0) { P.splice(k, 1); continue; }
     p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.95; p.vy *= 0.95;
-    ctx.globalAlpha = Math.min(1, (p.life / p.max) * 1.5); ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, 7); ctx.fill();
+    ctx.globalAlpha = Math.min(1, (p.life / p.max) * 1.5);
+    if (p.img) ctx.drawImage(p.img, p.x - p.s, p.y - p.s, p.s * 2, p.s * 2);
+    else { ctx.fillStyle = p.c; ctx.beginPath(); ctx.arc(p.x, p.y, p.s, 0, 7); ctx.fill(); }
   }
   ctx.globalAlpha = 1;
 }
@@ -745,7 +855,7 @@ function render(view, now, dt) {
   drawArena(view.R, view.t >= SD_START && view.phase === "play");
   ctx.save(); ctx.beginPath(); ctx.arc(CX, CY, view.R * SC + 8, 0, PI2); ctx.clip();
   drawWalls(view); drawFoods(view, now); drawPower(view.power, now);
-  if (view.snakes[0].trail.length || view.phase !== "wait") { drawSnake(view.snakes[1 - app.me], 1 - app.me); drawSnake(view.snakes[app.me], app.me); }
+  if (view.snakes[0].trail.length || view.phase !== "wait") { drawSnake(view.snakes[1 - app.me], 1 - app.me, now); drawSnake(view.snakes[app.me], app.me, now); }
   ctx.restore();
   drawParticles(dt);
   if (inGame()) { drawHud(view); drawBanner(view, now); drawJoystick(); }
@@ -770,6 +880,7 @@ function buildSnap(m) {
   if (full) {
     o.tr = s.snakes.map(n => n.trail.map(q));
     o.wl = s.walls.map(w => [w.owner, +(w.until - s.t).toFixed(2)].concat(w.pts.map(q)));
+    o.sk = app.skins;
   }
   m.netEvents = []; m.full = false; app.snaps++;
   return o;
@@ -789,7 +900,7 @@ function applySnap(o) {
   const v = app.gv; if (!v || !o || !Array.isArray(o.sn)) return;
   const newRound = o.rd !== v.round;
   v.phase = o.ph; v.phaseT = o.pt; v.scores = o.sc; v.round = o.rd; v.t = o.t; v.R = o.R / 1000; v.winner = o.w; v.matchWinner = o.mw;
-  if (newRound) { app.why = [null, null]; input.a = null; if (joy) { joy.ox = joy.x; joy.oy = joy.y; } }
+  if (newRound) { app.why = [null, null]; resetLooks(); input.a = null; if (joy) { joy.ox = joy.x; joy.oy = joy.y; } }
   for (let i = 0; i < 2; i++) {
     const sn = v.snakes[i], a = o.sn[i];
     if (o.tr) sn.trail = o.tr[i].map(u => u / 1000);
@@ -805,6 +916,7 @@ function applySnap(o) {
   }
   v.foods = []; for (let k = 0; k < o.f.length; k += 3) v.foods.push({ x: o.f[k] / 1000, y: o.f[k + 1] / 1000, v: o.f[k + 2] / 1000 });
   v.power = o.p ? { x: o.p[0] / 1000, y: o.p[1] / 1000, type: POWER_TYPES[o.p[2]] } : null;
+  if (Array.isArray(o.sk) && o.sk.length === 2) app.skins = [skinById(o.sk[0]).id, skinById(o.sk[1]).id];
   if (o.wl) v.walls = o.wl.map(w => ({ owner: w[0], until: o.t + w[1], pts: w.slice(2).map(u => u / 1000) }));
   else v.walls = v.walls.filter(w => w.until > o.t);
   v.stamp = performance.now();
@@ -820,14 +932,25 @@ function guestView(nowMs) {
 
 /* Ereignisse → Töne, Funken, Hinweise */
 function fx(e) {
-  if (e.type === "eat") { burst(e.x, e.y, COLORS[e.i], 5, 120); if (e.i === app.me) tone(660, 0.07, "triangle", 0.25, 1.4); }
+  if (e.type === "eat") { burst(e.x, e.y, COLORS[e.i], 5, 120); app.bulges[e.i].push(app.lastTs); if (e.i === app.me) tone(660, 0.07, "triangle", 0.25, 1.4); }
   else if (e.type === "spawn") { burst(e.x, e.y, "#ffd34d", 10, 160); tone(520, 0.25, "sine", 0.2, 1.5); }
   else if (e.type === "power") {
     burst(e.x, e.y, "#ffd34d", 22, 300); tone(440, 0.35, "square", 0.18, 2);
     if (inGame()) showToast(`${POWER_ICON[e.p]} ${POWER_NAME[e.p]} für ${e.i === app.me ? "dich" : "den Gegner"}!`);
   }
   else if (e.type === "clash") { burst(e.x, e.y, "#fff", 26, 380); tone(140, 0.3, "sawtooth", 0.3, 0.5); }
-  else if (e.type === "die") { app.why[e.i] = e.why; burst(e.x, e.y, COLORS[e.i], 46, 420); tone(380, 0.5, "sawtooth", 0.3, 0.25); }
+  else if (e.type === "die") {
+    app.why[e.i] = e.why; app.deadAt[e.i] = app.lastTs; burst(e.x, e.y, COLORS[e.i], 30, 420); tone(380, 0.5, "sawtooth", 0.3, 0.25);
+    // Der Körper zerfällt in seine Glieder
+    const sn = app.view && app.view.snakes[e.i], skin = skinOf(e.i);
+    if (sn && sn.trail.length) {
+      const P = segPositions(sn), r = BODY_R * SC * 1.13;
+      for (let k = 0; k < P.length / 2; k++) {
+        const a = Math.random() * PI2, v = 40 + Math.random() * 170;
+        app.particles.push({ x: P[k * 2], y: P[k * 2 + 1], vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.7 + Math.random() * 0.6, max: 1.3, s: r, img: disc(skin.pal[k % skin.pal.length]) });
+      }
+    }
+  }
 }
 
 /* ================================================================
@@ -883,22 +1006,26 @@ function makeTransport(code, role) {
    ================================================================ */
 let toastTimer = 0;
 function showToast(msg) { const t = $("toast"); t.textContent = msg; t.style.opacity = 1; clearTimeout(toastTimer); toastTimer = setTimeout(() => (t.style.opacity = 0), 1700); }
+function refreshSkinBtn() { const k = skinById(app.preview || state.skin); $("skinBtn").textContent = skinFree(k) ? `🐛 Wurm: ${k.name}` : `🔒 ${k.name} · ab Stufe ${k.unlock}`; }
 function showPanel(id) { for (const p of PANELS) $(p).classList.toggle("hidden", p !== id); }
 const rndSeed = () => (Math.random() * 4294967296) >>> 0;
 
-function startDemo() { const s = rndSeed(); app.match = new Match(s, [new Bot(7, s + 1), new Bot(7, s + 2)]); app.me = 0; }
+function resetLooks() { app.bulges = [[], []]; app.deadAt = [0, 0]; }
+function demoSkins() { const mine = app.preview || state.skin; app.skins = [mine, otherSkin(mine, mine === "bonbon" ? "minze" : "bonbon")]; }
+function startDemo() { const s = rndSeed(); app.match = new Match(s, [new Bot(7, s + 1), new Bot(7, s + 2)]); app.me = 0; demoSkins(); resetLooks(); }
 function toMenu(msg) {
   if (app.net) { try { app.net.send({ k: "bye" }); app.net.close(); } catch {} app.net = null; }
   app.mode = "menu"; app.gv = null; app.endShown = false; app.particles = [];
   startDemo();
   $("sprintBtn").classList.add("hidden"); $("quitBtn").classList.add("hidden");
   $("soloBtn").textContent = `🤖 Gegen Computer · Stufe ${state.level}`;
+  app.preview = null; refreshSkinBtn();
   const st = $("menuStatus"); st.textContent = msg || ""; st.className = "status" + (msg ? " err" : "");
   showPanel("menuPanel");
 }
 function begin() {
   initAudio();
-  app.endShown = false; app.sentOver = false; app.why = [null, null]; app.particles = []; app.acc = 0; app.snaps = 0;
+  app.endShown = false; app.sentOver = false; app.why = [null, null]; app.particles = []; app.acc = 0; app.snaps = 0; app.preview = null; resetLooks();
   input.a = null; input.s = false; joy = null; sprintHeld = false;
   showPanel(null);
   $("sprintBtn").classList.remove("hidden"); $("quitBtn").classList.remove("hidden");
@@ -907,18 +1034,20 @@ function startSolo() {
   const s = rndSeed();
   app.mode = "solo"; app.me = 0; app.oppName = `Computer · St. ${state.level}`;
   app.match = new Match(s, [null, new Bot(state.level, s)]);
+  app.skins = [state.skin, otherSkin(state.skin, SKINS[state.level % SKINS.length].id)];
   begin();
 }
 function startNetMatch() {
   app.mode = "host"; app.me = 0; app.oppName = "Freund";
   app.match = new Match(rndSeed(), [null, null]);
+  app.skins = [state.skin, otherSkin(state.skin, app.guestSkin)];
   begin();
 }
 
 function hostGame() {
   initAudio();
   app.code = String(1000 + Math.floor(Math.random() * 9000));
-  app.mode = "lobby";
+  app.mode = "lobby"; app.guestSkin = null;
   $("lobbyCode").textContent = app.code; $("lobbyStatus").textContent = "Verbinde …"; $("lobbyStatus").className = "status";
   showPanel("lobbyPanel");
   const net = (app.net = makeTransport(app.code, "host"));
@@ -927,6 +1056,7 @@ function hostGame() {
   net.onmessage = m => {
     if (app.net !== net || !m || app.mode !== "host") return;
     if (m.k === "i") { const inp = app.match.inputs[1]; inp.a = typeof m.a === "number" && isFinite(m.a) ? m.a : null; inp.s = !!m.s; }
+    else if (m.k === "hello") { app.guestSkin = typeof m.sk === "string" ? skinById(m.sk).id : null; app.skins = [state.skin, otherSkin(state.skin, app.guestSkin)]; app.match.full = true; }
     else if (m.k === "again" && app.match.over) startNetMatch();
     else if (m.k === "bye") toMenu("Dein Freund hat das Spiel verlassen.");
   };
@@ -952,7 +1082,8 @@ function joinGame(code) {
     clearTimeout(timeout);
     app.mode = "guest"; app.me = 1; app.oppName = "Freund"; app.match = null; app.gv = newGuestView();
     begin();
-    net.send({ k: "hello" });
+    app.skins = [otherSkin(state.skin, null), state.skin];
+    net.send({ k: "hello", sk: state.skin });
   };
   net.onmessage = m => {
     if (app.net !== net || !m) return;
@@ -974,7 +1105,11 @@ function showEnd(view) {
   const score = `${view.scores[app.me]} : ${view.scores[1 - app.me]}`;
   let sub = `Endstand ${score}`;
   if (app.mode === "solo") {
-    if (won) { state.wins++; state.level++; save(); sub += ` · Stufe ${state.level} freigeschaltet`; }
+    if (won) {
+      state.wins++; state.level++; save(); sub += ` · Stufe ${state.level} freigeschaltet`;
+      const neu = SKINS.find(k => k.unlock === state.level);
+      if (neu) sub += ` · Neues Wurm-Design: ${neu.name}`;
+    }
     $("againBtn").textContent = won ? `Weiter: Stufe ${state.level}` : "Nochmal versuchen";
   } else $("againBtn").textContent = "Revanche";
   $("endTitle").innerHTML = draw ? "Unentschieden" : won ? '<span class="win">Duell gewonnen! 🏆</span>' : '<span class="lose">Duell verloren</span>';
@@ -1005,7 +1140,7 @@ function frame(ts) {
       if (inGame()) { const inp = m.inputs[app.me]; if (!m.bots[app.me]) { inp.a = input.a; inp.s = input.s; } }
       const round = m.round;
       m.tick();
-      if (m.round !== round) { app.why = [null, null]; input.a = null; if (joy) { joy.ox = joy.x; joy.oy = joy.y; } }
+      if (m.round !== round) { app.why = [null, null]; resetLooks(); input.a = null; if (joy) { joy.ox = joy.x; joy.oy = joy.y; } }
       if (app.mode === "host" && app.net && m.ticks % 2 === 0) app.net.send(buildSnap(m));
     }
     if (inGame()) for (const e of m.events) fx(e); else for (const e of m.events) if (e.type === "die") app.why[e.i] = e.why;
@@ -1075,6 +1210,13 @@ $("helpBtn").onclick = () => showPanel("helpPanel");
 const refreshSteerBtn = () => ($("steerBtn").textContent = state.steer === "finger" ? "👆 Lenkung: Zum Finger" : "🕹️ Lenkung: Kreis");
 $("steerBtn").onclick = () => { state.steer = state.steer === "finger" ? "kreis" : "finger"; save(); refreshSteerBtn(); };
 refreshSteerBtn();
+$("skinBtn").onclick = () => {
+  const cur = SKINS.indexOf(skinById(app.preview || state.skin)), next = SKINS[(cur + 1) % SKINS.length], st = $("menuStatus");
+  if (skinFree(next)) { state.skin = next.id; app.preview = null; save(); st.textContent = ""; }
+  else { app.preview = next.id; st.textContent = `${next.name} gibt es ab Stufe ${next.unlock}. Du spielst weiter mit ${skinById(state.skin).name}.`; }
+  st.className = "status";
+  demoSkins(); refreshSkinBtn();
+};
 $("helpClose").onclick = () => showPanel("menuPanel");
 $("menuBtn").onclick = () => toMenu();
 $("quitBtn").onclick = () => { if (confirm("Spiel wirklich verlassen?")) toMenu(); };
@@ -1093,7 +1235,7 @@ $("shareBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
-window.SD = { app, state, input, Sim, Bot, Match };
+window.SD = { app, state, input, Sim, Bot, Match, SKINS };
 
 toMenu();
 if (params.get("join")) { $("codeInput").value = params.get("join"); joinGame(params.get("join")); history.replaceState(null, "", location.pathname + (LOCAL_NET ? "?net=local" : "")); }

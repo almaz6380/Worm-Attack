@@ -46,6 +46,14 @@ fs.mkdirSync(shots, { recursive: true });
   await host.bringToFront();
   await host.waitForFunction(() => SD.app.match.phase === "play", null, { timeout: 10000 });
 
+  // Designs: beide Fenster teilen sich im Test den Speicher und wählen daher dasselbe Design.
+  // Der Gastgeber muss dem Gast dann ein anderes geben, und beide müssen dasselbe Paar sehen.
+  await pump(700);
+  const hsk = await host.evaluate(() => ({ skins: SD.app.skins, mine: SD.state.skin }));
+  const gsk = await guest.evaluate(() => ({ skins: SD.app.skins, mine: SD.state.skin }));
+  check(hsk.skins[0] === hsk.mine && hsk.skins[1] !== hsk.skins[0], `Gleiches Design gewählt (${gsk.mine}) ⇒ Gegner bekommt ein anderes (${hsk.skins.join(" / ")})`);
+  check(JSON.stringify(hsk.skins) === JSON.stringify(gsk.skins), "Gast sieht dieselben Designs wie der Gastgeber");
+
   // Gast lenkt nach links ⇒ beim Gastgeber dreht Schlange 2 nach links (π)
   await guest.bringToFront();
   const box = await guest.locator("#cv").boundingBox();

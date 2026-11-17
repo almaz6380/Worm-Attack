@@ -32,8 +32,22 @@ fs.mkdirSync(shots, { recursive: true });
   check((await page.textContent("#steerBtn")).includes("Kreis"), "Zurück auf „Kreis“");
   await page.screenshot({ path: path.join(shots, "1b-menue-lenkung.png") });
 
+  // Wurm-Design wählen: wird gespeichert, gesperrte Designs sind auf Stufe 1 nicht wählbar
+  await page.click("#skinBtn");
+  check((await page.textContent("#skinBtn")).includes("Bonbon"), "Design-Knopf wechselt auf Bonbon");
+  await page.reload();
+  check((await page.evaluate(() => SD.state.skin)) === "bonbon" && (await page.textContent("#skinBtn")).includes("Bonbon"), "Design bleibt nach dem Neuladen erhalten");
+  await page.click("#skinBtn");                          // Tiger (frei)
+  await page.click("#skinBtn");                          // Eis (gesperrt bis Stufe 3)
+  const locked = await page.evaluate(() => ({ btn: document.getElementById("skinBtn").textContent, skin: SD.state.skin, status: document.getElementById("menuStatus").textContent, demo: SD.app.skins[0] }));
+  check(locked.btn.includes("🔒") && locked.skin === "tiger" && locked.demo === "eis", `Gesperrtes Design nur als Vorschau: „${locked.btn}“ – ${locked.status}`);
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: path.join(shots, "1c-menue-design.png") });
+
   await page.click("#soloBtn");
   await page.waitForFunction(() => SD.app.match.phase === "count");
+  const sk = await page.evaluate(() => SD.app.skins);
+  check(sk[0] === "tiger" && sk[1] !== "tiger", `Im Spiel: eigenes Design ${sk[0]}, Gegner ${sk[1]}`);
   await page.waitForTimeout(1200);
   await page.screenshot({ path: path.join(shots, "3-countdown.png") });
   await page.waitForFunction(() => SD.app.match.phase === "play", null, { timeout: 8000 });

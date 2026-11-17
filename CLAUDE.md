@@ -88,7 +88,7 @@ Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am
 - **Gemessen** (`tests/sim.test.js`, Bot gegen Bot, entschiedene Runden): Stufe 10 schlägt Stufe 1 in 91 %,
   Stufe 5 schlägt Stufe 1 in 80 %, Stufe 10 schlägt Stufe 5 in 64 %. Mittlere Rundendauer: 14 s (Stufe 1),
   30 s (Stufe 5), 54 s (Stufe 10).
-- Sieg ⇒ Stufe +1, gespeichert als `sd_level`. Siege gesamt in `sd_wins`. Lenkart in `sd_steer`.
+- Sieg ⇒ Stufe +1, gespeichert als `sd_level`. Siege gesamt in `sd_wins`. Lenkart in `sd_steer`, Design in `sd_skin`.
 
 ## Modus „Online gegen Freunde“
 
@@ -100,7 +100,7 @@ Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am
 
   | Art | Richtung | Inhalt |
   | --- | --- | --- |
-  | `hello` | Gast → Gastgeber | nach dem Verbinden |
+  | `hello` | Gast → Gastgeber | nach dem Verbinden, mit `sk` = gewähltes Design |
   | `i` | Gast → Gastgeber | Eingabe: `a` Zielrichtung (rad oder `null`), `s` Sprint. Bei Änderung, sonst alle 100 ms |
   | `s` | Gastgeber → Gast | Spielstand, 30-mal pro Sekunde (alle 2 Ticks). Zahlen ×1000 gerundet |
   | `again` | Gast → Gastgeber | Revanche nach Duell-Ende |
@@ -126,13 +126,28 @@ Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am
 | `hostView` / `guestView` | Bauen die Ansicht für `render()`: lokal aus `Match`, beim Gast aus dem Netz |
 | `buildSnap` / `applySnap` | Spielstand senden und empfangen |
 | `makeTransport(code, rolle)` | Verbindung: PeerJS oder Test-Kanal, gleiche Schnittstelle |
-| `render()` und `draw…` | Canvas 720 × 1280: Arena, Schlangen, Futter, Joker, Anzeige, Banner |
+| `render()` und `draw…` | Canvas 720 × 1280: Arena, Würmer (`drawSnake`, `drawHead`, `segPositions`, `disc`), Futter, Joker, Anzeige, Banner |
+| `SKINS`, `skinOf(i)`, `otherSkin()` | Wurm-Designs: Farbpalette je Glied, Freischalt-Stufe, Ausweichen bei gleichem Design |
 | `fx(e)` | Ereignisse ⇒ Töne (WebAudio), Funken, Hinweise |
 | `startSolo` / `hostGame` / `joinGame` / `startNetMatch` / `showEnd` / `toMenu` | Spielablauf |
 | Steuerung | Zwei Lenkarten (`state.steer`, gespeichert als `sd_steer`): „Kreis“ = schwebender Joystick, „Zum Finger“ = `aimAtFinger()`. Dazu Sprint-Knopf und Tastatur |
 | `window.SD` | Zugriff für Tests: `app`, `state`, `input`, `Sim`, `Bot`, `Match` |
 
 Im Menü läuft im Hintergrund ein Demo-Duell Bot gegen Bot.
+
+**Aussehen der Würmer** (nur Darstellung, die Simulation weiß nichts davon):
+- Der Körper wird aus Gliedern gestempelt: `disc(farbe)` zeichnet ein Glied einmal vor (28 px, Glanzlicht, Rand),
+  `segPositions()` verteilt die Glieder gleichmäßig vom Kopf aus entlang der Spur. Das Muster hängt am Kopf
+  (Glied-Nummer `k`), damit es mit dem Wurm mitwandert.
+- Sichtbare Dicke = Kollisionsgröße × 1,13 (Kopf × 1,32). Nicht weiter vergrößern, sonst sehen Treffer unfair aus.
+- Gesicht: Pupillen folgen der Lenkung, Blinzeln, offener Mund bei nahem Futter, X-Augen nach dem Ausscheiden.
+- Effekte: Futter-Beule (`app.bulges`), Funken bei Sprint, Flammen bei Turbo, heller Umriss als Geist, beim
+  Ausscheiden zerfällt der Körper in Glieder (Partikel mit `img`).
+- Designs: `SKINS` (Minze, Bonbon, Tiger frei; Eis ab Stufe 3, Lava ab 5, Regenbogen ab 8), gespeichert als
+  `sd_skin`. `app.skins[i]` gilt pro Schlange. Online schickt der Gast sein Design in `hello` (`sk`), der
+  Gastgeber das Paar in vollen Spielständen (`sk`). Beides sind freiwillige Felder, alte Versionen ignorieren sie.
+- Gemessen im simulierten Handy ohne Grafikkarte: zwei Würmer mit Höchstlänge kosten etwa 6 ms pro Bild, bei
+  üblicher Länge etwa ein Drittel. Auf echten Handys noch nicht gemessen.
 
 **Steuerung – diese Regeln nicht aufweichen** (Rückmeldung vom echten Handy: der Kreis blieb an alter Stelle hängen):
 - Der **zuletzt aufgesetzte Finger lenkt immer**. Jedes `pointerdown` auf dem Spielfeld setzt `joy` neu.
@@ -173,7 +188,7 @@ Im Menü läuft im Hintergrund ein Demo-Duell Bot gegen Bot.
 - **Fertig, wenn:** `online.test.js local` und `peer` grün, ein Test für die Pause ergänzt.
 
 ### 5. Mehr Inhalt
-- Schlangen-Skins (Farben, Muster) als Belohnung für Stufen.
+- ✅ Wurm-Designs als Belohnung für Stufen (erledigt, siehe „Aussehen der Würmer“). Weitere Designs sind willkommen.
 - Weitere Joker, zum Beispiel Magnet für Futter oder Bremse für den Gegner.
 - Modus „2 Spieler an einem Handy“ (Handy liegt auf dem Tisch, jeder hat eine Seite).
 - **Fertig, wenn:** jeweils wählbar, gespeichert, Tests ergänzt und grün.
