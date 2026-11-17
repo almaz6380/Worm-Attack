@@ -23,6 +23,15 @@ fs.mkdirSync(shots, { recursive: true });
   check((await page.textContent("#soloBtn")).includes("Stufe 1"), "Menü zeigt Stufe 1");
   await page.click("#helpBtn"); await page.screenshot({ path: path.join(shots, "2-regeln.png") }); await page.click("#helpClose");
 
+  // Lenkart umschalten: wird gespeichert und übersteht das Neuladen
+  await page.click("#steerBtn");
+  check((await page.textContent("#steerBtn")).includes("Zum Finger"), "Umschalter zeigt „Zum Finger“");
+  await page.reload();
+  check((await page.textContent("#steerBtn")).includes("Zum Finger") && (await page.evaluate(() => SD.state.steer)) === "finger", "Lenkart bleibt nach dem Neuladen erhalten");
+  await page.click("#steerBtn");
+  check((await page.textContent("#steerBtn")).includes("Kreis"), "Zurück auf „Kreis“");
+  await page.screenshot({ path: path.join(shots, "1b-menue-lenkung.png") });
+
   await page.click("#soloBtn");
   await page.waitForFunction(() => SD.app.match.phase === "count");
   await page.waitForTimeout(1200);
@@ -39,6 +48,35 @@ fs.mkdirSync(shots, { recursive: true });
   check(Math.abs(Math.atan2(Math.sin(st.dir), Math.cos(st.dir))) < 0.3, `Schlange fährt nach rechts (${st.dir.toFixed(2)} rad)`);
   await page.screenshot({ path: path.join(shots, "4-spiel.png") });
   await page.mouse.up();
+
+  // Verlorenes Loslassen nachstellen: alter Finger wird nie losgelassen, neuer Finger setzt woanders auf
+  const res = await page.evaluate(([x1, y1, x2, y2]) => {
+    const cv = document.getElementById("cv");
+    const ev = (type, id, x, y) => cv.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, bubbles: true, cancelable: true, pointerType: "touch" }));
+    ev("pointerdown", 11, x1, y1);                       // kein pointerup für Finger 11
+    ev("pointerdown", 12, x2, y2);
+    const origin = { ox: joy.ox, oy: joy.oy, id: joy.id };
+    ev("pointermove", 12, x2, y2 - 30);                  // nach oben ziehen
+    const a = SD.input.a;
+    ev("pointerup", 12, x2, y2 - 30);
+    return { origin, a, released: joy === null };
+  }, [box.x + 60, box.y + box.height * 0.9, box.x + box.width - 80, box.y + box.height * 0.6]);
+  check(res.origin.id === 12 && Math.abs(res.origin.ox - (box.x + box.width - 80)) < 1, `Neuer Finger versetzt den Kreis an die neue Stelle (x ${res.origin.ox.toFixed(0)})`);
+  check(Math.abs(res.a + Math.PI / 2) < 0.05 && res.released, `Der neue Finger lenkt (${res.a.toFixed(2)} rad = nach oben)`);
+
+  // Lenkart „Zum Finger“: Zielrichtung zeigt vom Kopf zur berührten Stelle
+  const aim = await page.evaluate(([x, y]) => {
+    SD.state.steer = "finger";
+    const cv = document.getElementById("cv"), r = cv.getBoundingClientRect(), k = 720 / r.width;
+    cv.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 21, clientX: x, clientY: y, bubbles: true, cancelable: true, pointerType: "touch" }));
+    const sn = SD.app.view.snakes[SD.app.me];
+    const want = Math.atan2(((y - r.top) * k - CY) / SC - sn.hy, ((x - r.left) * k - CX) / SC - sn.hx);
+    const got = SD.input.a;
+    cv.dispatchEvent(new PointerEvent("pointerup", { pointerId: 21, clientX: x, clientY: y, bubbles: true, pointerType: "touch" }));
+    SD.state.steer = "kreis";
+    return { want, got };
+  }, [box.x + box.width * 0.5, box.y + box.height * 0.25]);
+  check(Math.abs(Math.atan2(Math.sin(aim.got - aim.want), Math.cos(aim.got - aim.want))) < 0.02, `„Zum Finger“ zielt auf die berührte Stelle (${aim.got.toFixed(2)} rad)`);
 
   // Sprint-Knopf halten ⇒ Schlange sprintet und wird kürzer
   const len0 = await page.evaluate(() => SD.app.match.sim.snakes[0].len);

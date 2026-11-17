@@ -21,8 +21,13 @@ Repo: `almaz6380/Worm-Attack`. Arbeitsanweisung für Claude Code: siehe `CLAUDE.
 | 🧱 Mauer | die eigene Spur bleibt 4 Sekunden als Hindernis für den Gegner stehen |
 
 ## Steuerung
-- **Lenken:** Finger irgendwo aufsetzen und ziehen. Die Zugrichtung ist die Fahrtrichtung.
-- **Sprint:** ⚡-Knopf halten oder mit einem zweiten Finger tippen.
+Im Menü gibt es zwei Lenkarten zur Auswahl:
+- **Kreis:** Finger irgendwo aufsetzen und ziehen. Die Zugrichtung ist die Fahrtrichtung. Der Kreis erscheint
+  immer dort, wo man gerade hingreift, und wandert mit dem Finger mit.
+- **Zum Finger:** Der Wurm fährt auf die Stelle zu, die man berührt.
+
+Dazu:
+- **Sprint:** ⚡-Knopf halten.
 - **Am Computer:** Pfeiltasten oder WASD, Leertaste für Sprint.
 
 ## Modi

@@ -87,7 +87,10 @@
       <button class="btn ghost" id="joinBtn" style="flex:1">Beitreten</button>
     </div>
     <div class="status" id="menuStatus"></div>
-    <button class="btn ghost" id="helpBtn">Regeln &amp; Steuerung</button>
+    <div class="row">
+      <button class="btn ghost" id="steerBtn" style="flex:1.6; white-space:nowrap; font-size:14px; padding:11px 6px">🕹️ Lenkung: Kreis</button>
+      <button class="btn ghost" id="helpBtn" style="flex:1">Regeln</button>
+    </div>
   </div>
 
   <!-- Online-Lobby (Gastgeber) -->
@@ -114,8 +117,9 @@
       <h3>So funktioniert Worm Attack</h3>
       <ul>
         <li><b>Ziel:</b> Wer zuerst 3 Runden gewinnt, gewinnt das Duell.</li>
-        <li><b>Lenken:</b> Finger irgendwo aufsetzen und ziehen – die Zugrichtung ist die Fahrtrichtung. Am Computer: Pfeiltasten.</li>
-        <li><b>Sprint:</b> ⚡-Knopf halten oder mit einem zweiten Finger tippen (Computer: Leertaste). Macht schneller, kostet aber Länge.</li>
+        <li><b>Lenkung „Kreis“:</b> Finger irgendwo aufsetzen und ziehen – die Zugrichtung ist die Fahrtrichtung. Der Kreis erscheint immer dort, wo du gerade hingreifst, und wandert mit.</li>
+        <li><b>Lenkung „Zum Finger“:</b> Der Wurm fährt auf die Stelle zu, die du berührst. Umschalten im Menü.</li>
+        <li><b>Sprint:</b> ⚡-Knopf halten (Computer: Leertaste). Macht schneller, kostet aber Länge. Am Computer lenkst du mit den Pfeiltasten.</li>
         <li><b>Verloren</b> hat, wer mit dem Kopf die Wand, den Körper des Gegners oder sich selbst berührt.</li>
         <li><b>Kopf an Kopf:</b> Die längere Schlange gewinnt. Gleich lang = unentschieden.</li>
         <li><b>Futter</b> macht länger. Mit mehr Körper kannst du dem Gegner den Weg abschneiden.</li>
@@ -496,8 +500,8 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem("sd_" + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem("sd_" + k, JSON.stringify(v)); } catch {} },
 };
-const state = { level: store.get("level", 1), wins: store.get("wins", 0) };
-const save = () => { store.set("level", state.level); store.set("wins", state.wins); };
+const state = { level: store.get("level", 1), wins: store.get("wins", 0), steer: store.get("steer", "kreis") === "finger" ? "finger" : "kreis" };
+const save = () => { store.set("level", state.level); store.set("wins", state.wins); store.set("steer", state.steer); };
 
 const audio = { ctx: null, master: null };
 function initAudio() {
@@ -707,15 +711,29 @@ function drawBanner(view, now) {
   }
 }
 
-let joy = null, sprintHeld = false; const sprintTouches = new Set();
+let joy = null, sprintHeld = false;          // joy = der Finger, der gerade lenkt (immer der zuletzt aufgesetzte)
+const JOY_R = 45, JOY_DEAD = 8;              // in Bildschirm-Pixeln: ab hier wandert der Kreis mit / reagiert die Lenkung
 function drawJoystick() {
   if (!joy) return;
   const r = cv.getBoundingClientRect(), k = W / r.width;
   const ox = (joy.ox - r.left) * k, oy = (joy.oy - r.top) * k, x = (joy.x - r.left) * k, y = (joy.y - r.top) * k;
   ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(ox, oy, 60, 0, 7); ctx.stroke();
-  ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.beginPath(); ctx.arc(x, y, 26, 0, 7); ctx.fill();
+  if (state.steer === "finger") {
+    ctx.strokeStyle = COLORS[app.me]; ctx.globalAlpha = 0.8; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.arc(x, y, 34, 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fillStyle = COLORS[app.me]; ctx.fill();
+  } else {
+    ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(ox, oy, JOY_R * k, 0, 7); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.beginPath(); ctx.arc(x, y, 26, 0, 7); ctx.fill();
+  }
   ctx.restore();
+}
+/* Lenkart „Zum Finger“: Richtung vom eigenen Kopf zur berührten Stelle */
+function aimAtFinger() {
+  const v = app.view; if (!joy || !v || state.steer !== "finger") return;
+  const r = cv.getBoundingClientRect(), k = W / r.width, sn = v.snakes[app.me];
+  const dx = ((joy.x - r.left) * k - CX) / SC - sn.hx, dy = ((joy.y - r.top) * k - CY) / SC - sn.hy;
+  if (dx * dx + dy * dy > 0.04 * 0.04) input.a = Math.atan2(dy, dx);
 }
 
 function render(view, now, dt) {
@@ -771,7 +789,7 @@ function applySnap(o) {
   const v = app.gv; if (!v || !o || !Array.isArray(o.sn)) return;
   const newRound = o.rd !== v.round;
   v.phase = o.ph; v.phaseT = o.pt; v.scores = o.sc; v.round = o.rd; v.t = o.t; v.R = o.R / 1000; v.winner = o.w; v.matchWinner = o.mw;
-  if (newRound) { app.why = [null, null]; input.a = null; }
+  if (newRound) { app.why = [null, null]; input.a = null; if (joy) { joy.ox = joy.x; joy.oy = joy.y; } }
   for (let i = 0; i < 2; i++) {
     const sn = v.snakes[i], a = o.sn[i];
     if (o.tr) sn.trail = o.tr[i].map(u => u / 1000);
@@ -881,7 +899,7 @@ function toMenu(msg) {
 function begin() {
   initAudio();
   app.endShown = false; app.sentOver = false; app.why = [null, null]; app.particles = []; app.acc = 0; app.snaps = 0;
-  input.a = null; input.s = false; joy = null; sprintTouches.clear(); sprintHeld = false;
+  input.a = null; input.s = false; joy = null; sprintHeld = false;
   showPanel(null);
   $("sprintBtn").classList.remove("hidden"); $("quitBtn").classList.remove("hidden");
 }
@@ -950,7 +968,7 @@ function joinGame(code) {
 }
 
 function showEnd(view) {
-  app.endShown = true;
+  app.endShown = true; joy = null; sprintHeld = false; refreshSprint();
   $("sprintBtn").classList.add("hidden");
   const w = view.matchWinner, won = w === app.me, draw = w === -1;
   const score = `${view.scores[app.me]} : ${view.scores[1 - app.me]}`;
@@ -987,7 +1005,7 @@ function frame(ts) {
       if (inGame()) { const inp = m.inputs[app.me]; if (!m.bots[app.me]) { inp.a = input.a; inp.s = input.s; } }
       const round = m.round;
       m.tick();
-      if (m.round !== round) { app.why = [null, null]; input.a = null; }
+      if (m.round !== round) { app.why = [null, null]; input.a = null; if (joy) { joy.ox = joy.x; joy.oy = joy.y; } }
       if (app.mode === "host" && app.net && m.ticks % 2 === 0) app.net.send(buildSnap(m));
     }
     if (inGame()) for (const e of m.events) fx(e); else for (const e of m.events) if (e.type === "die") app.why[e.i] = e.why;
@@ -1001,6 +1019,8 @@ function frame(ts) {
     }
     view = hostView(app.match);
   }
+  app.view = view;
+  if (joy && inGame() && !app.endShown) aimAtFinger();
   render(view, now, dt);
   requestAnimationFrame(frame);
 }
@@ -1008,26 +1028,30 @@ function frame(ts) {
 /* ================================================================
    Steuerung: schwebender Joystick, Sprint, Tastatur
    ================================================================ */
-const refreshSprint = () => { input.s = sprintHeld || sprintTouches.size > 0 || keys.has(" "); $("sprintBtn").classList.toggle("on", input.s); };
+const refreshSprint = () => { input.s = sprintHeld || keys.has(" "); $("sprintBtn").classList.toggle("on", input.s); };
 const keys = new Set();
 cv.addEventListener("pointerdown", e => {
   if (!inGame() || app.endShown) return;
   e.preventDefault();
-  if (!joy) joy = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY };
-  else { sprintTouches.add(e.pointerId); refreshSprint(); }
+  // Der zuletzt aufgesetzte Finger lenkt – der Kreis sitzt immer dort, wo man gerade hingreift.
+  joy = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY };
+  try { cv.setPointerCapture(e.pointerId); } catch {}
+  aimAtFinger();
 });
 cv.addEventListener("pointermove", e => {
   if (!joy || e.pointerId !== joy.id) return;
   joy.x = e.clientX; joy.y = e.clientY;
+  if (state.steer === "finger") { aimAtFinger(); return; }
   const dx = joy.x - joy.ox, dy = joy.y - joy.oy, d = Math.hypot(dx, dy);
-  if (d > 12) input.a = Math.atan2(dy, dx);
-  if (d > 60) { joy.ox = joy.x - (dx / d) * 60; joy.oy = joy.y - (dy / d) * 60; }
+  if (d > JOY_DEAD) input.a = Math.atan2(dy, dx);
+  if (d > JOY_R) { joy.ox = joy.x - (dx / d) * JOY_R; joy.oy = joy.y - (dy / d) * JOY_R; }
 });
-const pointerEnd = e => {
-  if (joy && e.pointerId === joy.id) joy = null;
-  if (sprintTouches.delete(e.pointerId)) refreshSprint();
-};
-cv.addEventListener("pointerup", pointerEnd); cv.addEventListener("pointercancel", pointerEnd);
+const pointerEnd = e => { if (joy && e.pointerId === joy.id) joy = null; };
+for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) cv.addEventListener(ev, pointerEnd);
+for (const ev of ["pointerup", "pointercancel"]) addEventListener(ev, pointerEnd);
+const dropTouches = () => { joy = null; sprintHeld = false; keys.clear(); refreshSprint(); };
+addEventListener("blur", dropTouches);
+document.addEventListener("visibilitychange", () => { if (document.hidden) dropTouches(); });
 const sb = $("sprintBtn");
 sb.addEventListener("pointerdown", e => { e.preventDefault(); sprintHeld = true; refreshSprint(); });
 for (const ev of ["pointerup", "pointercancel", "pointerleave"]) sb.addEventListener(ev, () => { sprintHeld = false; refreshSprint(); });
@@ -1048,6 +1072,9 @@ $("joinBtn").onclick = () => joinGame($("codeInput").value);
 $("codeInput").addEventListener("keydown", e => { if (e.key === "Enter") joinGame($("codeInput").value); });
 $("lobbyCancel").onclick = () => toMenu();
 $("helpBtn").onclick = () => showPanel("helpPanel");
+const refreshSteerBtn = () => ($("steerBtn").textContent = state.steer === "finger" ? "👆 Lenkung: Zum Finger" : "🕹️ Lenkung: Kreis");
+$("steerBtn").onclick = () => { state.steer = state.steer === "finger" ? "kreis" : "finger"; save(); refreshSteerBtn(); };
+refreshSteerBtn();
 $("helpClose").onclick = () => showPanel("menuPanel");
 $("menuBtn").onclick = () => toMenu();
 $("quitBtn").onclick = () => { if (confirm("Spiel wirklich verlassen?")) toMenu(); };

@@ -88,7 +88,7 @@ Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am
 - **Gemessen** (`tests/sim.test.js`, Bot gegen Bot, entschiedene Runden): Stufe 10 schlägt Stufe 1 in 91 %,
   Stufe 5 schlägt Stufe 1 in 80 %, Stufe 10 schlägt Stufe 5 in 64 %. Mittlere Rundendauer: 14 s (Stufe 1),
   30 s (Stufe 5), 54 s (Stufe 10).
-- Sieg ⇒ Stufe +1, gespeichert als `sd_level`. Siege gesamt in `sd_wins`.
+- Sieg ⇒ Stufe +1, gespeichert als `sd_level`. Siege gesamt in `sd_wins`. Lenkart in `sd_steer`.
 
 ## Modus „Online gegen Freunde“
 
@@ -129,10 +129,18 @@ Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am
 | `render()` und `draw…` | Canvas 720 × 1280: Arena, Schlangen, Futter, Joker, Anzeige, Banner |
 | `fx(e)` | Ereignisse ⇒ Töne (WebAudio), Funken, Hinweise |
 | `startSolo` / `hostGame` / `joinGame` / `startNetMatch` / `showEnd` / `toMenu` | Spielablauf |
-| Steuerung | Schwebender Joystick (Pointer-Events), Sprint-Knopf, zweiter Finger, Tastatur |
+| Steuerung | Zwei Lenkarten (`state.steer`, gespeichert als `sd_steer`): „Kreis“ = schwebender Joystick, „Zum Finger“ = `aimAtFinger()`. Dazu Sprint-Knopf und Tastatur |
 | `window.SD` | Zugriff für Tests: `app`, `state`, `input`, `Sim`, `Bot`, `Match` |
 
 Im Menü läuft im Hintergrund ein Demo-Duell Bot gegen Bot.
+
+**Steuerung – diese Regeln nicht aufweichen** (Rückmeldung vom echten Handy: der Kreis blieb an alter Stelle hängen):
+- Der **zuletzt aufgesetzte Finger lenkt immer**. Jedes `pointerdown` auf dem Spielfeld setzt `joy` neu.
+- Es gibt **keinen** „zweiter Finger = Sprint“ mehr. Sprint nur über den ⚡-Knopf und die Leertaste.
+- Loslassen wird am Canvas und am Fenster abgefangen (`pointerup`, `pointercancel`, `lostpointercapture`),
+  dazu `blur` und `visibilitychange`.
+- Kreis: wandert ab 45 px Abstand mit (`JOY_R`), Lenkung reagiert ab 8 px (`JOY_DEAD`).
+- `tests/ui.test.js` stellt ein verlorenes Loslassen nach und prüft beide Lenkarten.
 
 ## Aufgaben – in dieser Reihenfolge
 
@@ -147,6 +155,8 @@ Im Menü läuft im Hintergrund ein Demo-Duell Bot gegen Bot.
   WLAN, einmal WLAN gegen mobile Daten.
 - **Fertig, wenn:** Der User hat Rückmeldung gegeben zu Steuerung, Tempo, Schwierigkeit und Online-Verzögerung.
   Diese Rückmeldung bestimmt die Aufgaben 3 und 4.
+- **Stand:** Erste Rückmeldung zur Steuerung ist eingearbeitet (Kreis sitzt immer am neuen Finger, zweite
+  Lenkart „Zum Finger“). Offen: Bestätigung vom Handy, dazu Tempo, Schwierigkeit und Online.
 
 ### 3. Schwierigkeit für Menschen einstellen
 - Ziel: Stufe 1 gewinnt ein Neuling meistens, ab Stufe 5 wird es fordernd.
