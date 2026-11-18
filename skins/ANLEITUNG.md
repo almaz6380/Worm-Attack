@@ -56,7 +56,8 @@ Freistellen.
    - Schaut der Kopf nach rechts? Sonst im Bildprogramm drehen oder spiegeln.
    - Ist das Glied rund? Ein eckiges oder schiefes Glied sieht in Kurven unruhig aus.
 
-Ideen für Motive: Drache, Raupe, Roboter-Wurm, Lava-Wurm, Zuckerstange, Kaktus, Geisterwurm, Oktopus-Arm.
+Fertige Prompts für alle vorhandenen Designs (Raupe, Biene, Lavawurm, Eiskristall, Roboter, Neon, Donut, Einhorn)
+stehen in [`PROMPTS.md`](PROMPTS.md). Weitere Ideen: Hai, Zuckerstange, Kaktus, Geisterwurm, Tintenfisch-Arm.
 
 **Wichtig:** Nimm nur Bilder, die du selbst erzeugt oder gemalt hast. Keine Figuren aus bestehenden Spielen,
 Filmen oder Serien.

@@ -35,16 +35,25 @@ Im Menü über den Knopf „Wurm: …“ wählbar. Die Designs ändern nur das A
 
 | Design | Frei ab |
 | --- | --- |
-| Minze (gestreift), Bonbon (gepunktet), Tiger | sofort |
+| Minze, Bonbon, Tiger, Vorlage, Smaragddrache, Raupe, Donut, Roboter | sofort |
+| Biene | Stufe 2 |
 | Eis | Stufe 3 |
+| Eiskristall | Stufe 4 |
 | Lava | Stufe 5 |
+| Neon | Stufe 6 |
+| Lavawurm | Stufe 7 |
 | Regenbogen | Stufe 8 |
+| Einhorn | Stufe 9 |
+
+Der Knopf „Wurm: …“ öffnet eine Übersicht mit einer kleinen Vorschau jedes Designs. Gesperrte Designs kann man
+dort ansehen, aber erst ab ihrer Stufe wählen.
 
 Wählen beide Spieler dasselbe Design, bekommt der Gegner automatisch ein anderes.
 
 **Eigene Designs:** Im Ordner `skins/` kannst du eigene Würmer als Bilder ablegen (Kopf, Glied, Schwanzspitze),
 zum Beispiel aus einer Bild-KI. Wie das geht, steht mit fertigen Prompts in [`skins/ANLEITUNG.md`](skins/ANLEITUNG.md).
 Als Vorlage liegt `skins/beispiel/` bei, als fertiges Beispiel aus KI-Bildern der „Smaragddrache“ in `skins/drache/`.
+Fertige Prompts für alle Bild-Designs stehen in [`skins/PROMPTS.md`](skins/PROMPTS.md).
 
 ## Modi
 - **Gegen Computer:** Jeder Sieg schaltet die nächste Stufe frei. Mit jeder Stufe schaut der Computer weiter voraus,

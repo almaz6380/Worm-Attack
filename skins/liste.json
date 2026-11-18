@@ -1,4 +1,12 @@
 [
   { "ordner": "beispiel", "name": "Vorlage", "farbe": "#58d868", "stufe": 1 },
-  { "ordner": "drache", "name": "Smaragddrache", "farbe": "#2fbf9f", "stufe": 1, "seitlich": true }
+  { "ordner": "drache", "name": "Smaragddrache", "farbe": "#2fbf9f", "stufe": 1, "seitlich": true },
+  { "ordner": "raupe", "name": "Raupe", "farbe": "#8fdc4a", "stufe": 1 },
+  { "ordner": "donut", "name": "Donut", "farbe": "#ff8fc0", "stufe": 1 },
+  { "ordner": "roboter", "name": "Roboter", "farbe": "#aab6c6", "stufe": 1 },
+  { "ordner": "biene", "name": "Biene", "farbe": "#ffcf2e", "stufe": 2 },
+  { "ordner": "eiskristall", "name": "Eiskristall", "farbe": "#a8e1ff", "stufe": 4 },
+  { "ordner": "neon", "name": "Neon", "farbe": "#ff3dc8", "stufe": 6 },
+  { "ordner": "lavawurm", "name": "Lavawurm", "farbe": "#ff7a1f", "stufe": 7 },
+  { "ordner": "einhorn", "name": "Einhorn", "farbe": "#c9b6f0", "stufe": 9 }
 ]

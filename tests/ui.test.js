@@ -32,34 +32,37 @@ fs.mkdirSync(shots, { recursive: true });
   check((await page.textContent("#steerBtn")).includes("Kreis"), "Zurück auf „Kreis“");
   await page.screenshot({ path: path.join(shots, "1b-menue-lenkung.png") });
 
-  // Wurm-Design wählen: wird gespeichert, gesperrte Designs sind auf Stufe 1 nicht wählbar
-  await page.click("#skinBtn");
-  check((await page.textContent("#skinBtn")).includes("Bonbon"), "Design-Knopf wechselt auf Bonbon");
-  await page.reload();
-  check((await page.evaluate(() => SD.state.skin)) === "bonbon" && (await page.textContent("#skinBtn")).includes("Bonbon"), "Design bleibt nach dem Neuladen erhalten");
-  await page.click("#skinBtn");                          // Tiger (frei)
-  await page.click("#skinBtn");                          // Eis (gesperrt bis Stufe 3)
-  const locked = await page.evaluate(() => ({ btn: document.getElementById("skinBtn").textContent, skin: SD.state.skin, status: document.getElementById("menuStatus").textContent, demo: SD.app.skins[0] }));
-  check(locked.btn.includes("🔒") && locked.skin === "tiger" && locked.demo === "eis", `Gesperrtes Design nur als Vorschau: „${locked.btn}“ – ${locked.status}`);
-  await page.waitForTimeout(600);
-  await page.screenshot({ path: path.join(shots, "1c-menue-design.png") });
-
-  // Bild-Design aus dem Ordner skins/: erscheint hinter den eingebauten Designs und ist wählbar
+  // Wurm-Auswahl: Übersicht mit allen Designs, Wahl wird gespeichert, gesperrte Designs sind nur Vorschau
   await page.waitForFunction(() => SD.skinsReady, null, { timeout: 10000 });
-  await page.click("#skinBtn");                          // Lava (gesperrt)
-  await page.click("#skinBtn");                          // Regenbogen (gesperrt)
-  await page.click("#skinBtn");                          // Vorlage (Bild-Design, frei)
-  const pic = await page.evaluate(() => { const k = SD.SKINS.find(x => x.id === "beispiel"); return { btn: document.getElementById("skinBtn").textContent, skin: SD.state.skin, img: !!(k && k.img), tail: !!(k && k.img && k.img.tail) }; });
-  check(pic.skin === "beispiel" && pic.img && pic.tail && pic.btn.includes("Vorlage"), `Bild-Design geladen und gewählt: „${pic.btn}“`);
+  await page.click("#skinBtn");
+  const tiles = await page.evaluate(() => ({ n: document.querySelectorAll(".skintile").length, total: SD.SKINS.length, img: SD.SKINS.filter(k => k.img).length, locked: document.querySelectorAll(".skintile.locked").length }));
+  check(tiles.n === 16 && tiles.total === 16 && tiles.img === 10, `Übersicht zeigt ${tiles.n} Designs, davon ${tiles.img} mit Bildern, ${tiles.locked} gesperrt`);
+  await page.click('.skintile[data-id="bonbon"]');
+  await page.click("#skinDone");
+  check((await page.textContent("#skinBtn")).includes("Bonbon"), "Gewähltes Design steht auf dem Knopf (Bonbon)");
+  await page.reload();
+  await page.waitForFunction(() => SD.skinsReady, null, { timeout: 10000 });
+  check((await page.evaluate(() => SD.state.skin)) === "bonbon", "Design bleibt nach dem Neuladen erhalten");
+  await page.click("#skinBtn");
+  await page.click('.skintile[data-id="einhorn"]');      // gesperrt bis Stufe 9
+  const locked = await page.evaluate(() => ({ skin: SD.state.skin, demo: SD.app.skins[0], status: document.getElementById("skinStatus").textContent }));
+  check(locked.skin === "bonbon" && locked.demo === "einhorn" && locked.status.includes("ab Stufe 9"), `Gesperrtes Design nur als Vorschau: ${locked.status}`);
+  await page.locator('.skintile[data-id="raupe"]').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(shots, "1c-wurm-auswahl.png") });
+  await page.click('.skintile[data-id="raupe"]');
+  const pic = await page.evaluate(() => ({ skin: SD.state.skin, sel: document.querySelector(".skintile.sel").dataset.id, demo: SD.app.skins[0] }));
+  check(pic.skin === "raupe" && pic.sel === "raupe" && pic.demo === "raupe", "Bild-Design „Raupe“ gewählt und markiert");
   const dr = await page.evaluate(() => { const k = SD.SKINS.find(x => x.id === "drache"), v = SD.SKINS.find(x => x.id === "beispiel"); return { img: !!(k && k.img), side: k && k.side, vside: v && v.side }; });
   check(dr.img && dr.side === true && dr.vside === false, "Smaragddrache geladen, als Seitenansicht markiert (wird beim Linksfahren gespiegelt)");
-  await page.waitForTimeout(1500);
+  await page.click("#skinDone");
+  await page.waitForTimeout(1200);
   await page.screenshot({ path: path.join(shots, "1d-menue-bilddesign.png") });
 
   await page.click("#soloBtn");
   await page.waitForFunction(() => SD.app.match.phase === "count");
   const sk = await page.evaluate(() => SD.app.skins);
-  check(sk[0] === "beispiel" && sk[1] !== "beispiel", `Im Spiel: eigenes Design ${sk[0]}, Gegner ${sk[1]}`);
+  check(sk[0] === "raupe" && sk[1] !== "raupe", `Im Spiel: eigenes Design ${sk[0]}, Gegner ${sk[1]}`);
   await page.waitForTimeout(1200);
   await page.screenshot({ path: path.join(shots, "3-countdown.png") });
   await page.waitForFunction(() => SD.app.match.phase === "play", null, { timeout: 8000 });

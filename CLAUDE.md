@@ -164,6 +164,14 @@ Im Menü läuft im Hintergrund ein Demo-Duell Bot gegen Bot.
   („Smaragddrache“): Kopf und Glied vom User mit kie.ai erzeugt, von Claude freigestellt (das Schachbrettmuster
   war eingebrannt), Kopf auf den Kopf zugeschnitten, Loch im Ring gefüllt. Alle drei Bilder (Kopf, Glied,
   Schwanzspitze) stammen vom User.
+- Acht weitere Bild-Designs, von Claude als SVG selbst gezeichnet (Quellen liegen als `.svg` im jeweiligen
+  Ordner): `raupe`, `donut`, `roboter` (frei), `biene` (Stufe 2), `eiskristall` (4), `neon` (6), `lavawurm` (7),
+  `einhorn` (9). Sie sind schlichter als KI-Bilder. `skins/PROMPTS.md` enthält pro Design fertige kie.ai-Prompts,
+  mit denen der User sie ersetzen kann. Schickt er Bilder im Chat: freistellen (Schachbrett ist oft eingebrannt),
+  zuschneiden, im Spiel ansehen, dann die drei PNG im Ordner ersetzen.
+- **Auswahl-Übersicht:** Der Knopf „Wurm: …“ öffnet das Panel `skinPanel`. `buildSkinGrid()` baut pro Design eine
+  Kachel mit Vorschau (`drawSkinPreview`), Name und Schloss. Freie Designs werden gewählt und gespeichert,
+  gesperrte nur als Vorschau am Demo-Wurm gezeigt (`app.preview`).
 - Schwanzspitze (`stampTail`): wird auf den sichtbaren Teil zugeschnitten. Im Spiel ist das breite Ende so dick
   wie der Körper, und die Spitze ersetzt die letzten Glieder, ragt also nicht über das echte Körperende hinaus.
   Mit Bild-Spitze werden die Glieder zum Ende hin nicht mehr kleiner.
