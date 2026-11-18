@@ -719,10 +719,11 @@ function segPositions(sn) {
   return out;
 }
 
+const IMG_HEAD_SCALE = 1.8;                 // Bild-Köpfe: sichtbare Größe gegenüber der Trefferfläche (auf Wunsch etwas größer als 1,6)
 function drawHead(sn, i, skin, now, hx, hy) {
   const r = HEAD_R * SC * 1.32, d = sn.hdir, cos = Math.cos(d), sin = Math.sin(d);
   if (skin.img) {                                         // Bild-Kopf: bringt sein Gesicht mit, wird in Fahrtrichtung gedreht
-    const R = HEAD_R * SC * 1.6;
+    const R = HEAD_R * SC * IMG_HEAD_SCALE;
     ctx.save(); ctx.translate(hx, hy); ctx.rotate(d);
     if (skin.side && cos < 0) ctx.scale(1, -1);           // Seitenansicht: beim Linksfahren spiegeln, damit der Kopf nie auf dem Kopf steht
     ctx.drawImage(skin.img.head, -R, -R, R * 2, R * 2); ctx.restore();

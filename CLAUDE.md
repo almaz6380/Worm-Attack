@@ -142,7 +142,9 @@ Im Menü läuft im Hintergrund ein Demo-Duell Bot gegen Bot.
 - Der Körper wird aus Gliedern gestempelt: `disc(farbe)` zeichnet ein Glied einmal vor (28 px, Glanzlicht, Rand),
   `segPositions()` verteilt die Glieder gleichmäßig vom Kopf aus entlang der Spur. Das Muster hängt am Kopf
   (Glied-Nummer `k`), damit es mit dem Wurm mitwandert.
-- Sichtbare Dicke = Kollisionsgröße × 1,13 (Kopf × 1,32). Nicht weiter vergrößern, sonst sehen Treffer unfair aus.
+- Sichtbare Dicke = Kollisionsgröße × 1,13 (gezeichneter Kopf × 1,32, Bild-Kopf × 1,8 = `IMG_HEAD_SCALE`).
+  Der Bild-Kopf wurde auf Wunsch des Users „nur minimal“ von 1,6 auf 1,8 vergrößert. Nicht ohne Rückfrage weiter
+  vergrößern, sonst sehen knappe Vorbeifahrten nach Treffern aus.
 - Gesicht: Pupillen folgen der Lenkung, Blinzeln, offener Mund bei nahem Futter, X-Augen nach dem Ausscheiden.
 - Effekte: Futter-Beule (`app.bulges`), Funken bei Sprint, Flammen bei Turbo, heller Umriss als Geist, beim
   Ausscheiden zerfällt der Körper in Glieder (Partikel mit `img`).
