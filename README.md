@@ -27,7 +27,8 @@ Im Menü gibt es zwei Lenkarten zur Auswahl:
 - **Zum Finger:** Der Wurm fährt auf die Stelle zu, die man berührt.
 
 Dazu:
-- **Sprint:** ⚡-Knopf halten.
+- **Sprint:** ⚡-Knopf halten, oder auf dem Spielfeld doppelt tippen und den Finger liegen lassen. Der liegende
+  Finger lenkt dabei weiter.
 - **Am Computer:** Pfeiltasten oder WASD, Leertaste für Sprint.
 
 ## Wurm-Designs

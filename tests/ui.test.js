@@ -107,6 +107,28 @@ fs.mkdirSync(shots, { recursive: true });
   }, [box.x + box.width * 0.5, box.y + box.height * 0.25]);
   check(Math.abs(Math.atan2(Math.sin(aim.got - aim.want), Math.cos(aim.got - aim.want))) < 0.02, `„Zum Finger“ zielt auf die berührte Stelle (${aim.got.toFixed(2)} rad)`);
 
+  // Doppeltipp und halten ⇒ Sprint, Loslassen beendet ihn; zu langsame oder zu weit entfernte Tipps zählen nicht
+  const dt = await page.evaluate(async ([x, y]) => {
+    const cv = document.getElementById("cv"), wait = ms => new Promise(r => setTimeout(r, ms));
+    const ev = (type, id, px, py) => cv.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: px, clientY: py, bubbles: true, cancelable: true, pointerType: "touch" }));
+    const out = {};
+    ev("pointerdown", 31, x, y); ev("pointerup", 31, x, y); await wait(80);
+    ev("pointerdown", 32, x + 10, y + 5); out.on = SD.input.s; out.btn = document.getElementById("sprintBtn").classList.contains("on");
+    const len0 = SD.app.match.sim.snakes[0].len; await wait(450); out.shorter = SD.app.match.sim.snakes[0].len < len0 || !SD.app.match.sim.snakes[0].alive;
+    ev("pointerup", 32, x + 10, y + 5); out.off = SD.input.s === false;
+    await wait(500);                                           // zu langsam
+    ev("pointerdown", 33, x, y); out.slow = SD.input.s; ev("pointerup", 33, x, y); await wait(60);
+    ev("pointerdown", 34, x + 120, y); out.far = SD.input.s; ev("pointerup", 34, x + 120, y);   // zu weit weg
+    await wait(400);
+    ev("pointerdown", 35, x, y); ev("pointerup", 35, x, y); await wait(60);
+    ev("pointerdown", 36, x, y); out.on2 = SD.input.s;         // Sprint läuft, Loslassen geht „verloren“
+    ev("pointerdown", 37, x - 100, y - 100); out.stuck = SD.input.s; ev("pointerup", 37, x - 100, y - 100);
+    return out;
+  }, [box.x + box.width * 0.5, box.y + box.height * 0.85]);
+  check(dt.on && dt.btn && dt.shorter && dt.off, "Doppeltipp und halten sprintet, Loslassen beendet den Sprint");
+  check(dt.slow === false && dt.far === false, "Zu langsame oder zu weit entfernte Tipps lösen keinen Sprint aus");
+  check(dt.on2 && dt.stuck === false, "Sprint bleibt nicht hängen, wenn ein neuer Finger aufsetzt");
+
   // Sprint-Knopf halten ⇒ Schlange sprintet und wird kürzer
   const len0 = await page.evaluate(() => SD.app.match.sim.snakes[0].len);
   const sb = await page.locator("#sprintBtn").boundingBox();

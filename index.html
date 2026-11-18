@@ -137,7 +137,7 @@
         <li><b>Ziel:</b> Wer zuerst 3 Runden gewinnt, gewinnt das Duell.</li>
         <li><b>Lenkung „Kreis“:</b> Finger irgendwo aufsetzen und ziehen – die Zugrichtung ist die Fahrtrichtung. Der Kreis erscheint immer dort, wo du gerade hingreifst, und wandert mit.</li>
         <li><b>Lenkung „Zum Finger“:</b> Der Wurm fährt auf die Stelle zu, die du berührst. Umschalten im Menü.</li>
-        <li><b>Sprint:</b> ⚡-Knopf halten (Computer: Leertaste). Macht schneller, kostet aber Länge. Am Computer lenkst du mit den Pfeiltasten.</li>
+        <li><b>Sprint:</b> ⚡-Knopf halten oder auf dem Spielfeld doppelt tippen und den Finger liegen lassen (Computer: Leertaste). Macht schneller, kostet aber Länge. Am Computer lenkst du mit den Pfeiltasten.</li>
         <li><b>Verloren</b> hat, wer mit dem Kopf die Wand, den Körper des Gegners oder sich selbst berührt.</li>
         <li><b>Kopf an Kopf:</b> Die längere Schlange gewinnt. Gleich lang = unentschieden.</li>
         <li><b>Futter</b> macht länger. Mit mehr Körper kannst du dem Gegner den Weg abschneiden.</li>
@@ -1240,15 +1240,21 @@ function frame(ts) {
 /* ================================================================
    Steuerung: schwebender Joystick, Sprint, Tastatur
    ================================================================ */
-const refreshSprint = () => { input.s = sprintHeld || keys.has(" "); $("sprintBtn").classList.toggle("on", input.s); };
+const DTAP_MS = 300, DTAP_PX = 50;           // Doppeltipp: höchstens so viel Zeit und Abstand zwischen den zwei Tipps
+let lastTap = null;                          // letzter losgelassener Tipp auf dem Spielfeld {t, x, y}
+// Sprint: ⚡-Knopf, Leertaste oder Doppeltipp-und-halten (hängt am lenkenden Finger und endet mit ihm)
+const refreshSprint = () => { input.s = sprintHeld || keys.has(" ") || !!(joy && joy.sprint); $("sprintBtn").classList.toggle("on", input.s); };
 const keys = new Set();
 cv.addEventListener("pointerdown", e => {
   if (!inGame() || app.endShown) return;
   e.preventDefault();
   // Der zuletzt aufgesetzte Finger lenkt – der Kreis sitzt immer dort, wo man gerade hingreift.
-  joy = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY };
+  const now = performance.now();
+  const dbl = !!lastTap && now - lastTap.t <= DTAP_MS && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) <= DTAP_PX;
+  lastTap = null;
+  joy = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY, sprint: dbl };
   try { cv.setPointerCapture(e.pointerId); } catch {}
-  aimAtFinger();
+  aimAtFinger(); refreshSprint();
 });
 cv.addEventListener("pointermove", e => {
   if (!joy || e.pointerId !== joy.id) return;
@@ -1258,10 +1264,14 @@ cv.addEventListener("pointermove", e => {
   if (d > JOY_DEAD) input.a = Math.atan2(dy, dx);
   if (d > JOY_R) { joy.ox = joy.x - (dx / d) * JOY_R; joy.oy = joy.y - (dy / d) * JOY_R; }
 });
-const pointerEnd = e => { if (joy && e.pointerId === joy.id) joy = null; };
+const pointerEnd = e => {
+  if (!joy || e.pointerId !== joy.id) return;
+  if (e.type === "pointerup") lastTap = { t: performance.now(), x: e.clientX, y: e.clientY };   // möglicher erster Tipp eines Doppeltipps
+  joy = null; refreshSprint();
+};
 for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) cv.addEventListener(ev, pointerEnd);
 for (const ev of ["pointerup", "pointercancel"]) addEventListener(ev, pointerEnd);
-const dropTouches = () => { joy = null; sprintHeld = false; keys.clear(); refreshSprint(); };
+const dropTouches = () => { joy = null; lastTap = null; sprintHeld = false; keys.clear(); refreshSprint(); };
 addEventListener("blur", dropTouches);
 document.addEventListener("visibilitychange", () => { if (document.hidden) dropTouches(); });
 const sb = $("sprintBtn");

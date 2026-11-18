@@ -181,7 +181,10 @@ Im Menü läuft im Hintergrund ein Demo-Duell Bot gegen Bot.
 
 **Steuerung – diese Regeln nicht aufweichen** (Rückmeldung vom echten Handy: der Kreis blieb an alter Stelle hängen):
 - Der **zuletzt aufgesetzte Finger lenkt immer**. Jedes `pointerdown` auf dem Spielfeld setzt `joy` neu.
-- Es gibt **keinen** „zweiter Finger = Sprint“ mehr. Sprint nur über den ⚡-Knopf und die Leertaste.
+- Es gibt **keinen** „zweiter Finger = Sprint“ mehr. Sprint über den ⚡-Knopf, die Leertaste oder
+  **Doppeltipp und halten** (auf Wunsch des Users): zwei Tipps innerhalb von 300 ms und 50 px (`DTAP_MS`,
+  `DTAP_PX`), beim zweiten bleibt der Finger liegen. Der Sprint hängt am lenkenden Finger (`joy.sprint`) und
+  endet mit ihm, kann also nicht hängen bleiben.
 - Loslassen wird am Canvas und am Fenster abgefangen (`pointerup`, `pointercancel`, `lostpointercapture`),
   dazu `blur` und `visibilitychange`.
 - Kreis: wandert ab 45 px Abstand mit (`JOY_R`), Lenkung reagiert ab 8 px (`JOY_DEAD`).
