@@ -551,6 +551,17 @@ function stamp(img, size) {
   const g = c.getContext("2d"); g.imageSmoothingQuality = "high"; g.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
   return c;
 }
+/** Schwanzspitze: auf den sichtbaren Teil zuschneiden und das Seitenverhältnis merken (Spitze links, breites Ende rechts). */
+function stampTail(img) {
+  const full = stamp(img, 160), d = full.getContext("2d").getImageData(0, 0, 160, 160).data;
+  let x0 = 160, y0 = 160, x1 = -1, y1 = -1;
+  for (let y = 0; y < 160; y++) for (let x = 0; x < 160; x++) if (d[(y * 160 + x) * 4 + 3] > 40) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 < x0) return null;
+  const w = x1 - x0 + 1, h = y1 - y0 + 1, c = document.createElement("canvas"); c.height = 40; c.width = Math.max(8, Math.round((40 * w) / h));
+  c.getContext("2d").drawImage(full, x0, y0, w, h, 0, 0, c.width, c.height);
+  c.aspect = w / h;
+  return c;
+}
 const loadImg = src => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error(src)); im.src = src; });
 async function loadImageSkins() {
   let list;
@@ -565,7 +576,7 @@ async function loadImageSkins() {
     const dir = `skins/${e.ordner}/`;
     // Kopf und Glied sind Pflicht, die Schwanzspitze ist freiwillig. Fehlt etwas, bleibt die eingebaute Darstellung in der Hauptfarbe.
     jobs.push(Promise.all([loadImg(dir + "kopf.png"), loadImg(dir + "glied.png"), loadImg(dir + "schwanz.png").catch(() => null)])
-      .then(([h, g, t]) => { skin.img = { head: stamp(h, 64), seg: stamp(g, 28), tail: t ? stamp(t, 40) : null }; })
+      .then(([h, g, t]) => { skin.img = { head: stamp(h, 64), seg: stamp(g, 28), tail: t ? stampTail(t) : null }; })
       .catch(() => {}));
   }
   await Promise.all(jobs);
@@ -774,18 +785,22 @@ function drawSnake(sn, i, now) {
   ctx.globalAlpha = sn.ghost ? 0.4 : 1;
   const P = segPositions(sn), n = P.length / 2, pal = skin.pal, B = app.bulges[i];
   for (let q = B.length - 1; q >= 0; q--) if ((now - B[q]) * 30 > n + 4) B.splice(q, 1);
-  for (let k = n - 1; k >= 0; k--) {                      // vom Schwanz zum Kopf, damit vordere Glieder oben liegen
-    let sc = k > n - 7 ? 0.45 + 0.55 * ((n - 1 - k) / 6) : 1;          // spitzer Schwanz
+  // Bild-Schwanzspitze: ersetzt die letzten Glieder (ragt also nicht über das echte Körperende hinaus),
+  // das breite Ende ist so dick wie der Körper
+  let last = n - 1;
+  const tail = skin.img && skin.img.tail;
+  if (tail && n > 4) {
+    const th = segR * 2, cut = Math.min(n - 3, Math.max(2, Math.round((th * Math.min(tail.aspect, 4)) / (SEG_GAP * SC))));
+    const tx = P[(n - 1) * 2], ty = P[(n - 1) * 2 + 1], ax = P[(n - 1 - cut) * 2], ay = P[(n - 1 - cut) * 2 + 1];
+    ctx.save(); ctx.translate(tx, ty); ctx.rotate(Math.atan2(ay - ty, ax - tx));
+    ctx.drawImage(tail, 0, -th / 2, Math.hypot(ax - tx, ay - ty) + segR * 0.6, th); ctx.restore();
+    last = n - 1 - cut;
+  }
+  for (let k = last; k >= 0; k--) {                       // vom Schwanz zum Kopf, damit vordere Glieder oben liegen
+    let sc = !tail && k > n - 7 ? 0.45 + 0.55 * ((n - 1 - k) / 6) : 1;  // ohne Bild-Spitze: Glieder werden zum Ende kleiner
     for (const t0 of B) { const dk = k - (now - t0) * 30; sc *= 1 + 0.38 * Math.exp(-dk * dk / 3); }   // Futter-Beule
     const r = segR * sc, x = P[k * 2], y = P[k * 2 + 1];
-    if (skin.img) {
-      if (k === n - 1 && n > 1 && skin.img.tail) {        // Schwanzspitze: gedreht, Spitze zeigt vom Körper weg
-        const tr2 = segR * 1.5;
-        ctx.save(); ctx.translate(x, y); ctx.rotate(Math.atan2(P[k * 2 - 1] - y, P[k * 2 - 2] - x));
-        ctx.drawImage(skin.img.tail, -tr2, -tr2, tr2 * 2, tr2 * 2); ctx.restore();
-      } else ctx.drawImage(skin.img.seg, x - r, y - r, r * 2, r * 2);
-      continue;
-    }
+    if (skin.img) { ctx.drawImage(skin.img.seg, x - r, y - r, r * 2, r * 2); continue; }
     ctx.drawImage(disc(pal[k % pal.length]), x - r, y - r, r * 2, r * 2);
     if (skin.dot && k % 3 === 1) ctx.drawImage(disc(skin.dot), x - r * 0.42, y - r * 0.42, r * 0.84, r * 0.84);
   }

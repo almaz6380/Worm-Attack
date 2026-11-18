@@ -160,8 +160,11 @@ Im Menü läuft im Hintergrund ein Demo-Duell Bot gegen Bot.
   beim Linksfahren, damit sie nie auf dem Kopf stehen.
 - Vorhandene Bild-Designs: `beispiel` („Vorlage“, selbst gezeichnet, mit SVG-Quellen) und `drache`
   („Smaragddrache“): Kopf und Glied vom User mit kie.ai erzeugt, von Claude freigestellt (das Schachbrettmuster
-  war eingebrannt), Kopf auf den Kopf zugeschnitten, Loch im Ring gefüllt. Die Schwanzspitze ist vorläufig
-  nachgezeichnet, weil die Datei des Users nicht ankam.
+  war eingebrannt), Kopf auf den Kopf zugeschnitten, Loch im Ring gefüllt. Alle drei Bilder (Kopf, Glied,
+  Schwanzspitze) stammen vom User.
+- Schwanzspitze (`stampTail`): wird auf den sichtbaren Teil zugeschnitten. Im Spiel ist das breite Ende so dick
+  wie der Körper, und die Spitze ersetzt die letzten Glieder, ragt also nicht über das echte Körperende hinaus.
+  Mit Bild-Spitze werden die Glieder zum Ende hin nicht mehr kleiner.
 - Nur selbst erzeugte Bilder ins Repo, keine Figuren aus bestehenden Spielen, Filmen oder Serien.
 - Gemessen im simulierten Handy ohne Grafikkarte: zwei Würmer mit Höchstlänge kosten etwa 6 ms pro Bild, bei
   üblicher Länge etwa ein Drittel. Auf echten Handys noch nicht gemessen.
