@@ -1,3 +1,4 @@
 [
-  { "ordner": "beispiel", "name": "Drache", "farbe": "#58d868", "stufe": 1 }
+  { "ordner": "beispiel", "name": "Vorlage", "farbe": "#58d868", "stufe": 1 },
+  { "ordner": "drache", "name": "Smaragddrache", "farbe": "#2fbf9f", "stufe": 1, "seitlich": true }
 ]

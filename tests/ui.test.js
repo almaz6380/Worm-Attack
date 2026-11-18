@@ -48,9 +48,11 @@ fs.mkdirSync(shots, { recursive: true });
   await page.waitForFunction(() => SD.skinsReady, null, { timeout: 10000 });
   await page.click("#skinBtn");                          // Lava (gesperrt)
   await page.click("#skinBtn");                          // Regenbogen (gesperrt)
-  await page.click("#skinBtn");                          // Drache (Bild-Design, frei)
+  await page.click("#skinBtn");                          // Vorlage (Bild-Design, frei)
   const pic = await page.evaluate(() => { const k = SD.SKINS.find(x => x.id === "beispiel"); return { btn: document.getElementById("skinBtn").textContent, skin: SD.state.skin, img: !!(k && k.img), tail: !!(k && k.img && k.img.tail) }; });
-  check(pic.skin === "beispiel" && pic.img && pic.tail && pic.btn.includes("Drache"), `Bild-Design geladen und gewählt: „${pic.btn}“`);
+  check(pic.skin === "beispiel" && pic.img && pic.tail && pic.btn.includes("Vorlage"), `Bild-Design geladen und gewählt: „${pic.btn}“`);
+  const dr = await page.evaluate(() => { const k = SD.SKINS.find(x => x.id === "drache"), v = SD.SKINS.find(x => x.id === "beispiel"); return { img: !!(k && k.img), side: k && k.side, vside: v && v.side }; });
+  check(dr.img && dr.side === true && dr.vside === false, "Smaragddrache geladen, als Seitenansicht markiert (wird beim Linksfahren gespiegelt)");
   await page.waitForTimeout(1500);
   await page.screenshot({ path: path.join(shots, "1d-menue-bilddesign.png") });
 

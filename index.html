@@ -560,7 +560,7 @@ async function loadImageSkins() {
   for (const e of list.slice(0, 40)) {
     if (!e || typeof e.ordner !== "string" || !/^[a-z0-9_-]{1,30}$/i.test(e.ordner) || SKINS.some(k => k.id === e.ordner)) continue;
     const main = typeof e.farbe === "string" && /^#[0-9a-f]{6}$/i.test(e.farbe) ? e.farbe.toLowerCase() : "#9aa0b4";
-    const skin = { id: e.ordner, name: String(e.name || e.ordner).slice(0, 18), unlock: Math.max(1, Math.floor(+e.stufe) || 1), main, pal: [main], img: null };
+    const skin = { id: e.ordner, name: String(e.name || e.ordner).slice(0, 18), unlock: Math.max(1, Math.floor(+e.stufe) || 1), main, pal: [main], img: null, side: e.seitlich === true };
     SKINS.push(skin);
     const dir = `skins/${e.ordner}/`;
     // Kopf und Glied sind Pflicht, die Schwanzspitze ist freiwillig. Fehlt etwas, bleibt die eingebaute Darstellung in der Hauptfarbe.
@@ -712,7 +712,9 @@ function drawHead(sn, i, skin, now, hx, hy) {
   const r = HEAD_R * SC * 1.32, d = sn.hdir, cos = Math.cos(d), sin = Math.sin(d);
   if (skin.img) {                                         // Bild-Kopf: bringt sein Gesicht mit, wird in Fahrtrichtung gedreht
     const R = HEAD_R * SC * 1.6;
-    ctx.save(); ctx.translate(hx, hy); ctx.rotate(d); ctx.drawImage(skin.img.head, -R, -R, R * 2, R * 2); ctx.restore();
+    ctx.save(); ctx.translate(hx, hy); ctx.rotate(d);
+    if (skin.side && cos < 0) ctx.scale(1, -1);           // Seitenansicht: beim Linksfahren spiegeln, damit der Kopf nie auf dem Kopf steht
+    ctx.drawImage(skin.img.head, -R, -R, R * 2, R * 2); ctx.restore();
     app.lastDir[i] = sn.hdir;
     if (sn.alive) return;                                 // nach dem Ausscheiden kommen die X-Augen darüber
   } else {

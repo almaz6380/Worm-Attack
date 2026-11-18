@@ -44,7 +44,7 @@ Wählen beide Spieler dasselbe Design, bekommt der Gegner automatisch ein andere
 
 **Eigene Designs:** Im Ordner `skins/` kannst du eigene Würmer als Bilder ablegen (Kopf, Glied, Schwanzspitze),
 zum Beispiel aus einer Bild-KI. Wie das geht, steht mit fertigen Prompts in [`skins/ANLEITUNG.md`](skins/ANLEITUNG.md).
-Als Vorlage liegt das Design „Drache“ in `skins/beispiel/` bei.
+Als Vorlage liegt `skins/beispiel/` bei, als fertiges Beispiel aus KI-Bildern der „Smaragddrache“ in `skins/drache/`.
 
 ## Modi
 - **Gegen Computer:** Jeder Sieg schaltet die nächste Stufe frei. Mit jeder Stufe schaut der Computer weiter voraus,

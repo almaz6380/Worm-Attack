@@ -156,6 +156,12 @@ Im Menü läuft im Hintergrund ein Demo-Duell Bot gegen Bot.
   das Design nutzt die eingebaute Darstellung in seiner Hauptfarbe. `sw.js` holt `skins/` zuerst aus dem Netz,
   damit neu hochgeladene Bilder sofort erscheinen. Der User pflegt `liste.json` selbst auf GitHub: Einträge
   werden deshalb streng geprüft (Ordnername, Farbcode) und fehlerhafte übersprungen.
+- `"seitlich": true` in `liste.json` (`skin.side`) kennzeichnet Köpfe in Seitenansicht: `drawHead` spiegelt sie
+  beim Linksfahren, damit sie nie auf dem Kopf stehen.
+- Vorhandene Bild-Designs: `beispiel` („Vorlage“, selbst gezeichnet, mit SVG-Quellen) und `drache`
+  („Smaragddrache“): Kopf und Glied vom User mit kie.ai erzeugt, von Claude freigestellt (das Schachbrettmuster
+  war eingebrannt), Kopf auf den Kopf zugeschnitten, Loch im Ring gefüllt. Die Schwanzspitze ist vorläufig
+  nachgezeichnet, weil die Datei des Users nicht ankam.
 - Nur selbst erzeugte Bilder ins Repo, keine Figuren aus bestehenden Spielen, Filmen oder Serien.
 - Gemessen im simulierten Handy ohne Grafikkarte: zwei Würmer mit Höchstlänge kosten etwa 6 ms pro Bild, bei
   üblicher Länge etwa ein Drittel. Auf echten Handys noch nicht gemessen.
