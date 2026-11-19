@@ -1,5 +1,5 @@
 // Worm Attack Service-Worker: macht das Spiel installierbar und (gegen den Computer) offline spielbar.
-const VERSION = "snakeduell-v14";
+const VERSION = "snakeduell-v15";
 const PEER = "https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-180.png", "./icons/icon-192.png", "./icons/icon-512.png"];
 

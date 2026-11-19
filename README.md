@@ -111,7 +111,9 @@ oder teilt der Knopf „🎬 Clip speichern“ das Video der letzten Runde, zum 
   3. Das Duell startet automatisch. Nach dem Ende kann jeder eine Revanche starten.
   4. Mit 😀 oben links schickt man Emotes (👋 😂 😎 😱 😡 👍). Nach jedem Duell steht die Bilanz gegen diesen Freund
      da, mit Sieges-Serie.
-  5. Unter „👥 Online“ trägst du deinen Namen ein, dein Freund sieht ihn oben im Spiel. „📋 Meine Gegner“ zeigt die
+  5. Als Spielart gibt es auch „Zu zweit gegen …“: ihr beide gemeinsam gegen einen der vier Bosse.
+  6. Verlässt einer kurz die App, hält das Spiel an und der andere sieht einen Hinweis.
+  7. Unter „👥 Online“ trägst du deinen Namen ein, dein Freund sieht ihn oben im Spiel. „📋 Meine Gegner“ zeigt die
      Bilanz gegen jeden Freund. Dort kannst du Namen auch umbenennen (nur bei dir).
 - **Spielarten** (Knopf „🎮 Spielarten“):
   - **Überleben:** du gegen drei Computer-Würmer, die sich auch gegenseitig jagen. Wer zuletzt übrig ist, gewinnt.
@@ -123,6 +125,8 @@ oder teilt der Knopf „🎬 Clip speichern“ das Video der letzten Runde, zum 
     2. ⚡ **Blitz:** dünn und sehr schnell, drei Leben.
     3. 👯 **Zwillinge:** zwei Bosse auf einmal mit je zwei Leben. Sie können durch einander hindurchfahren.
     4. 💣 **Bomber:** legt alle 5 Sekunden eine Bombe hinter sich ab, drei Leben.
+  - **Turnier zu zweit:** an einem Handy drei Arenen nacheinander (Säulen, Karussell, Portale), je zwei Runden zum
+    Sieg. Wer zuerst zwei Arenen gewinnt, holt den Pokal.
   - **Zwei Spieler, ein Handy:** Handy flach hinlegen. Die untere Hälfte lenkt Spieler 1, die obere Spieler 2,
     jeder hat einen eigenen ⚡-Knopf.
 

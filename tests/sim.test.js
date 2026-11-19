@@ -187,6 +187,15 @@ for (const ar of ["saeulen", "karussell", "portale"]) {
   let g = 0; while (!x.over && g++ < 60 * 80 * 10) { x.tick(); y.tick(); }
   check(x.over && x.scores[2] === 0 && x.scores.join() === y.scores.join(), `Zwillinge-Duell endet, wiederholbar, Punkte nur für Wurm 0 oder 1 (${x.scores.join(":")})`);
 }
+{
+  const c = new Sim(26, true, { mode: "boss", boss: "riese", coop: true }), [h0, h1, bo] = c.snakes;
+  check(c.snakes.length === 3 && h0.team === 0 && h1.team === 0 && bo.team === 2 && bo.lives === BOSSES.riese.lives + 1 && h1.lives === 2,
+    "Boss zu zweit: zwei Helden in Team 0, Boss in Team 2 mit einem Leben mehr");
+  h0.lives = 1; h0.x = 0.99; h0.y = 0; c.step();
+  check(!c.done && !h0.alive && h1.alive, "Ein Held raus: Der andere spielt weiter");
+  bo.lives = 1; bo.x = 0.99; bo.y = 0.1; bo.ghostUntil = -1; c.step();
+  check(c.done && c.winner === 0, "Boss raus: Die Helden gewinnen gemeinsam");
+}
 for (const boss of Object.keys(BOSSES)) {
   let w = 0; const n = 40;
   for (let s = 0; s < n; s++) {

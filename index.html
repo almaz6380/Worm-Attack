@@ -206,6 +206,7 @@
       <button class="btn alt" data-mode="futter">🍎 Futterjagd<small>45 Sekunden, viel Futter, niemand fliegt raus. Am Ende gewinnt der Längere.</small></button>
       <button class="btn" id="bossBtn">👑 Bosse<small>Vier Bosse nacheinander besiegen. Jeder besiegte Boss schaltet den nächsten frei.</small></button>
       <button class="btn alt" data-mode="duo">👫 Zwei Spieler, ein Handy<small>Untere Hälfte lenkt Spieler 1, obere Hälfte Spieler 2.</small></button>
+      <button class="btn" id="tourBtn">🏆 Turnier zu zweit<small>Ein Handy, drei Arenen nacheinander. Wer zuerst zwei Arenen gewinnt, holt den Pokal.</small></button>
     </div>
     <button class="btn ghost" id="modeBack">Zurück</button>
   </div>
@@ -338,6 +339,7 @@ const BOSSES = {
   bomber:    { n: 1, scale: 1.3,  len: 1.0,  speed: 0.9,  turn: 0.85, lives: 3, plus: 0, bomb: 5 },
 };
 const BOSS_ORDER = ["riese", "blitz", "zwillinge", "bomber"], HERO_LIVES = 2;
+const COOP_EXTRA = 1;                                    // Boss zu zweit: jeder Boss hat ein Leben mehr
 /* Arenen: feste Säulen [x, y, r], kreisende Blöcke [Bahnradius, Winkeltempo, Startwinkel, r], Portal-Paare */
 const ARENAS = {
   klassisch: {},
@@ -408,20 +410,24 @@ class Sim {
     this.A = ARENAS[this.arena]; this.dur = M.dur; this.sdOn = M.sd; this.foodN = M.food;
     this.boss = M.boss ? (Object.prototype.hasOwnProperty.call(BOSSES, opts.boss) ? opts.boss : "riese") : null;
     this.t = 0; this.R = 1; this.done = false; this.winner = -2; this.reason = "";
-    if (this.boss && BOSSES[this.boss].n === 2)               // Zwillinge: zwei Bosse nebeneinander
-      this.snakes = [this.makeSnake(0, -0.5, 0.1, -Math.PI / 2), this.makeSnake(1, 0.32, -0.05, Math.PI / 2), this.makeSnake(2, 0.62, -0.05, Math.PI / 2)];
+    this.heroes = this.boss && opts.coop ? 2 : 1;            // coop: zwei Freunde gemeinsam gegen den Boss
+    if (this.boss) {                                         // Helden links, Boss (Zwillinge: zwei Bosse nebeneinander) rechts
+      const H = this.heroes, spots = BOSSES[this.boss].n === 2 ? [[0.32, -0.05], [0.62, -0.05]] : [[0.5, -0.1]];
+      this.snakes = [[-0.5, 0.1], [-0.2, 0.25]].slice(0, H).map(([x, y], i) => this.makeSnake(i, x, y, -Math.PI / 2))
+        .concat(spots.map(([x, y], k) => this.makeSnake(H + k, x, y, Math.PI / 2)));
+    }
     else if (M.n === 2) this.snakes = [this.makeSnake(0, -0.5, 0.1, -Math.PI / 2), this.makeSnake(1, 0.5, -0.1, Math.PI / 2)];
     else {                                                  // im Kreis verteilt, alle fahren im selben Drehsinn los
       this.snakes = [];
       for (let i = 0; i < M.n; i++) { const th = Math.PI + (i * PI2) / M.n; this.snakes.push(this.makeSnake(i, Math.cos(th) * 0.52, Math.sin(th) * 0.52, th + Math.PI / 2)); }
     }
     for (const s of this.snakes) s.lives = M.lives || 1;
-    if (this.boss) {                                        // Wurm 1 (und 2) sind Bosse und bilden ein Team
-      const B = BOSSES[this.boss], sc = B.scale;
-      this.snakes[0].lives = HERO_LIVES;
-      for (const b of this.snakes.slice(1)) {
+    if (this.boss) {                                        // Helden bilden Team 0, die Bosse das Team mit der Nummer des ersten Bosses
+      const B = BOSSES[this.boss], sc = B.scale, H = this.heroes;
+      for (const h of this.snakes.slice(0, H)) { h.lives = HERO_LIVES; h.team = 0; }
+      for (const b of this.snakes.slice(H)) {
         Object.assign(b, this.makeSnake(b.i, b.x, b.y, b.dir, B.len, B.len > 0.8 ? -SEG / 0.3 : 0),
-          { sc, r: HEAD_R * sc, br: BODY_R * sc, spd: B.speed, trn: B.turn, lives: B.lives, team: 1, boss: true });
+          { sc, r: HEAD_R * sc, br: BODY_R * sc, spd: B.speed, trn: B.turn, lives: B.lives + (H > 1 ? COOP_EXTRA : 0), team: H, boss: true });
       }
       this.nextDrop = B.bomb || 0;
     }
@@ -780,6 +786,7 @@ class Match {
     this.bots = bots;                              // pro Wurm ein Bot oder null (= Mensch)
     this.opts = opts;                              // { mode, arena }
     this.scores = bots.map(() => 0); this.round = 0;
+    this.winRounds = opts.winRounds > 0 ? opts.winRounds : WIN_ROUNDS;            // Turnier: 2 Runden zum Sieg
     this.inputs = bots.map(() => ({ a: null, s: false }));
     this.over = false; this.matchWinner = -2;
     this.events = []; this.netEvents = []; this.full = true; this.ticks = 0; this.playTime = 0;   // playTime = gespielte Sekunden aller Runden
@@ -815,7 +822,7 @@ class Match {
         this.phase = "end"; this.phaseT = 0;
         if (sim.winner >= 0) this.scores[sim.winner]++;
         const top = Math.max(...this.scores);
-        if (top >= WIN_ROUNDS || this.round >= MAX_ROUNDS) {
+        if (top >= this.winRounds || this.round >= MAX_ROUNDS) {
           const leaders = this.scores.filter(v => v === top).length;
           this.matchWinner = leaders > 1 ? -1 : this.scores.indexOf(top);
         }
@@ -840,7 +847,7 @@ const store = {
 };
 const state = { level: store.get("level", 1), wins: store.get("wins", 0), steer: store.get("steer", "kreis") === "finger" ? "finger" : "kreis", skin: store.get("skin", "minze"), vib: store.get("vib", true) !== false,
   arena: store.get("arena", "klassisch"), clip: store.get("clip", true) !== false, netmode: store.get("netmode", "duell") };
-if (!["duell", "futter", "ueberleben"].includes(state.netmode)) state.netmode = "duell";
+if (!/^(duell|futter|ueberleben|boss:(riese|blitz|zwillinge|bomber))$/.test(state.netmode)) state.netmode = "duell";
 if (!Object.prototype.hasOwnProperty.call(ARENAS, state.arena)) state.arena = "klassisch";
 const save = () => { store.set("name", state.name); store.set("level", state.level); store.set("wins", state.wins); store.set("steer", state.steer); store.set("skin", state.skin); store.set("vib", state.vib); store.set("arena", state.arena); store.set("clip", state.clip); store.set("netmode", state.netmode); };
 const ARENA_NAME = { klassisch: "Klassisch", saeulen: "Säulen", karussell: "Karussell", portale: "Portale" };
@@ -981,7 +988,8 @@ const app = {
   oppName: "Computer", why: [null, null], particles: [],
   slow: { t0: -9, until: -9, x: 0, y: 0 }, shakeUntil: -9, lastPhase: null, lastCount: 0, roundSprint: false, surviveAcc: 0, goalTick: 0,
   skins: ["minze", "bonbon"], guestSkin: null, preview: null, bulges: [[], []], look: [0, 0], lastDir: [0, 0], deadAt: [0, 0],
-  kind: "duell", emotes: [], lastEmo: 0, rival: null, boss: "riese",
+  kind: "duell", emotes: [], lastEmo: 0, rival: null, boss: "riese", tour: null,
+  friendAway: false, hostAway: false, waitingHost: false, pauseUntil: 0,
 };
 const input = { a: null, s: false }, input2 = { a: null, s: false };   // input2: Spieler 2 im Modus „Zwei Spieler“
 const inGame = () => app.mode === "solo" || app.mode === "host" || app.mode === "guest" || app.mode === "duo";
@@ -1293,23 +1301,32 @@ function drawParticles(dt) {
   ctx.globalAlpha = 1;
 }
 
+/** Team eines Wurms (ohne Bosse = eigene Nummer); Sieger einer Runde ist eine Teamnummer */
+const teamOf = (view, i) => (view.snakes[i] && typeof view.snakes[i].team === "number" ? view.snakes[i].team : i);
+const myTeam = view => teamOf(view, app.me);
 const icons = sn => (sn.turbo ? " ⚡" : "") + (sn.ghost ? " 👻" : "") + (sn.shield ? " 🛡️" : "") + (sn.slow ? " ❄️" : "") + (sn.magnet ? " 🧲" : "");
 const playerName = i => (app.mode === "duo" ? `Spieler ${i + 1}` : i === app.me ? "DU" : app.oppName);
 function drawHud(view) {
   const me = app.me, N = view.snakes.length, sd = view.sdOn && view.t >= SD_START && view.phase === "play";
   const bossMode = view.mode === "boss";
-  const hearts = sn => (!bossMode ? "" : sn.boss ? " " + view.snakes.filter(b => b.boss).map(b => "❤️".repeat(Math.max(0, b.lives))).join(" · ") : " " + "❤️".repeat(Math.max(0, sn.lives)));
-  const side = (i, x, align, label) => {
+  const hearts = sn => {                                   // ein Wurm: Herzen einzeln, ein Team aus mehreren: Summe (passt sonst nicht in die Zeile)
+    if (!bossMode) return "";
+    const tm = view.snakes.filter(b => b.team === sn.team), sum = tm.reduce((n, b) => n + Math.max(0, b.lives), 0);
+    return " " + (tm.length > 1 ? `❤️×${sum}` : "❤️".repeat(sum));
+  };
+  const mt = myTeam(view), bl = view.snakes.findIndex(b => b.boss), coop = bossMode && view.snakes.filter(b => !b.boss).length > 1;
+  const side = (i, x, align, label, si = i) => {
     const sn = view.snakes[i], dir = align === "left" ? 1 : -1;
     ctx.fillStyle = colorOf(i); ctx.beginPath(); ctx.arc(x + dir * 12, 62, 12, 0, 7); ctx.fill();
     text(label + hearts(sn) + icons(sn), x + dir * 34, 63, 26, "#fff", align);
-    for (let k = 0; k < WIN_ROUNDS; k++) {
+    for (let k = 0; k < (view.winRounds || WIN_ROUNDS); k++) {
       ctx.beginPath(); ctx.arc(x + dir * (14 + k * 34), 108, 11, 0, 7);
-      if (k < view.scores[i]) { ctx.fillStyle = colorOf(i); ctx.fill(); } else { ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 3; ctx.stroke(); }
+      if (k < view.scores[si]) { ctx.fillStyle = colorOf(i); ctx.fill(); } else { ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 3; ctx.stroke(); }
     }
   };
-  side(me, 120, "left", app.mode === "duo" ? "SPIELER 1" : "DU");
-  if (N === 2 || bossMode) side(1 - me, W - 30, "right", app.mode === "duo" ? "SPIELER 2" : app.oppName);
+  side(me, 120, "left", app.mode === "duo" ? "SPIELER 1" : coop ? "IHR" : "DU", bossMode ? mt : me);
+  if (bossMode) side(bl, W - 30, "right", view.boss && BOSS_INFO[view.boss] ? BOSS_INFO[view.boss].name.toUpperCase() : app.oppName, teamOf(view, bl));
+  else if (N === 2) side(1 - me, W - 30, "right", app.mode === "duo" ? "SPIELER 2" : app.oppName);
   else {                                                  // mehrere Gegner: je eine kleine Zeile mit Farbe, Punkten und Zustand
     let row = 0;
     for (let i = 0; i < N; i++) {
@@ -1317,7 +1334,7 @@ function drawHud(view) {
       const y = 48 + row++ * 34, sn = view.snakes[i];
       ctx.globalAlpha = sn.alive || view.phase !== "play" ? 1 : 0.35;
       ctx.fillStyle = colorOf(i); ctx.beginPath(); ctx.arc(W - 38, y, 11, 0, 7); ctx.fill();
-      for (let k = 0; k < WIN_ROUNDS; k++) {
+      for (let k = 0; k < (view.winRounds || WIN_ROUNDS); k++) {
         ctx.beginPath(); ctx.arc(W - 70 - k * 24, y, 8, 0, 7);
         if (k < view.scores[i]) { ctx.fillStyle = colorOf(i); ctx.fill(); } else { ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 2.5; ctx.stroke(); }
       }
@@ -1335,7 +1352,7 @@ function drawHud(view) {
   const y = CY + SC + 48, maxLen = Math.max(1.2, ...view.snakes.map(n => n.len)), bw = 250;
   text("LÄNGE", CX, y, 18, "rgba(255,255,255,0.55)", "center", 700);
   if (N === 2 || bossMode) {
-    for (const [i, dir] of [[me, -1], [1 - me, 1]]) {
+    for (const [i, dir] of [[me, -1], [bossMode ? bl : 1 - me, 1]]) {
       const x0 = CX + dir * 50, wv = bw * (view.snakes[i].len / maxLen);
       ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(dir > 0 ? x0 : x0 - bw, y - 8, bw, 16);
       ctx.fillStyle = colorOf(i); ctx.fillRect(dir > 0 ? x0 : x0 - wv, y - 8, wv, 16);
@@ -1353,27 +1370,39 @@ function drawBanner(view, now) {
     const n = Math.ceil(COUNT_T - view.phaseT);
     text(`Runde ${view.round}`, CX, CY - 70, 34, "rgba(255,255,255,0.8)");
     const mt = view.mode === "boss" && BOSS_INFO[view.boss] ? `${BOSS_INFO[view.boss].icon} Boss: ${BOSS_INFO[view.boss].name}` : MODE_TITLE[view.mode];
-    if (mt) text(mt, CX, CY - 118, 30, "#ffd34d");
+    const tourT = app.mode === "duo" && app.tour && !app.tour.done ? `🏆 Turnier · Arena ${app.tour.k + 1}/3: ${ARENA_NAME[TOUR[app.tour.k]]}` : "";
+    if (mt || tourT) text(tourT || mt, CX, CY - 118, 30, "#ffd34d");
     text(String(Math.max(1, n)), CX, CY + 10, 130);
     const bob = 6 * Math.sin(now * 6);
     if (app.mode === "duo") view.snakes.forEach((sn, i) => text(`${i + 1} ▼`, CX + sn.hx * SC, CY + sn.hy * SC - 44 - bob, 26, colorOf(i)));
     else { const sn = view.snakes[me]; text("DU ▼", CX + sn.hx * SC, CY + sn.hy * SC - 44 * (sn.sc || 1) - bob, 26, colorOf(me)); }
   } else if (view.phase === "end" || view.phase === "over") {
     const w = view.winner, N = view.snakes.length, duo = app.mode === "duo";
-    const title = w === -1 ? "Unentschieden" : duo ? `Runde für Spieler ${w + 1}!` : w === me ? "Runde für DICH!" : "Runde verloren";
+    const mt = myTeam(view), coop = view.mode === "boss" && view.snakes.filter(b => !b.boss).length > 1;
+    const title = w === -1 ? "Unentschieden" : duo ? `Runde für Spieler ${w + 1}!` : w === mt ? (coop ? "Runde für EUCH!" : "Runde für DICH!") : "Runde verloren";
     const opName = view.mode === "boss" ? "Der Boss ist " : "Gegner ist ";
     let sub = view.t >= view.dur - 0.001 ? (view.sdOn ? "Zeit um – die längere Schlange gewinnt" : "Zeit um – der Längere gewinnt") : "";
     if (!sub && duo && w >= 0 && app.why[1 - w]) sub = `Spieler ${2 - w} ist ${WHY[app.why[1 - w]]}`;
-    if (!sub && !duo && w !== me && app.why[me]) sub = "Du bist " + WHY[app.why[me]];
-    if (!sub && !duo && view.mode === "boss" && w === me) sub = N > 2 ? "Beide Bosse sind besiegt!" : "Der Boss ist besiegt!";
+    if (!sub && !duo && w !== mt && app.why[me]) sub = "Du bist " + WHY[app.why[me]];
+    if (!sub && !duo && view.mode === "boss" && w === mt) sub = N > 2 ? "Beide Bosse sind besiegt!" : "Der Boss ist besiegt!";
     if (!sub && !duo && N === 2 && w === me && app.why[1 - me]) sub = opName + WHY[app.why[1 - me]];
     if (!sub && N > 2 && w === me && view.mode !== "boss") sub = "Du bist als Letzter übrig!";
     if (!sub && w === -1) sub = N > 2 ? "Gleich lang – niemand gewinnt" : "Beide gleichzeitig raus";
     ctx.fillStyle = "rgba(5,6,10,0.72)"; ctx.beginPath(); ctx.roundRect(CX - 300, CY - 80, 600, 150, 24); ctx.fill();
-    text(title, CX, CY - 28, 50, w === -1 ? "#fff" : duo ? colorOf(w) : w === me ? "#3ddc84" : "#ff6b6b");
+    text(title, CX, CY - 28, 50, w === -1 ? "#fff" : duo ? colorOf(w) : w === mt ? "#3ddc84" : "#ff6b6b");
     text(sub, CX, CY + 32, 24, "rgba(255,255,255,0.8)", "center", 600);
   } else if (view.phase === "wait") {
     text("Verbinde …", CX, CY, 40, "rgba(255,255,255,0.8)");
+  }
+  // Online-Pause oder hängende Verbindung
+  const name = app.oppName || "Freund", nowMs = performance.now();
+  const note = app.mode === "host" && app.friendAway ? [`⏸ ${name} ist kurz weg`, "Das Spiel geht weiter, sobald er zurück ist"]
+    : app.mode === "host" && nowMs < app.pauseUntil ? ["▶ Gleich geht's weiter …", `${name} ist zurück`]
+    : app.mode === "guest" && app.hostAway ? [`⏸ ${name} ist kurz weg`, "Das Spiel geht weiter, sobald er zurück ist"]
+    : app.mode === "guest" && app.waitingHost ? ["Warte auf Gastgeber …", "Die Verbindung hakt gerade"] : null;
+  if (note) {
+    ctx.fillStyle = "rgba(5,6,10,0.8)"; ctx.beginPath(); ctx.roundRect(CX - 300, CY + 90, 600, 120, 24); ctx.fill();
+    text(note[0], CX, CY + 132, 36, "#ffd34d"); text(note[1], CX, CY + 176, 22, "rgba(255,255,255,0.8)", "center", 600);
   }
 }
 
@@ -1456,9 +1485,9 @@ function render(view, now, dt) {
 function hostView(m) {
   const s = m.sim, t = s.t;
   return { phase: m.phase, phaseT: m.phaseT, scores: m.scores, round: m.round, t, R: s.R, winner: s.winner, matchWinner: m.matchWinner,
-    mode: s.mode, arena: s.arena, dur: s.dur, sdOn: s.sdOn, bombs: s.bombs, boss: s.boss,
+    mode: s.mode, arena: s.arena, dur: s.dur, sdOn: s.sdOn, bombs: s.bombs, boss: s.boss, winRounds: m.winRounds,
     snakes: s.snakes.map(n => ({ trail: n.trail, hx: n.x, hy: n.y, hdir: n.dir, len: n.len, alive: n.alive, ghost: n.ghostUntil > t, turbo: n.turboUntil > t, sprint: n.sprinting,
-      shield: n.shieldUntil > t, slow: n.slowUntil > t, magnet: n.magnetUntil > t, lives: n.lives, sc: n.sc, boss: n.boss })),
+      shield: n.shieldUntil > t, slow: n.slowUntil > t, magnet: n.magnetUntil > t, lives: n.lives, sc: n.sc, boss: n.boss, team: n.team })),
     foods: s.foods, power: s.power, walls: s.walls };
 }
 const q = v => Math.round(v * 1000);
@@ -1466,14 +1495,15 @@ function buildSnap(m) {
   const s = m.sim, full = m.full || app.snaps % 15 === 0;
   const o = { k: "s", ph: m.phase, pt: +m.phaseT.toFixed(2), sc: m.scores, rd: m.round, t: +s.t.toFixed(3), R: q(s.R), w: s.winner, mw: m.matchWinner,
     sn: s.snakes.map(n => [q(n.x), q(n.y), q(n.dir), q(n.len), (n.alive ? 1 : 0) | (n.ghostUntil > s.t ? 2 : 0) | (n.turboUntil > s.t ? 4 : 0) | (n.sprinting ? 8 : 0) |
-      (n.shieldUntil > s.t ? 16 : 0) | (n.slowUntil > s.t ? 32 : 0) | (n.magnetUntil > s.t ? 64 : 0)]),
+      (n.shieldUntil > s.t ? 16 : 0) | (n.slowUntil > s.t ? 32 : 0) | (n.magnetUntil > s.t ? 64 : 0), Math.min(99, n.lives)]),
     f: [], p: s.power ? [q(s.power.x), q(s.power.y), POWER_TYPES.indexOf(s.power.type)] : 0, ev: m.netEvents,
     b: s.bombs.map(b => [q(b.x), q(b.y), +(b.at - s.t).toFixed(2), b.owner]) };
   for (const f of s.foods) o.f.push(q(f.x), q(f.y), q(f.v));
   if (full) {
     o.tr = s.snakes.map(n => n.trail.map(q));
     o.wl = s.walls.map(w => [w.owner, +(w.until - s.t).toFixed(2)].concat(w.pts.map(q)));
-    o.sk = app.skins; o.ar = s.arena; o.md = s.mode;
+    o.sk = app.skins; o.ar = s.arena; o.md = s.mode; o.bo = s.boss;
+    o.bs = s.snakes.map(n => [q(n.sc), n.team, n.boss ? 1 : 0]);                  // Größe, Team, Boss (für Boss zu zweit)
   }
   m.netEvents = []; m.full = false; app.snaps++;
   return o;
@@ -1482,9 +1512,9 @@ function buildSnap(m) {
 function newGuestView() {
   return { phase: "wait", phaseT: 0, scores: [0, 0], round: 0, t: 0, R: 1, winner: -2, matchWinner: -2, stamp: 0,
     mode: "duell", arena: "klassisch", dur: DURATION, sdOn: true, bombs: [],
-    snakes: [guestSnake(), guestSnake()], foods: [], power: null, walls: [] };
+    snakes: [guestSnake(0), guestSnake(1)], foods: [], power: null, walls: [] };
 }
-const guestSnake = () => ({ trail: [], x: 0, y: 0, dir: 0, px: 0, py: 0, pdir: 0, hx: 0, hy: 0, hdir: 0, len: 0, alive: true, ghost: false, turbo: false, sprint: false,
+const guestSnake = (_, i = 0) => ({ team: i, boss: false, trail: [], x: 0, y: 0, dir: 0, px: 0, py: 0, pdir: 0, hx: 0, hy: 0, hdir: 0, len: 0, alive: true, ghost: false, turbo: false, sprint: false,
   shield: false, slow: false, magnet: false, lives: 1, sc: 1 });
 function trimByLength(tr, hx, hy, len) {
   let acc = 0, px = hx, py = hy, k = tr.length - 2;
@@ -1494,7 +1524,7 @@ function trimByLength(tr, hx, hy, len) {
 function applySnap(o) {
   const v = app.gv; if (!v || !o || !Array.isArray(o.sn)) return;
   const newRound = o.rd !== v.round, N = Math.min(8, o.sn.length), resized = N !== v.snakes.length;
-  if (resized) v.snakes = Array.from({ length: N }, guestSnake);           // Spielart mit mehr Würmern
+  if (resized) v.snakes = Array.from({ length: N }, (_, i) => guestSnake(null, i));           // Spielart mit mehr Würmern
   if (typeof o.md === "string" && Object.prototype.hasOwnProperty.call(MODES, o.md)) { v.mode = app.kind = o.md; v.dur = MODES[o.md].dur; v.sdOn = MODES[o.md].sd; }
   v.phase = o.ph; v.phaseT = o.pt; v.scores = o.sc; v.round = o.rd; v.t = o.t; v.R = o.R / 1000; v.winner = o.w; v.matchWinner = o.mw;
   if (newRound || resized) { resetLooks(); input.a = null; if (joy) { joy.ox = joy.x; joy.oy = joy.y; } }
@@ -1509,6 +1539,9 @@ function applySnap(o) {
     sn.x = a[0] / 1000; sn.y = a[1] / 1000; sn.dir = a[2] / 1000; sn.len = a[3] / 1000;
     sn.alive = !!(a[4] & 1); sn.ghost = !!(a[4] & 2); sn.turbo = !!(a[4] & 4); sn.sprint = !!(a[4] & 8);
     sn.shield = !!(a[4] & 16); sn.slow = !!(a[4] & 32); sn.magnet = !!(a[4] & 64);
+    if (typeof a[5] === "number") sn.lives = a[5];
+    const bs = Array.isArray(o.bs) && o.bs[i];
+    if (bs) { sn.sc = Math.max(0.5, Math.min(2, bs[0] / 1000)); sn.team = bs[1] | 0; sn.boss = !!bs[2]; }
     if (o.tr || newRound) { sn.px = sn.x; sn.py = sn.y; sn.pdir = sn.dir; }
     else trimByLength(sn.trail, sn.x, sn.y, sn.len);
   }
@@ -1516,6 +1549,7 @@ function applySnap(o) {
   v.power = o.p ? { x: o.p[0] / 1000, y: o.p[1] / 1000, type: POWER_TYPES[o.p[2]] } : null;
   if (Array.isArray(o.sk) && o.sk.length === N) app.skins = o.sk.map(k => skinById(k).id);
   if (typeof o.ar === "string" && Object.prototype.hasOwnProperty.call(ARENAS, o.ar)) v.arena = o.ar;
+  if (o.full !== undefined || o.md) v.boss = Object.prototype.hasOwnProperty.call(BOSSES, o.bo) ? o.bo : null;
   v.bombs = Array.isArray(o.b) ? o.b.map(b => ({ x: b[0] / 1000, y: b[1] / 1000, at: o.t + b[2], owner: b[3] })) : [];
   if (o.wl) v.walls = o.wl.map(w => ({ owner: w[0], until: o.t + w[1], pts: w.slice(2).map(u => u / 1000) }));
   else v.walls = v.walls.filter(w => w.until > o.t);
@@ -1542,7 +1576,8 @@ function fx(e) {
   else if (e.type === "spawn") { burst(e.x, e.y, "#ffd34d", 10, 160); tone(520, 0.25, "sine", 0.2, 1.5); }
   else if (e.type === "power") {
     burst(e.x, e.y, "#ffd34d", 22, 300); tone(440, 0.35, "square", 0.18, 2);
-    const who = app.mode === "duo" ? `Spieler ${e.i + 1}` : e.i === app.me ? "dich" : view0().snakes.length > 2 ? "einen Gegner" : view0().mode === "boss" ? "den Boss" : "den Gegner";
+    const v0 = view0(), sn0 = v0.snakes[e.i], friend = sn0 && v0.snakes[app.me] && sn0.team === v0.snakes[app.me].team;
+    const who = app.mode === "duo" ? `Spieler ${e.i + 1}` : e.i === app.me ? "dich" : friend ? app.oppName : sn0 && sn0.boss ? "den Boss" : v0.snakes.length > 2 ? "einen Gegner" : "den Gegner";
     if (inGame()) showToast(`${POWER_ICON[e.p]} ${POWER_NAME[e.p]} für ${who}!`);
     if (mine) { vib(30); bump("joker"); if (app.mode !== "duo") stats.kinds[e.p] = 1; }
   }
@@ -1560,7 +1595,8 @@ function fx(e) {
   else if (e.type === "hurt") {
     burst(e.x, e.y, colorOf(e.i), 18, 300); tone(260, 0.25, "square", 0.2, 0.5);
     if (inGame()) { app.shakeUntil = app.lastTs + 0.15; if (mine) vib(50); }
-    if (inGame() && view0().mode === "boss") showToast(e.i !== app.me ? `👑 Boss getroffen! Noch ${e.lives} Leben` : `💥 Getroffen! Du hast noch ${e.lives} Leben`);
+    const hb = view0().snakes[e.i];
+    if (inGame() && view0().mode === "boss") showToast(hb && hb.boss ? `👑 Boss getroffen! Noch ${e.lives} Leben` : e.i === app.me ? `💥 Getroffen! Du hast noch ${e.lives} Leben` : `💥 ${app.oppName} getroffen! Noch ${e.lives} Leben`);
   }
   else if (e.type === "die") {
     app.why[e.i] = e.why; app.deadAt[e.i] = app.lastTs; burst(e.x, e.y, colorOf(e.i), 30, 420); tone(380, 0.5, "sawtooth", 0.3, 0.25);
@@ -1792,7 +1828,7 @@ function trackFrame(view, dt) {
     const prev = app.lastPhase; app.lastPhase = view.phase;
     if (view.phase === "count") { app.roundSprint = false; app.lastCount = 0; app.roundFood = 0; app.roundAlive = 0; app.roundMaxLen = 0; }
     else if (view.phase === "play" && prev === "count") tone(880, 0.22, "triangle", 0.3);
-    else if (view.phase === "end" && prev === "play" && view.winner === app.me) {
+    else if (view.phase === "end" && prev === "play" && view.winner === myTeam(view)) {
       bump("rounds"); if (!app.roundSprint) bump("nosprint");
       for (let k = 0; k < 16; k++) { const a = Math.random() * PI2, v = 120 + Math.random() * 200;      // Sternenregen um den eigenen Wurm
         app.particles.push({ x: CX + me.hx * SC, y: CY + me.hy * SC, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.9 + Math.random() * 0.5, max: 1.4, s: 3 + Math.random() * 2.5, c: "#ffd34d", star: true }); }
@@ -1946,6 +1982,7 @@ function begin() {
   app.lastPhase = null; app.lastCount = 0; app.roundSprint = false; app.slow.until = -9; app.shakeUntil = -9;
   input.a = null; input.s = false; input2.a = null; input2.s = false; joy = null; joy2 = null; sprintHeld = false; sprintHeld2 = false;
   app.emotes = []; clipStopAll(false); clip.blob = null; resetLooks();
+  app.friendAway = app.hostAway = app.waitingHost = false; app.pauseUntil = 0;
   showPanel(null);
   $("sprintBtn").classList.remove("hidden"); $("quitBtn").classList.remove("hidden");
   $("sprintBtn2").classList.toggle("hidden", app.mode !== "duo"); $("emoBtn").classList.toggle("hidden", app.mode === "duo"); $("emoBar").classList.add("hidden");
@@ -1969,19 +2006,25 @@ function startSolo(kind = "duell") {
   begin();
 }
 /** Zwei Spieler an einem Handy: untere Hälfte = Spieler 1 (Wurm 0), obere Hälfte = Spieler 2 (Wurm 1) */
+/* Turnier zu zweit: drei Arenen nacheinander, je zwei Runden zum Sieg; wer zuerst zwei Arenen gewinnt, gewinnt */
+const TOUR = ["saeulen", "karussell", "portale"];
+function startTour() { app.tour = { k: 0, wins: [0, 0], done: false }; startDuo(); }
 function startDuo() {
   app.mode = "duo"; app.kind = "duell"; app.me = 0; app.oppName = "SPIELER 2";
-  app.match = new Match(rndSeed(), [null, null], { arena: state.arena });
+  const t = app.tour && !app.tour.done ? app.tour : null;
+  app.match = new Match(rndSeed(), [null, null], t ? { arena: TOUR[t.k], winRounds: 2 } : { arena: state.arena });
   app.skins = [state.skin, otherSkin(state.skin, "bonbon")];
   begin();
 }
 /** Online als Gastgeber: Spielart aus der Lobby. Überleben = beide Freunde plus zwei Computer-Würmer */
 function startNetMatch() {
-  const s = rndSeed(), mode = state.netmode, bl = Math.max(1, state.level - 1);
+  const s = rndSeed(), boss = state.netmode.startsWith("boss:") ? state.netmode.slice(5) : null, mode = boss ? "boss" : state.netmode, bl = Math.max(1, state.level - 1);
   app.mode = "host"; app.kind = mode; app.me = 0; app.oppName = rivalName(app.rival);
   const bots = mode === "ueberleben" ? [null, null, new Bot(bl, s), new Bot(bl, s + 1)] : [null, null];
-  app.match = new Match(s, bots, { mode, arena: state.arena });
+  if (boss) for (let k = 0; k < BOSSES[boss].n; k++) bots.push(new Bot(Math.min(10, state.level + BOSSES[boss].plus), s + k));   // Boss zu zweit
+  app.match = new Match(s, bots, { mode, arena: state.arena, boss, coop: !!boss });
   app.skins = pickSkins(bots.length, app.guestSkin);
+  if (boss) for (let k = 2; k < bots.length; k++) app.skins[k] = BOSS_INFO[boss].skin;
   begin();
 }
 
@@ -2003,6 +2046,8 @@ function hostGame() {
     }
     else if (m.k === "emo" && Number.isInteger(m.e) && m.e >= 0 && m.e < EMOTES.length) showEmote(1, m.e);
     else if (m.k === "again" && app.match.over) startNetMatch();
+    else if (m.k === "pause") app.friendAway = true;
+    else if (m.k === "resume") { if (app.friendAway) app.pauseUntil = performance.now() + 1500; app.friendAway = false; }
     else if (m.k === "bye") toMenu("Dein Freund hat das Spiel verlassen.");
   };
   net.onclose = () => { if (app.net === net) toMenu("Verbindung getrennt."); };
@@ -2036,6 +2081,8 @@ function joinGame(code) {
     if (m.k === "s") applySnap(m);
     else if (m.k === "hi") meetRival(m.id, m.nm);
     else if (m.k === "emo" && Number.isInteger(m.e) && m.e >= 0 && m.e < EMOTES.length) showEmote(0, m.e);
+    else if (m.k === "pause") app.hostAway = true;
+    else if (m.k === "resume") app.hostAway = false;
     else if (m.k === "bye") toMenu("Dein Freund hat das Spiel verlassen.");
   };
   net.onclose = () => { if (app.net === net) { clearTimeout(timeout); toMenu("Verbindung getrennt."); } };
@@ -2049,9 +2096,11 @@ function joinGame(code) {
 function showEnd(view) {
   app.endShown = true; joy = null; joy2 = null; sprintHeld = false; sprintHeld2 = false; refreshSprint();
   $("sprintBtn").classList.add("hidden"); $("sprintBtn2").classList.add("hidden"); $("emoBar").classList.add("hidden");
-  const w = view.matchWinner, won = w === app.me, draw = w === -1, duo = app.mode === "duo";
-  const others = view.mode === "boss" ? [view.scores[1]] : view.scores.filter((_, i) => i !== app.me);
-  const score = others.length === 1 ? `${view.scores[app.me]} : ${others[0]}` : `${view.scores[app.me]} : ${Math.max(...others)} (bester Gegner)`;
+  const w = view.matchWinner, won = w === myTeam(view), draw = w === -1, duo = app.mode === "duo";
+  const coop = view.mode === "boss" && view.snakes.filter(b => !b.boss).length > 1;
+  const bl = view.snakes.findIndex(b => b.boss), mine = view.scores[myTeam(view)];
+  const others = view.mode === "boss" ? [view.scores[teamOf(view, bl)]] : view.scores.filter((_, i) => i !== app.me);
+  const score = others.length === 1 ? `${mine} : ${others[0]}` : `${mine} : ${Math.max(...others)} (bester Gegner)`;
   let sub = `Endstand ${duo ? `${view.scores[0]} : ${view.scores[1]}` : score}`;
   if (app.mode === "solo") {
     if (app.kind === "duell") {
@@ -2068,7 +2117,8 @@ function showEnd(view) {
       if (first && next) { sub += ` · Neuer Boss freigeschaltet: ${BOSS_INFO[next].name}`; app.boss = next; $("againBtn").textContent = `Weiter: ${BOSS_INFO[next].name}`; }
     }
   } else $("againBtn").textContent = "Revanche";
-  if ((app.mode === "host" || app.mode === "guest") && app.rival) {           // Bilanz gegen diesen Freund
+  if (coop) sub += won ? "\nIhr habt den Boss gemeinsam besiegt! 🤝" : draw ? "" : "\nDer Boss war diesmal stärker – nochmal zusammen!";
+  else if ((app.mode === "host" || app.mode === "guest") && app.rival) {           // Bilanz gegen diesen Freund
     const r = rivals[app.rival] || (rivals[app.rival] = { w: 0, l: 0, d: 0, s: 0 }), friend = 1 - app.me; r.t = Date.now();
     if (won) { r.w++; r.s = r.s > 0 ? r.s + 1 : 1; } else if (draw) r.d++; else if (w === friend) { r.l++; r.s = r.s < 0 ? r.s - 1 : -1; }
     else sub += "\nEin Computer-Wurm hat gewonnen – zählt nicht für eure Bilanz.";        // Überleben: gegen Bots verloren
@@ -2081,6 +2131,24 @@ function showEnd(view) {
     won ? `<span class="win">${title}</span>` : `<span class="lose">${app.kind === "boss" ? "Der Boss war stärker" : "Duell verloren"}</span>`;
   $("endSub").textContent = sub;
   showPanel("endPanel"); refreshClipBtn();
+  if (duo && app.tour && !app.tour.done) {                                    // Turnier: Station auswerten
+    const T = app.tour; if (w >= 0) T.wins[w]++; T.k++;
+    const ARN = a => ARENA_NAME[a], stand = `Turnier ${T.wins[0]} : ${T.wins[1]}`;
+    T.done = T.wins[0] >= 2 || T.wins[1] >= 2 || T.k >= TOUR.length;
+    if (T.done) {
+      const tw = T.wins[0] === T.wins[1] ? -1 : T.wins[0] > T.wins[1] ? 0 : 1;
+      $("endTitle").innerHTML = tw < 0 ? "Turnier unentschieden" : `<span class="win">Spieler ${tw + 1} gewinnt das Turnier! 🏆</span>`;
+      $("endSub").textContent = `${stand} · letzte Arena: ${ARN(TOUR[T.k - 1])} ${view.scores[0]} : ${view.scores[1]}`;
+      $("againBtn").textContent = "Neues Turnier";
+      if (tw >= 0) { confetti(); setTimeout(confetti, 600); [523, 659, 784, 1047, 1319].forEach((f, k) => setTimeout(() => tone(f, k === 4 ? 0.6 : 0.16, "triangle", 0.3), k * 140)); }
+    } else {
+      $("endTitle").innerHTML = draw ? `${ARN(TOUR[T.k - 1])}: unentschieden` : `<span class="win">${ARN(TOUR[T.k - 1])}: Spieler ${w + 1} gewinnt!</span>`;
+      $("endSub").textContent = `${stand} · Nächste Arena: ${ARN(TOUR[T.k])}`;
+      $("againBtn").textContent = `Weiter: ${ARN(TOUR[T.k])}`;
+      if (!draw) tone(784, 0.25, "triangle", 0.3);
+    }
+    return;
+  }
   if (duo) { if (!draw) { confetti(); [523, 659, 784, 1047].forEach((f, k) => setTimeout(() => tone(f, k === 3 ? 0.5 : 0.16, "triangle", 0.3), k * 140)); } return; }
   if (won) {
     bump("duel"); if (app.mode === "host" || app.mode === "guest") bump("online");
@@ -2107,9 +2175,12 @@ function frame(ts) {
     }
     if (view.phase !== "over" && app.endShown) { app.endShown = false; showPanel(null); $("sprintBtn").classList.remove("hidden"); }
     if (view.phase === "over" && !app.endShown) showEnd(view);
+    app.waitingHost = view.phase !== "over" && view.phase !== "wait" && nowMs - view.stamp > 1500;   // kein Spielstand seit 1,5 s
   } else if (app.match) {
     const m = app.match;
-    app.acc = Math.min(0.25, app.acc + dt);
+    // Online-Pause: Der Freund hat die App kurz verlassen ⇒ anhalten; nach seiner Rückkehr noch 1,5 s warten
+    const held = app.mode === "host" && !m.over && (app.friendAway || nowMs < app.pauseUntil);
+    app.acc = held ? 0 : Math.min(0.25, app.acc + dt);
     while (app.acc >= DT) {
       app.acc -= DT;
       if (m.over) break;
@@ -2192,7 +2263,11 @@ for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) cv.addEve
 for (const ev of ["pointerup", "pointercancel"]) addEventListener(ev, pointerEnd);
 const dropTouches = () => { joy = null; joy2 = null; lastTaps[0] = lastTaps[1] = null; sprintHeld = false; sprintHeld2 = false; keys.clear(); refreshSprint(); };
 addEventListener("blur", dropTouches);
-document.addEventListener("visibilitychange", () => { if (document.hidden) dropTouches(); });
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) dropTouches();
+  // online: dem Freund Bescheid geben, dass man kurz weg ist (der Gastgeber hält das Spiel dann an)
+  if (app.net && (app.mode === "host" || app.mode === "guest")) try { app.net.send({ k: document.hidden ? "pause" : "resume" }); } catch {}
+});
 for (const [id, p] of [["sprintBtn", 0], ["sprintBtn2", 1]]) {
   const set = v => { if (p) sprintHeld2 = v; else sprintHeld = v; refreshSprint(); };
   $(id).addEventListener("pointerdown", e => { e.preventDefault(); set(true); });
@@ -2219,7 +2294,8 @@ addEventListener("keyup", e => { keys.delete(keyName(e)); refreshSprint(); });
 $("soloBtn").onclick = () => startSolo("duell");
 $("modeBtn").onclick = () => showPanel("modePanel");
 $("modeBack").onclick = () => showPanel("menuPanel");
-for (const b of document.querySelectorAll("#modePanel [data-mode]")) b.onclick = () => (b.dataset.mode === "duo" ? startDuo() : startSolo(b.dataset.mode));
+for (const b of document.querySelectorAll("#modePanel [data-mode]")) b.onclick = () => { app.tour = null; if (b.dataset.mode === "duo") startDuo(); else startSolo(b.dataset.mode); };
+$("tourBtn").onclick = startTour;
 /* Boss-Auswahl: besiegte Bosse grün umrandet, gesperrte grau mit Hinweis */
 function buildBossList() {
   const list = $("bossList"); list.innerHTML = "";
@@ -2242,8 +2318,9 @@ $("lobbyArenaBtn").onclick = () => { nextArena(); if (app.mode === "lobby") star
 $("onlineBtn").onclick = () => { $("onlineStatus").textContent = ""; showPanel("onlinePanel"); };
 $("onlineBack").onclick = () => showPanel("menuPanel");
 /* Online-Spielart (wählt der Gastgeber in der Lobby) */
-const NET_MODES = ["duell", "futter", "ueberleben"];
+const NET_MODES = ["duell", "futter", "ueberleben"].concat(BOSS_ORDER.map(b => "boss:" + b));
 const NET_MODE_NAME = { duell: "🎮 Duell", futter: "🍎 Futterjagd", ueberleben: "🐍 Überleben (+2 Computer)" };
+for (const b of BOSS_ORDER) NET_MODE_NAME["boss:" + b] = `👑 Zu zweit gegen ${BOSS_INFO[b].name}`;
 const refreshNetModeBtn = () => ($("netModeBtn").textContent = NET_MODE_NAME[state.netmode]);
 $("netModeBtn").onclick = () => { state.netmode = NET_MODES[(NET_MODES.indexOf(state.netmode) + 1) % NET_MODES.length]; save(); refreshNetModeBtn(); };
 refreshNetModeBtn();
@@ -2346,7 +2423,7 @@ $("menuBtn").onclick = () => toMenu();
 $("quitBtn").onclick = () => { if (confirm("Spiel wirklich verlassen?")) toMenu(); };
 $("againBtn").onclick = () => {
   if (app.mode === "solo") startSolo(app.kind);
-  else if (app.mode === "duo") startDuo();
+  else if (app.mode === "duo") { if (app.tour && app.tour.done) startTour(); else startDuo(); }
   else if (app.mode === "host") startNetMatch();
   else if (app.mode === "guest" && app.net) { app.net.send({ k: "again" }); showToast("Revanche angefragt …"); }
 };
@@ -2360,7 +2437,7 @@ $("shareBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
-window.SD = { app, state, records, setRecord, rivalsList: () => rivals, input, input2, Sim, Bot, Match, SKINS, ARENAS, BOSSES, bossesBeaten, clip, rivals, startSolo, startDuo, skinsReady: false,
+window.SD = { startTour, app, state, records, setRecord, rivalsList: () => rivals, input, input2, Sim, Bot, Match, SKINS, ARENAS, BOSSES, bossesBeaten, clip, rivals, startSolo, startDuo, skinsReady: false,
   goals: { stats, streak, achDone, owned, TASKS, ACHS, today, daily: () => ensureDaily(), stars: () => starCount, setStars: n => { starCount = n; saveGoals(); }, bump, check: checkGoals } };
 loadImageSkins().finally(() => { window.SD.skinsReady = true; if (!inGame()) { demoSkins(); refreshSkinBtn(); if (!$("skinPanel").classList.contains("hidden")) buildSkinGrid(); } });
 

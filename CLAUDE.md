@@ -119,7 +119,7 @@ Bomben treffen nur andere Teams, die Runde endet, wenn höchstens ein Team übri
   | `duell` | 2 | 60 s | wie oben, auch online und zu zweit |
   | `ueberleben` | 4 | 60 s | du gegen drei Bots (Stufe − 1), alle gegen alle, 10 Futter |
   | `futter` | 2 | 45 s | keine schrumpfende Arena, 14 Futter, 999 Leben: Treffer kosten nur Länge |
-  | `boss` | 2 oder 3 | 60 s | Wurm 1 (und 2) sind Bosse (`BOSSES`, Team 1, Krone). Der Spieler hat 2 Leben (`HERO_LIVES`) |
+  | `boss` | 2 bis 4 | 60 s | Helden zuerst (Team 0, je 2 Leben `HERO_LIVES`), dahinter die Bosse (`BOSSES`, Team = Nummer des ersten Bosses, Krone). `coop: true` = zwei Helden (online „zu zweit gegen den Boss“), dann hat jeder Boss `COOP_EXTRA` = 1 Leben mehr |
 
 - **Bosse** (`BOSSES`, Reihenfolge `BOSS_ORDER`, besiegte in `sd_bosses`; jeder besiegte schaltet den nächsten frei):
 
@@ -156,6 +156,8 @@ Bomben treffen nur andere Teams, die Runde endet, wenn höchstens ein Team übri
   Zwillinge etwa 36 / 31 / 33 %, Bomber 43 / 34 / 25 %. Blitz ist für sehr schwache Spieler hart, kommt aber erst
   nach dem Riesen.
   Überleben 29 bis 38 % (Zufall wäre 25 %). Futterjagd etwa 50 %.
+  Boss zu zweit (zwei Bots als Helden, Stufe 1 / 5 / 10): Riese 35 / 50 / 38 %, Blitz 28 / 48 / 70 %, Zwillinge 40 / 40 / 33 %,
+  Bomber 40 / 53 / 47 %.
 - Der Bot sucht bei mehreren Gegnern den nächsten als Ziel, weicht aber allen Körpern aus. In der Vorschau kennt er
   Hindernisse zur jeweiligen Zeit, springt durch Portale, meidet gegnerische Bomben kurz vor dem Knall und rechnet
   das Ende von Eis mit ein.
@@ -190,7 +192,12 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
 - **Wer rechnet:** Der Gastgeber ist Schlange 0 und lässt `Match` laufen. Der Gast ist Schlange 1.
   Der Gastgeber wählt in der Lobby Spielart (`state.netmode`, gespeichert als `sd_netmode`: `duell`, `futter`,
   `ueberleben`) und Arena. Bei `ueberleben` spielen beide Freunde (Wurm 0 und 1) gegen zwei Bots (Stufe des
-  Gastgebers − 1), die beim Gastgeber rechnen. Bosswurm gibt es online nicht.
+  Gastgebers − 1), die beim Gastgeber rechnen. `boss:<id>` (z. B. `boss:riese`): beide Freunde gemeinsam gegen einen
+  Boss (Wurm 0 und 1 = Team 0), unabhängig davon, welche Bosse allein schon besiegt sind. Zählt nicht für die Bilanz.
+- **Pause:** Wer die App verlässt, schickt `pause`, bei Rückkehr `resume` (`visibilitychange`). Der Gastgeber hält
+  das Spiel an, solange der Gast weg ist (`app.friendAway`), und wartet nach der Rückkehr noch 1,5 s (`app.pauseUntil`).
+  Beim Gast zeigt `app.hostAway` den Hinweis „… ist kurz weg“; kommt 1,5 s kein Spielstand, zeigt `app.waitingHost`
+  „Warte auf Gastgeber …“.
 - **Nachrichten** (JSON):
 
   | Art | Richtung | Inhalt |
@@ -198,6 +205,7 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
   | `hello` | Gast → Gastgeber | nach dem Verbinden, mit `sk` = gewähltes Design, `id` = Gerätekennung, `nm` = Name |
   | `hi` | Gastgeber → Gast | nach dem Verbinden, `id` = Gerätekennung des Gastgebers, `nm` = Name |
   | `emo` | beide | Emote, `e` = Nummer in `EMOTES` (0 bis 5) |
+  | `pause`, `resume` | beide | App verlassen / zurück |
   | `i` | Gast → Gastgeber | Eingabe: `a` Zielrichtung (rad oder `null`), `s` Sprint. Bei Änderung, sonst alle 100 ms |
   | `s` | Gastgeber → Gast | Spielstand, 30-mal pro Sekunde (alle 2 Ticks). Zahlen ×1000 gerundet |
   | `again` | Gast → Gastgeber | Revanche nach Duell-Ende |
@@ -205,7 +213,8 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
 
 - **Spielstand `s`:** Phase, Punkte, Runde, Zeit, Arena-Radius, Köpfe (Position, Richtung, Länge, Zustände als
   Bits: 1 lebt, 2 Geist, 4 Turbo, 8 Sprint, 16 Schild, 32 Eis, 64 Magnet), Futter, Joker, Bomben (`b`), Ereignisse.
-  Die Arena (`ar`) und die Spielart (`md`) kommen in vollen Spielständen; Hindernisse und Portale rechnet der Gast
+  `sn[i][5]` = Leben. Die Arena (`ar`), die Spielart (`md`), der Boss (`bo`) und pro Wurm Größe, Team und Boss-Kennzeichen
+  (`bs`) kommen in vollen Spielständen; Hindernisse und Portale rechnet der Gast
   aus Arena und Zeit selbst. `sn`, `sc`, `tr` und `sk` haben einen Eintrag pro Wurm (2 oder 4); der Gast baut bei
   anderer Anzahl seine Würmer neu auf (`guestSnake`). Die Spuren baut der Gast aus den Kopf-Positionen selbst mit (`applySnap`,
   `trimByLength`). Ein **voller Abgleich** mit Spuren und Mauern kommt alle 15 Spielstände sowie bei Rundenstart,
@@ -214,7 +223,7 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
   (`guestView`), also etwa 33 ms verzögert plus Laufzeit.
 - **Test-Schalter:** `?net=local` ersetzt PeerJS durch einen `BroadcastChannel` zwischen zwei Tabs.
 - **Bekannte Grenzen:** Kein TURN-Server, daher in manchen Netzen keine Verbindung. Pausiert der Browser des
-  Gastgebers (App-Wechsel, Bildschirmsperre), steht das Spiel. Der Gast lenkt verzögert.
+  Gastgebers (App-Wechsel, Bildschirmsperre), steht das Spiel (mit Hinweis beim Gast). Der Gast lenkt verzögert.
 
 ## Aufbau von `index.html`
 
@@ -232,6 +241,8 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
 | `fx(e)` | Ereignisse ⇒ Töne (WebAudio), Funken, Hinweise, Vibration (`vib`), Zeitlupe (`app.slow`), Zählen für Aufgaben (`bump`) |
 | `TASKS`, `ACHS`, `bump()`, `checkGoals()`, `trackFrame()` | Tagesaufgaben, Erfolge, Sterne (siehe „Aufgaben, Erfolge, Sterne“) |
 | `notify()` / `showToast()` | Hinweise oben: `notify` reiht wichtige Hinweise nacheinander, `showToast` ist für Joker-Meldungen |
+| `startTour`, `TOUR`, `app.tour` | Turnier zu zweit an einem Handy: Säulen, Karussell, Portale, je 2 Runden zum Sieg (`Match`-Option `winRounds`), wer zuerst zwei Arenen gewinnt |
+| `teamOf(view, i)`, `myTeam(view)` | Sieger einer Runde ist eine Teamnummer: überall mit dem eigenen Team vergleichen, nicht mit `app.me` |
 | `startSolo(kind)` / `startDuo` / `hostGame` / `joinGame` / `startNetMatch` / `showEnd` / `toMenu` | Spielablauf. `app.mode` = menu, lobby, solo, host, guest, duo; `app.kind` = Spielart |
 | Steuerung | Zwei Lenkarten (`state.steer`, gespeichert als `sd_steer`): „Kreis“ = schwebender Joystick, „Zum Finger“ = `aimAtFinger(p)`. Dazu Sprint-Knopf und Tastatur. Zwei Spieler: `joy2`, `input2`, `sprintBtn2`, Pfad über `padJoy(p)` / `padInput(p)` |
 | `drawArenaFeatures`, `drawBombs`, `drawEmotes` | Hindernisse, Portale, Bomben mit Warnkreis, Emotes über dem Kopf |
@@ -355,6 +366,8 @@ enthält die vollständige Ideenliste mit Empfehlung.
 - Aussehen: Glieder-Würmer mit Gesicht, 19 Designs (9 eingebaut, 10 mit Bildern), Auswahl-Übersicht,
   Bild-Designs aus `skins/` samt Anleitung und Prompts.
 - Effekte: Vibration, Zeitlupe, Konfetti. Tagesaufgaben, Erfolge, Sterne, Sterne-Designs.
+- Alles Offene ohne Handy-Rückmeldung (19.11.2026): Turnier zu zweit (Idee 13), Online-Pause und „Warte auf
+  Gastgeber …“ (Idee 14, Test im Online-Test), Boss zu zweit online.
 - Ideen 10 und 11 (19.11.2026): Namen und Liste „Meine Gegner“, Rekorde auf dem Gerät.
 - Idee 12 (19.11.2026): vier Bosse (Riese, Blitz, Zwillinge, Bomber) mit Auswahl `bossPanel` und Freischalten.
 - Idee 9 und neuer Startbildschirm (19.11.2026): Futterjagd und Überleben auch online.
@@ -377,12 +390,11 @@ enthält die vollständige Ideenliste mit Empfehlung.
   dieser Datei sind aktualisiert.
 
 ### Online verbessern (nach Rückmeldung)
-- Hinweis beim Gast „Warte auf Gastgeber …“, wenn länger als 1,5 s kein Spielstand kommt. Beim Gastgeber
-  `visibilitychange` nutzen und dem Gast eine Pause melden.
+- Erledigt: Hinweis „Warte auf Gastgeber …“ und Pause bei App-Wechsel (beide Richtungen), mit Test.
 - Lenkung des Gastes direkter machen: eigene Schlange auf dem Gast-Handy sofort drehen und beim nächsten
   Spielstand abgleichen. Vorher mit dem User klären, ob die Verzögerung überhaupt stört.
 - TURN-Server nur, wenn es dauerhaft kostenlos geht und der User zustimmt. Keine Zugangsdaten ins Repo.
-- **Fertig, wenn:** `online.test.js local` und `peer` grün, ein Test für die Pause ergänzt.
+- Offen bleibt nur, was eine Entscheidung oder Rückmeldung des Users braucht (direktere Lenkung, TURN).
 
 ### Ideen, die der User noch nicht gewählt hat
 Siehe `UEBERGABE.md`. Neue Joker, Arenen und Modi ändern die Simulation: Dann `sim.test.js` erweitern,

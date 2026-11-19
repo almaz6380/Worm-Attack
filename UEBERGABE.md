@@ -60,6 +60,8 @@ Bilder für neue Wurm-Designs kannst du einfach in den Chat schicken.
 7. **Acht weitere Designs** (von Claude gezeichnet), Auswahl-Übersicht, Prompts für alle Designs.
 8. **Sprint per Doppeltipp.**
 9. **Effekte, Tagesaufgaben, Erfolge, Sterne-Designs.**
+14. **Alles fertig gemacht:** Turnier zu zweit an einem Handy (drei Arenen), Online-Pause mit Hinweis („… ist kurz
+    weg“, „Warte auf Gastgeber …“), Boss zu zweit online (ihr beide gegen einen Boss).
 13. **Namen und Rekorde:** Eigener Name unter „Online“, der Freund sieht ihn. Liste „Meine Gegner“ mit Bilanz
     gegen jeden Freund. Rekorde auf dem Handy (längster Wurm, schnellste Siege usw.) unter „Ziele“ → „Rekorde“.
 12. **Vier Bosse:** Riese, Blitz (dünn und schnell), Zwillinge (zwei auf einmal), Bomber (legt Bomben). Einer nach
@@ -82,6 +84,7 @@ Bilder für neue Wurm-Designs kannst du einfach in den Chat schicken.
 | „mach 9 … und mach einen besseren Startbildschirm“ | Spielarten online, neuer Startbildschirm |
 | „mach 12“ | Vier Bosse mit Freischalten |
 | „mach 10 und 11“ | Namen, Liste „Meine Gegner“, Rekorde |
+| „mach einfach alles ganz fertig!!!!“ | Turnier zu zweit, Online-Pause, Boss zu zweit online |
 
 ## Was noch niemand auf einem echten Handy geprüft hat
 
@@ -104,6 +107,8 @@ zurückmelden:
 - **Startbildschirm:** Gefällt er dir? Findest du alles (Lenkart steht jetzt unter „Regeln“)?
 - **Online-Überleben:** Klappt es zu zweit gegen die Computer-Würmer?
 - **Namen und Rekorde:** Taucht dein Name beim Freund auf? Motivieren dich die Rekorde?
+- **Turnier zu zweit:** Macht es Spaß, drei Arenen nacheinander zu spielen?
+- **Boss zu zweit online:** Ist es zu leicht oder zu schwer? Stört die Pause beim App-Wechsel?
 - **Bosse:** Ist die Reihenfolge Riese → Blitz → Zwillinge → Bomber richtig schwer? Ist Blitz zu fies?
 - **Clips:** Lässt sich der Clip auf dem iPhone speichern und teilen? Ruckelt das Spiel während der Aufnahme? Wenn
   ja, unter „Regeln“ die Clips ausschalten und mir Bescheid geben.
@@ -112,10 +117,11 @@ zurückmelden:
 
 - **Online klappt nicht in jedem Netz.** Die Handys verbinden sich direkt. In Firmen-WLANs oder manchen
   Mobilfunknetzen kommt keine Verbindung zustande. Der Vermittlungsdienst ist kostenlos und ohne Garantie.
-- **Gastgeber muss die Seite offen lassen.** Wechselt er die App, steht das Spiel für beide.
+- **Gastgeber muss die Seite offen lassen.** Wechselt er die App, steht das Spiel für beide. Der Freund sieht dann
+  „… ist kurz weg“. Verlässt der Gast die App, hält das Spiel an, bis er zurück ist.
 - **Beide brauchen die neueste Version.** Alte und neue Version finden sich nicht. Wer noch die alte hat: App ganz
   schließen und mit Internet neu öffnen.
-- **Online gibt es Duell, Futterjagd und Überleben.** Der Bosswurm geht nur gegen den Computer. Gewinnt beim
+- **Online gibt es Duell, Futterjagd, Überleben und Boss zu zweit.** Die Boss-Reihe zum Freischalten gibt es nur allein. Gewinnt beim
   Überleben ein Computer-Wurm, zählt das nicht für die Bilanz zwischen euch.
 - **Clips brauchen etwas Rechenkraft.** Im simulierten Handy lief es flüssig, auf alten Handys könnte es ruckeln.
   Der Clip bleibt auf dem Handy, nichts wird hochgeladen.
@@ -129,23 +135,19 @@ zurückmelden:
 
 ## Was als Nächstes möglich ist
 
-Die Ideen 1 bis 8 aus der alten Liste sind alle umgesetzt. Neue Ideen:
+Alle Ideen aus den bisherigen Listen sind umgesetzt (1 bis 14 und Boss zu zweit). Was jetzt noch offen ist, braucht
+deine Rückmeldung oder deine Entscheidung:
 
-| Nr. | Idee | Aufwand | Hinweis |
-| --- | --- | --- | --- |
-| 13 | Turnier zu zweit an einem Handy: mehrere Arenen nacheinander | klein | |
-| 14 | Pause-Hinweis online („Warte auf Gastgeber …“) | klein | stand schon in der Aufgabenliste |
+| Was | Warum es wartet |
+| --- | --- |
+| Schwierigkeit für Menschen einstellen (Computer, Bosse) | Dafür brauche ich deine Erfahrung vom echten Handy |
+| Lenkung des Gastes online direkter machen | Erst klären, ob die Verzögerung überhaupt stört |
+| Verbindung in schwierigen Netzen (TURN-Server) | Nur, wenn es dauerhaft kostenlos geht und du zustimmst |
+| Rangliste mit Fremden, Store-App | Kostet Geld (Server oder Store-Gebühr), nur auf deine ausdrückliche Anweisung |
+| Weitere Wurm-Designs | Schick mir Bilder, oder nutze die Prompts in `skins/PROMPTS.md` |
 
-**Empfehlung von Claude:** Zuerst alles Neue auf dem echten Handy ausprobieren, am besten auch mit einem Freund
-online und zu zweit an einem Handy, und die Fragen oben beantworten. Danach Schwierigkeit und Boss nach deiner
-Rückmeldung einstellen. Neue Idee mit viel Spaß: Bosse zu zweit online (ihr beide gegen einen Boss).
-
-Die Ideen 9 bis 12 sind umgesetzt.
-
-Die Idee 9 (Spielarten online) ist umgesetzt.
-
-Außerdem jederzeit möglich: weitere Wurm-Designs. Die acht von Claude gezeichneten sind schlicht. Mit den
-Prompts in `skins/PROMPTS.md` kannst du sie durch KI-Bilder ersetzen.
+**Empfehlung von Claude:** Jetzt ausgiebig auf dem echten Handy spielen, allein, zu zweit und online, und mir die
+Fragen oben beantworten. Danach stelle ich Schwierigkeit und Feinheiten nach deiner Rückmeldung ein.
 
 ## Wo was liegt
 

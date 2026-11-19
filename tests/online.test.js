@@ -88,6 +88,32 @@ fs.mkdirSync(shots, { recursive: true });
   await host.bringToFront(); await host.waitForTimeout(150);
   await host.screenshot({ path: path.join(shots, `online-${MODE}-3-gastgeber.png`) });
 
+  // Pause: Der Gast verlässt kurz die App ⇒ der Gastgeber hält an und zeigt einen Hinweis, nach der Rückkehr geht es weiter
+  const hide = async (page, hidden) => page.evaluate(h => { Object.defineProperty(document, "hidden", { value: h, configurable: true }); document.dispatchEvent(new Event("visibilitychange")); }, hidden);
+  await hide(guest, true);
+  await pump(600);
+  const p1 = await host.evaluate(() => ({ away: SD.app.friendAway, ticks: SD.app.match.ticks }));
+  await pump(600);
+  const p2 = await host.evaluate(() => SD.app.match.ticks);
+  check(p1.away && p2 === p1.ticks, `Gast kurz weg ⇒ Gastgeber hält das Spiel an (Ticks bleiben bei ${p2})`);
+  await hide(guest, false);
+  await pump(2200);
+  const p3 = await host.evaluate(() => ({ away: SD.app.friendAway, ticks: SD.app.match.ticks }));
+  check(!p3.away && p3.ticks > p2, `Gast zurück ⇒ nach kurzer Wartezeit geht es weiter (${p2} → ${p3.ticks} Ticks)`);
+  // Gastgeber kurz weg ⇒ Gast sieht den Hinweis
+  await hide(host, true); await pump(400);
+  check(await guest.evaluate(() => SD.app.hostAway), "Gastgeber kurz weg ⇒ Gast bekommt Bescheid");
+  await hide(host, false); await pump(400);
+  check(!(await guest.evaluate(() => SD.app.hostAway)), "Gastgeber zurück ⇒ Hinweis beim Gast verschwindet");
+  // Verbindung hakt (kein Spielstand mehr) ⇒ „Warte auf Gastgeber …“
+  await host.evaluate(() => { SD.app.friendAway = true; });
+  await pump(2000);
+  const wt = await guest.evaluate(() => SD.app.waitingHost);
+  await guest.bringToFront(); await guest.screenshot({ path: path.join(shots, `online-${MODE}-2b-warte.png`) });
+  await host.evaluate(() => { SD.app.friendAway = false; });
+  await pump(800);
+  check(wt && !(await guest.evaluate(() => SD.app.waitingHost)), "Kein Spielstand seit 1,5 s ⇒ Gast sieht „Warte auf Gastgeber …“, danach wieder weg");
+
   // Schnelldurchlauf bis zum Ende des Duells (Bots übernehmen beim Gastgeber)
   await host.evaluate(() => { const m = SD.app.match; m.bots = [new SD.Bot(8, 1), new SD.Bot(2, 2)]; let g = 0; while (!m.over && g++ < 60 * 70 * 9) m.tick(); });
   await host.waitForSelector("#endPanel:not(.hidden)", { timeout: 8000 });
@@ -125,6 +151,25 @@ fs.mkdirSync(shots, { recursive: true });
   await guest.waitForSelector("#endPanel:not(.hidden)", { timeout: 8000 }).catch(() => {});
   const ue2 = await guest.evaluate(() => [document.getElementById("endTitle").textContent, document.getElementById("endSub").textContent]);
   check(/gewonnen|verloren|Unentschieden/.test(ue2[0]) && /Bilanz/.test(ue2[1]), `Online-Überleben endet beim Gast: ${ue2.join(" · ").replace(/\n/g, " · ")}`);
+
+  // Boss zu zweit: beide Freunde gemeinsam gegen die Zwillinge
+  await host.evaluate(() => { SD.state.netmode = "boss:zwillinge"; });
+  await guest.bringToFront(); await guest.click("#againBtn");
+  await host.bringToFront();
+  await host.waitForFunction(() => SD.app.match.round === 1 && !SD.app.match.over && SD.app.match.sim.boss === "zwillinge", null, { timeout: 8000 }).catch(() => {});
+  await pump(1500);
+  const cb = await guest.evaluate(() => ({ n: SD.app.gv.snakes.length, teams: SD.app.gv.snakes.map(s => s.team).join(), boss: SD.app.gv.snakes.map(s => s.boss ? 1 : 0).join(), lives: SD.app.gv.snakes.map(s => s.lives).join(), mode: SD.app.gv.mode }));
+  check(cb.n === 4 && cb.teams === "0,0,2,2" && cb.boss === "0,0,1,1" && cb.lives === "2,2,3,3" && cb.mode === "boss", `Boss zu zweit: Gast kennt Teams (${cb.teams}), Bosse und Leben (${cb.lives})`);
+  await guest.bringToFront(); await guest.screenshot({ path: path.join(shots, `online-${MODE}-6-boss-zu-zweit.png`) });
+  await host.bringToFront();
+  await host.evaluate(() => { const m = SD.app.match; m.bots[0] = new SD.Bot(9, 1); m.bots[1] = new SD.Bot(9, 2); });
+  for (let k = 0; k < 400 && !(await host.evaluate(() => { const m = SD.app.match; for (let g = 0; g < 600 && !m.over; g++) m.tick(); return m.over; })); k++) await host.waitForTimeout(20);
+  await host.waitForSelector("#endPanel:not(.hidden)", { timeout: 8000 });
+  await guest.bringToFront();
+  await guest.waitForSelector("#endPanel:not(.hidden)", { timeout: 8000 }).catch(() => {});
+  const ce = [await host.evaluate(() => document.getElementById("endTitle").textContent + " · " + document.getElementById("endSub").textContent),
+              await guest.evaluate(() => document.getElementById("endTitle").textContent + " · " + document.getElementById("endSub").textContent)];
+  check(/gemeinsam|stärker/.test(ce[0]) && /gemeinsam|stärker/.test(ce[1]) && ce[0].split(" · ")[0] === ce[1].split(" · ")[0], `Boss zu zweit endet für beide gleich: ${ce[1].replace(/\n/g, " · ")}`);
 
   // Gastgeber verlässt ⇒ Gast landet mit Hinweis im Menü
   host.on("dialog", d => d.accept());

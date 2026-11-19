@@ -140,7 +140,8 @@ fs.mkdirSync(shots, { recursive: true });
     ev("pointerdown", 32, x + 10, y + 5); out.on = SD.input.s; out.btn = document.getElementById("sprintBtn").classList.contains("on");
     const len0 = SD.app.match.sim.snakes[0].len; await wait(450);
     // kürzer wird der Wurm nur, solange die Runde läuft und er lebt (die Runde kann im Test zufällig gerade enden)
-    out.shorter = SD.app.match.sim.snakes[0].len < len0 || !SD.app.match.sim.snakes[0].alive || SD.app.match.phase !== "play";
+    // (frisst er dabei zufällig Futter, wird er trotzdem nicht kürzer – dann zählt, dass die Simulation ihn sprinten lässt)
+    out.shorter = SD.app.match.sim.snakes[0].len < len0 || SD.app.match.sim.snakes[0].sprinting || !SD.app.match.sim.snakes[0].alive || SD.app.match.phase !== "play";
     ev("pointerup", 32, x + 10, y + 5); out.off = SD.input.s === false;
     await wait(500);                                           // zu langsam
     ev("pointerdown", 33, x, y); out.slow = SD.input.s; ev("pointerup", 33, x, y); await wait(60);
@@ -356,6 +357,25 @@ fs.mkdirSync(shots, { recursive: true });
   await page.waitForSelector("#endPanel:not(.hidden)", { timeout: 8000 });
   const de = await page.evaluate(() => ({ title: document.getElementById("endTitle").textContent, duel: SD.goals.stats.duel, again: document.getElementById("againBtn").textContent }));
   check(/Spieler [12] gewinnt|Unentschieden/.test(de.title) && de.duel === st0.duel, `Zwei Spieler: „${de.title}“, zählt nicht für Aufgaben`);
+  await page.click("#menuBtn");
+  // ---------- Turnier zu zweit: drei Arenen, je zwei Runden zum Sieg ----------
+  await page.click("#modeBtn"); await page.click("#tourBtn");
+  await page.waitForFunction(() => SD.app.match && SD.app.mode === "duo", null, { timeout: 5000 });
+  const t0 = await page.evaluate(() => ({ arena: SD.app.match.sim.arena, win: SD.app.match.winRounds }));
+  check(t0.arena === "saeulen" && t0.win === 2, "Turnier startet in den Säulen, zwei Runden zum Sieg");
+  const steps = [];
+  for (let k = 0; k < 3; k++) {
+    await page.evaluate(() => { const m = SD.app.match; m.bots = [new SD.Bot(10, 1), new SD.Bot(1, 2)]; let g = 0; while (!m.over && g++ < 60 * 70 * 9) m.tick(); });
+    await page.waitForSelector("#endPanel:not(.hidden)", { timeout: 8000 });
+    const e = await page.evaluate(() => ({ title: document.getElementById("endTitle").textContent, sub: document.getElementById("endSub").textContent, again: document.getElementById("againBtn").textContent }));
+    steps.push(e.title);
+    if (e.again === "Neues Turnier") break;
+    await page.click("#againBtn");
+    await page.waitForFunction(() => SD.app.match && !SD.app.match.over && SD.app.match.round === 1, null, { timeout: 5000 });
+  }
+  await page.screenshot({ path: path.join(shots, "16-turnier.png") });
+  const tf = await page.evaluate(() => ({ again: document.getElementById("againBtn").textContent, tour: SD.app.tour }));
+  check(tf.again === "Neues Turnier" && tf.tour.done && steps.length >= 2 && /Turnier/.test(steps[steps.length - 1]), `Turnier läuft durch: ${steps.join(" → ")}`);
   await page.click("#menuBtn");
   await page.evaluate(() => { SD.state.arena = "klassisch"; });
   check(errors.length === 0, `Keine Konsolenfehler${errors.length ? ": " + errors.join("; ") : ""}`);
