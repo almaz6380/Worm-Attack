@@ -43,8 +43,8 @@ simulierte Browser auf einem Rechner.
 - **Wiederholbar:** Zwischen den Markern `/* SIM-START` und `/* SIM-END */` (Klassen `Sim`, `Bot`, `Match`)
   kein `Math.random()`, kein `Date`, kein DOM. Nur der Seed-Zufall (`mulberry32`). Gleicher Seed ⇒ gleicher Ablauf.
 - **Marker stehen lassen:** `tests/sim.test.js` liest den Code zwischen `SIM-START` und `SIM-END` aus `index.html`.
-- **Kompatibel bleiben:** Speicher-Präfix `sd_` (localStorage) nicht ändern. Netz-Präfix ist `snakeduell-v2-`
-  (seit den neuen Jokern und Arenen; v1-Spiele passen nicht mehr zusammen). Wenn sich das Online-Protokoll
+- **Kompatibel bleiben:** Speicher-Präfix `sd_` (localStorage) nicht ändern. Netz-Präfix ist `snakeduell-v3-`
+  (v2: neue Joker und Arenen, v3: Spielarten online mit mehr als zwei Würmern; ältere Versionen passen nicht zusammen). Wenn sich das Online-Protokoll
   unverträglich ändert, die Versionsnummer im Netz-Präfix hochzählen.
 - **Eigenes Spiel:** Regeln, Grafik und Namen sind eigene. Nichts von bestehenden Spielen kopieren.
 - `localStorage` immer in try/catch. Das Spiel muss auch ohne Speicher laufen.
@@ -160,7 +160,7 @@ Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am
 | `sd_streak` | Tages-Serie: aktuelle Länge, beste, letzter Tag |
 | `sd_ach` | Erledigte Erfolge |
 | `sd_owned` | Für Sterne freigeschaltete Designs |
-| `sd_arena`, `sd_clip` | Gewählte Arena, Clip-Aufnahme an/aus |
+| `sd_arena`, `sd_clip`, `sd_netmode` | Gewählte Arena, Clip-Aufnahme an/aus, Online-Spielart des Gastgebers |
 | `sd_id` | Zufällige Kennung dieses Geräts (für die Bilanz gegen Freunde) |
 | `sd_rivals` | Bilanz pro Freund: `{Kennung: {w, l, d, s}}`, `s` = aktuelle Serie (positiv Siege, negativ Niederlagen) |
 
@@ -170,9 +170,11 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
 
 - **Verbinden:** Gastgeber erzeugt einen 4-stelligen Code. Der Gast tritt per Code oder Link `?join=CODE` bei.
   WebRTC-Datenkanal über `peerjs@1.5.5`, Vermittlung über den öffentlichen PeerJS-Dienst.
-  Peer-ID des Gastgebers: `snakeduell-v2-<Code>`.
+  Peer-ID des Gastgebers: `snakeduell-v3-<Code>`.
 - **Wer rechnet:** Der Gastgeber ist Schlange 0 und lässt `Match` laufen. Der Gast ist Schlange 1.
-  Online gibt es nur das Duell, aber in der Arena, die der Gastgeber gewählt hat.
+  Der Gastgeber wählt in der Lobby Spielart (`state.netmode`, gespeichert als `sd_netmode`: `duell`, `futter`,
+  `ueberleben`) und Arena. Bei `ueberleben` spielen beide Freunde (Wurm 0 und 1) gegen zwei Bots (Stufe des
+  Gastgebers − 1), die beim Gastgeber rechnen. Bosswurm gibt es online nicht.
 - **Nachrichten** (JSON):
 
   | Art | Richtung | Inhalt |
@@ -187,7 +189,9 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
 
 - **Spielstand `s`:** Phase, Punkte, Runde, Zeit, Arena-Radius, Köpfe (Position, Richtung, Länge, Zustände als
   Bits: 1 lebt, 2 Geist, 4 Turbo, 8 Sprint, 16 Schild, 32 Eis, 64 Magnet), Futter, Joker, Bomben (`b`), Ereignisse.
-  Die Arena (`ar`) kommt in vollen Spielständen; Hindernisse und Portale rechnet der Gast aus Arena und Zeit selbst. Die Spuren baut der Gast aus den Kopf-Positionen selbst mit (`applySnap`,
+  Die Arena (`ar`) und die Spielart (`md`) kommen in vollen Spielständen; Hindernisse und Portale rechnet der Gast
+  aus Arena und Zeit selbst. `sn`, `sc`, `tr` und `sk` haben einen Eintrag pro Wurm (2 oder 4); der Gast baut bei
+  anderer Anzahl seine Würmer neu auf (`guestSnake`). Die Spuren baut der Gast aus den Kopf-Positionen selbst mit (`applySnap`,
   `trimByLength`). Ein **voller Abgleich** mit Spuren und Mauern kommt alle 15 Spielstände sowie bei Rundenstart,
   Schere und Mauer (`m.full`).
 - **Darstellung beim Gast:** Köpfe werden zwischen den letzten zwei Spielständen weich zwischengerechnet
@@ -219,7 +223,11 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
 | `myId`, `rivals`, `rivalGreeting` | Bilanz gegen Freunde |
 | `window.SD` | Zugriff für Tests: `app`, `state`, `input`, `input2`, `Sim`, `Bot`, `Match`, `SKINS`, `ARENAS`, `clip`, `rivals`, `startSolo`, `startDuo`, `goals` |
 
-Im Menü läuft im Hintergrund ein Demo-Duell Bot gegen Bot.
+**Startbildschirm:** Oben `drawLogo()` (wippende Buchstaben mit Farbverlauf, darunter kriecht ein kleiner Wurm im
+gewählten Design), in der Mitte ein Demo-Duell Bot gegen Bot in der gewählten Arena. Das Menü-Panel hat eine
+Profilzeile (`refreshProfile`: Stufe, Sterne, Siege, Tages-Serie), den großen Knopf „▶ SPIELEN“ (`soloBtn`, Duell
+gegen den Computer), „🎮 Spielarten“ (`modePanel`), „👥 Online“ (`onlinePanel` mit Einladen und Code-Eingabe) und
+vier Kacheln: Wurm, Arena, Ziele, Regeln. Die Lenkart steht im Regeln-Panel.
 
 **Aussehen der Würmer** (nur Darstellung, die Simulation weiß nichts davon):
 - Der Körper wird aus Gliedern gestempelt: `disc(farbe)` zeichnet ein Glied einmal vor (28 px, Glanzlicht, Rand),
@@ -326,6 +334,7 @@ enthält die vollständige Ideenliste mit Empfehlung.
 - Aussehen: Glieder-Würmer mit Gesicht, 19 Designs (9 eingebaut, 10 mit Bildern), Auswahl-Übersicht,
   Bild-Designs aus `skins/` samt Anleitung und Prompts.
 - Effekte: Vibration, Zeitlupe, Konfetti. Tagesaufgaben, Erfolge, Sterne, Sterne-Designs.
+- Idee 9 und neuer Startbildschirm (19.11.2026): Futterjagd und Überleben auch online.
 - Ideen 3 bis 8 (19.11.2026): Joker Magnet, Eis, Schild, Bombe; Arenen Säulen, Karussell, Portale; Spielarten
   Überleben, Futterjagd, Bosswurm; zwei Spieler an einem Handy; Online-Emotes und Bilanz gegen Freunde; Clips.
 

@@ -37,7 +37,8 @@ Bilder für neue Wurm-Designs kannst du einfach in den Chat schicken.
 | Arenen | Klassisch, Säulen, Karussell (kreisende Blöcke), Portale. Umschalten im Menü |
 | Gegen Computer | 10 Stufen, jeder Duell-Sieg schaltet die nächste frei |
 | Spielarten | Überleben (du gegen drei Computer), Futterjagd (45 s, niemand fliegt raus), Bosswurm (Boss mit drei Leben, du mit zwei), Zwei Spieler an einem Handy |
-| Online | Freund per 4-stelligem Code oder Link einladen, direkte Verbindung zwischen den Handys. Emotes, Bilanz gegen jeden Freund mit Sieges-Serie |
+| Online | Freund per 4-stelligem Code oder Link einladen, direkte Verbindung zwischen den Handys. Spielart Duell, Futterjagd oder Überleben (mit zwei Computer-Würmern). Emotes, Bilanz gegen jeden Freund mit Sieges-Serie |
+| Startbildschirm | Wippender Schriftzug mit kriechendem Wurm, Profilzeile (Stufe, Sterne, Siege), großer Spielen-Knopf, Kacheln für Wurm, Arena, Ziele, Regeln |
 | Clips | Die letzten 8 bis 16 Sekunden jeder Runde werden mit Ton aufgenommen. Nach dem Duell speichern oder teilen (z. B. für TikTok) |
 | Steuerung | Zwei Lenkarten im Menü: „Kreis“ (ziehen) und „Zum Finger“. Sprint per ⚡-Knopf oder Doppeltipp und Halten |
 | Würmer | Glieder mit Glanzlicht, Gesicht, Effekte. 19 Designs, Auswahl über eine Übersicht mit Vorschau |
@@ -59,6 +60,8 @@ Bilder für neue Wurm-Designs kannst du einfach in den Chat schicken.
 7. **Acht weitere Designs** (von Claude gezeichnet), Auswahl-Übersicht, Prompts für alle Designs.
 8. **Sprint per Doppeltipp.**
 9. **Effekte, Tagesaufgaben, Erfolge, Sterne-Designs.**
+11. **Spielarten online und neuer Startbildschirm:** Futterjagd und Überleben (ihr zwei plus zwei Computer-Würmer)
+    online. Neuer Schriftzug, großer Spielen-Knopf, aufgeräumtes Menü. Online-Version auf v3.
 10. **Ideen 3 bis 8 auf einmal:** vier neue Joker, drei neue Arenen, drei neue Spielarten, zwei Spieler an einem
     Handy, Emotes und Bilanz für Online, Clips. Online-Version auf v2 hochgezählt.
 
@@ -72,6 +75,7 @@ Bilder für neue Wurm-Designs kannst du einfach in den Chat schicken.
 | „Nicht schlecht“, Sprint auch per Doppelklick | Doppeltipp und Halten eingebaut |
 | Ideen 1 und 2 umsetzen | Effekte, Aufgaben und Erfolge eingebaut |
 | „mach 3 bis 8“ | Joker, Arenen, Spielarten, zwei Spieler, Emotes und Bilanz, Clips eingebaut |
+| „mach 9 … und mach einen besseren Startbildschirm“ | Spielarten online, neuer Startbildschirm |
 
 ## Was noch niemand auf einem echten Handy geprüft hat
 
@@ -91,6 +95,8 @@ zurückmelden:
 - **Spielarten:** Ist der Boss zu schwer oder zu leicht? Ist Überleben gegen drei zu chaotisch?
 - **Zwei Spieler:** Kommt ihr euch mit den Fingern in die Quere? Stört, dass die Schrift für den oberen Spieler auf
   dem Kopf steht?
+- **Startbildschirm:** Gefällt er dir? Findest du alles (Lenkart steht jetzt unter „Regeln“)?
+- **Online-Überleben:** Klappt es zu zweit gegen die Computer-Würmer?
 - **Clips:** Lässt sich der Clip auf dem iPhone speichern und teilen? Ruckelt das Spiel während der Aufnahme? Wenn
   ja, unter „Regeln“ die Clips ausschalten und mir Bescheid geben.
 
@@ -99,10 +105,10 @@ zurückmelden:
 - **Online klappt nicht in jedem Netz.** Die Handys verbinden sich direkt. In Firmen-WLANs oder manchen
   Mobilfunknetzen kommt keine Verbindung zustande. Der Vermittlungsdienst ist kostenlos und ohne Garantie.
 - **Gastgeber muss die Seite offen lassen.** Wechselt er die App, steht das Spiel für beide.
-- **Beide brauchen die neue Version.** Seit dem 19.11.2026 finden sich alte und neue Version nicht mehr. Wer noch
-  die alte hat: App ganz schließen und mit Internet neu öffnen.
-- **Online gibt es nur das Duell** (in der Arena des Gastgebers). Überleben, Futterjagd und Boss gehen nur gegen den
-  Computer.
+- **Beide brauchen die neueste Version.** Alte und neue Version finden sich nicht. Wer noch die alte hat: App ganz
+  schließen und mit Internet neu öffnen.
+- **Online gibt es Duell, Futterjagd und Überleben.** Der Bosswurm geht nur gegen den Computer. Gewinnt beim
+  Überleben ein Computer-Wurm, zählt das nicht für die Bilanz zwischen euch.
 - **Clips brauchen etwas Rechenkraft.** Im simulierten Handy lief es flüssig, auf alten Handys könnte es ruckeln.
   Der Clip bleibt auf dem Handy, nichts wird hochgeladen.
 - **Mehr Glück im Spiel.** Mit acht Jokern gewinnt der stärkere Computer etwas seltener als vorher (Stufe 10 gegen
@@ -119,7 +125,6 @@ Die Ideen 1 bis 8 aus der alten Liste sind alle umgesetzt. Neue Ideen:
 
 | Nr. | Idee | Aufwand | Hinweis |
 | --- | --- | --- | --- |
-| 9 | Spielarten auch online (Futterjagd, Überleben mit Freund plus Computer-Würmern) | mittel | Online-Spielstand muss mehr als zwei Würmer kennen |
 | 10 | Namen für Freunde in der Bilanz, Liste „Meine Gegner“ | klein | |
 | 11 | Bestenliste auf dem Gerät: längster Wurm, schnellster Boss-Sieg | klein | ohne Server |
 | 12 | Weitere Bosse (z. B. ein schneller, dünner Boss oder zwei Bosse) | mittel | |
@@ -128,7 +133,9 @@ Die Ideen 1 bis 8 aus der alten Liste sind alle umgesetzt. Neue Ideen:
 
 **Empfehlung von Claude:** Zuerst alles Neue auf dem echten Handy ausprobieren, am besten auch mit einem Freund
 online und zu zweit an einem Handy, und die Fragen oben beantworten. Danach Schwierigkeit und Boss nach deiner
-Rückmeldung einstellen. Von den neuen Ideen bringt Nummer 9 (Spielarten online) am meisten.
+Rückmeldung einstellen. Von den Ideen bringt Nummer 12 (weitere Bosse) oder ein Boss zu zweit online am meisten Spaß.
+
+Die Idee 9 (Spielarten online) ist umgesetzt.
 
 Außerdem jederzeit möglich: weitere Wurm-Designs. Die acht von Claude gezeichneten sind schlicht. Mit den
 Prompts in `skins/PROMPTS.md` kannst du sie durch KI-Bilder ersetzen.

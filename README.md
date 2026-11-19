@@ -34,8 +34,13 @@ Im Menü über „Arena: …“ umschalten. Gilt für alle Spielarten, online w�
 | Karussell | sechs Blöcke kreisen um die Mitte |
 | Portale | zwei Portal-Paare: rein und beim gleichfarbigen wieder raus. In der schrumpfenden Arena schließen sie sich |
 
+## Startbildschirm
+Oben der Schriftzug, in der Mitte ein Demo-Duell in der gewählten Arena. Darunter: deine Stufe, Sterne und Siege,
+der große Knopf „▶ SPIELEN“ (Duell gegen den Computer), „🎮 Spielarten“, „👥 Online“ und vier Kacheln: Wurm, Arena,
+Ziele (Aufgaben und Erfolge) und Regeln (mit Lenkart, Vibration und Clips).
+
 ## Steuerung
-Im Menü gibt es zwei Lenkarten zur Auswahl:
+Unter „Regeln“ gibt es zwei Lenkarten zur Auswahl:
 - **Kreis:** Finger irgendwo aufsetzen und ziehen. Die Zugrichtung ist die Fahrtrichtung. Der Kreis erscheint
   immer dort, wo man gerade hingreift, und wandert mit dem Finger mit.
 - **Zum Finger:** Der Wurm fährt auf die Stelle zu, die man berührt.
@@ -95,8 +100,9 @@ oder teilt der Knopf „🎬 Clip speichern“ das Video der letzten Runde, zum 
 - **Gegen Computer:** Jeder Sieg schaltet die nächste Stufe frei. Mit jeder Stufe schaut der Computer weiter voraus,
   reagiert schneller, macht weniger Fehler und greift ab Stufe 5 aktiv an. Ab Stufe 10 wird er nicht mehr stärker.
 - **Online gegen Freunde:**
-  1. „Freund einladen“ tippen. Du bekommst einen 4-stelligen Code und einen Einladungslink.
-  2. Dein Freund öffnet den Link oder gibt den Code im Menü ein.
+  1. „👥 Online“ → „Freund einladen“ tippen. Du bekommst einen 4-stelligen Code und einen Einladungslink. In der
+     Lobby wählst du Spielart (Duell, Futterjagd, Überleben mit zwei Computer-Würmern) und Arena.
+  2. Dein Freund öffnet den Link oder gibt den Code unter „👥 Online“ ein.
   3. Das Duell startet automatisch. Nach dem Ende kann jeder eine Revanche starten.
   4. Mit 😀 oben links schickt man Emotes (👋 😂 😎 😱 😡 👍). Nach jedem Duell steht die Bilanz gegen diesen Freund
      da, mit Sieges-Serie.

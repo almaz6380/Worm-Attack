@@ -27,7 +27,7 @@ fs.mkdirSync(shots, { recursive: true });
   // Gastgeber erstellt das Spiel
   await host.goto(BASE);
   await host.evaluate(() => { SD.state.arena = "portale"; });   // nur im Fenster des Gastgebers, wird nicht gespeichert
-  await host.click("#hostBtn");
+  await host.click("#onlineBtn"); await host.click("#hostBtn");
   await host.waitForFunction(() => document.getElementById("lobbyStatus").textContent.includes("Warte") || document.getElementById("lobbyStatus").classList.contains("err"), null, { timeout: wait });
   const lobby = await host.evaluate(() => ({ code: SD.app.code, status: document.getElementById("lobbyStatus").textContent }));
   check(/^\d{4}$/.test(lobby.code) && lobby.status.includes("Warte"), `Spiel erstellt, Code ${lobby.code} (${lobby.status})`);
@@ -99,13 +99,27 @@ fs.mkdirSync(shots, { recursive: true });
   check(ends[0][1].includes("Bilanz gegen diesen Freund") && ends[1][1].includes("Bilanz gegen diesen Freund"), "Beide sehen die Bilanz gegen diesen Freund");
   await guest.screenshot({ path: path.join(shots, `online-${MODE}-4-ende-gast.png`) });
 
-  // Revanche vom Gast aus
+  // Revanche vom Gast aus – der Gastgeber hat inzwischen „Überleben“ gewählt (beide Freunde plus zwei Computer-Würmer)
+  await host.evaluate(() => { SD.state.netmode = "ueberleben"; });
   await guest.click("#againBtn");
   await host.bringToFront();
   await host.waitForFunction(() => SD.app.match.round === 1 && !SD.app.match.over, null, { timeout: 8000 }).then(() => check(true, "Revanche startet ein neues Duell"), () => check(false, "Revanche startet nicht"));
   await pump(800);                                        // der Gastgeber muss sichtbar sein, damit er Spielstände schickt
   await guest.bringToFront();
   await guest.waitForSelector("#endPanel.hidden", { timeout: 8000, state: "attached" }).then(() => check(true, "Gast ist wieder im Spiel"), () => check(false, "Gast bleibt im Ergebnis hängen"));
+  await pump(1500);
+  const ue = await guest.evaluate(() => ({ n: SD.app.gv.snakes.length, mode: SD.app.gv.mode, skins: SD.app.skins, trail: SD.app.gv.snakes[3].trail.length }));
+  const hu = await host.evaluate(() => ({ n: SD.app.match.sim.snakes.length, skins: SD.app.skins, bots: SD.app.match.bots.map(b => !!b) }));
+  check(ue.n === 4 && hu.n === 4 && ue.mode === "ueberleben" && ue.trail > 10 && hu.bots.join() === "false,false,true,true", `Online-Überleben: Gast sieht 4 Würmer (2 Freunde, 2 Computer), Spielart ${ue.mode}`);
+  check(JSON.stringify(ue.skins) === JSON.stringify(hu.skins) && new Set(ue.skins).size === 4, `Alle vier Designs stimmen überein (${ue.skins.join(", ")})`);
+  await guest.bringToFront(); await guest.screenshot({ path: path.join(shots, `online-${MODE}-5-ueberleben-gast.png`) });
+  await host.bringToFront();
+  await host.evaluate(() => { const m = SD.app.match; m.bots[0] = new SD.Bot(8, 1); m.bots[1] = new SD.Bot(8, 2); let g = 0; while (!m.over && g++ < 60 * 70 * 9) m.tick(); });
+  await host.waitForSelector("#endPanel:not(.hidden)", { timeout: 8000 });
+  await guest.bringToFront();
+  await guest.waitForSelector("#endPanel:not(.hidden)", { timeout: 8000 }).catch(() => {});
+  const ue2 = await guest.evaluate(() => [document.getElementById("endTitle").textContent, document.getElementById("endSub").textContent]);
+  check(/gewonnen|verloren|Unentschieden/.test(ue2[0]) && /Bilanz/.test(ue2[1]), `Online-Überleben endet beim Gast: ${ue2.join(" · ").replace(/\n/g, " · ")}`);
 
   // Gastgeber verlässt ⇒ Gast landet mit Hinweis im Menü
   host.on("dialog", d => d.accept());
@@ -115,7 +129,7 @@ fs.mkdirSync(shots, { recursive: true });
   check(await guest.isVisible("#menuPanel"), `Gast zurück im Menü: „${(await guest.textContent("#menuStatus")).trim()}“`);
 
   // Falscher Code ⇒ klare Meldung
-  await guest.fill("#codeInput", "0000"); await guest.click("#joinBtn");
+  await guest.click("#onlineBtn"); await guest.fill("#codeInput", "0000"); await guest.click("#joinBtn");
   await guest.waitForFunction(() => document.getElementById("menuStatus").classList.contains("err"), null, { timeout: 25000 }).catch(() => {});
   check((await guest.textContent("#menuStatus")).includes("Kein offenes Spiel"), `Falscher Code: „${(await guest.textContent("#menuStatus")).trim()}“`);
 

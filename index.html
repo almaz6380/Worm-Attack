@@ -37,7 +37,7 @@
   .hidden { display: none !important; }
 
   .panel { position: absolute; left: 10px; right: 10px; bottom: max(10px, env(safe-area-inset-bottom));
-    background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 14px;
+    background: var(--panel); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 -6px 30px rgba(0,0,0,0.35); border: 1px solid var(--line); border-radius: 18px; padding: 14px;
     display: flex; flex-direction: column; gap: 9px; }
   .btn { width: 100%; padding: 14px; border-radius: 14px; border: 0; font: inherit; font-size: 17px; font-weight: 800;
     background: var(--accent); color: #1a1400; cursor: pointer; }
@@ -95,6 +95,21 @@
   .modes { display: flex; flex-direction: column; gap: 7px; }
   .modes .btn { text-align: left; font-size: 15.5px; padding: 11px 14px; }
   .modes .btn small { display: block; font-size: 12px; font-weight: 600; opacity: .75; margin-top: 2px; }
+  .btn small { display: block; font-size: 12.5px; font-weight: 700; opacity: .7; margin-top: 1px; letter-spacing: .02em; }
+  .btn.play { font-size: 24px; font-weight: 900; letter-spacing: .06em; padding: 13px 14px 11px; border-radius: 18px;
+    background: linear-gradient(180deg, #ffe17a, #ffbf2e); box-shadow: 0 6px 0 #b57d0d, 0 10px 24px rgba(255,190,46,0.35); margin-bottom: 6px;
+    animation: pulse 2.4s ease-in-out infinite; }
+  .btn.play:active { transform: translateY(4px); box-shadow: 0 2px 0 #b57d0d; }
+  @keyframes pulse { 50% { box-shadow: 0 6px 0 #b57d0d, 0 10px 34px rgba(255,190,46,0.6); } }
+  .btn.half { flex: 1; font-size: 16px; padding: 12px 6px; }
+  .btn.online { background: var(--p1); color: #2a0612; }
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+  .tile { border: 1px solid var(--line); background: rgba(255,255,255,0.05); border-radius: 14px; color: var(--text); font: inherit;
+    padding: 7px 2px 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; min-width: 0; }
+  .tile i { font-style: normal; font-size: 22px; line-height: 1.1; }
+  .tile span { font-size: 11.5px; font-weight: 700; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 3px; }
+  .profile { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; margin-top: -2px; }
+  .profile span { font-size: 12.5px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.07); border: 1px solid var(--line); }
   .quit { position: absolute; left: 12px; top: max(10px, env(safe-area-inset-top)); width: 38px; height: 38px; border-radius: 50%;
     border: 1px solid var(--line); background: rgba(10,12,20,0.7); color: var(--muted); font: inherit; font-size: 16px; }
 </style>
@@ -111,25 +126,33 @@
 
   <!-- Menü -->
   <div class="panel" id="menuPanel">
-    <button class="btn" id="soloBtn">🤖 Gegen Computer</button>
-    <button class="btn alt" id="hostBtn">👥 Online: Freund einladen</button>
+    <div class="profile" id="profile"></div>
+    <button class="btn play" id="soloBtn">▶ SPIELEN<small>gegen Computer · Stufe 1</small></button>
+    <div class="row">
+      <button class="btn alt half" id="modeBtn">🎮 Spielarten</button>
+      <button class="btn online half" id="onlineBtn">👥 Online</button>
+    </div>
+    <div class="status" id="menuStatus"></div>
+    <div class="tiles">
+      <button class="tile" id="skinBtn"><i>🐛</i><span>Minze</span></button>
+      <button class="tile" id="arenaBtn"><i>🏟️</i><span>Klassisch</span></button>
+      <button class="tile" id="goalBtn"><i>⭐</i><span>Ziele 0/3</span></button>
+      <button class="tile" id="helpBtn"><i>⚙️</i><span>Regeln</span></button>
+    </div>
+  </div>
+
+  <!-- Online: einladen oder beitreten -->
+  <div class="panel hidden" id="onlinePanel">
+    <div class="title" style="font-size:18px">Online gegen Freunde</div>
+    <button class="btn alt" id="hostBtn">📨 Freund einladen</button>
+    <div class="label" style="text-align:center">oder Code von deinem Freund eingeben</div>
     <div class="row">
       <input class="code" id="codeInput" inputmode="numeric" maxlength="4" placeholder="Code" autocomplete="off">
       <button class="btn ghost" id="joinBtn" style="flex:1">Beitreten</button>
     </div>
-    <div class="status" id="menuStatus"></div>
-    <div class="row">
-      <button class="btn ghost small2" id="skinBtn">🐛 Wurm: Minze</button>
-      <button class="btn ghost small2" id="steerBtn">🕹️ Lenkung: Kreis</button>
-    </div>
-    <div class="row">
-      <button class="btn ghost small2" id="modeBtn">🎮 Spielarten</button>
-      <button class="btn ghost small2" id="arenaBtn">🏟️ Arena: Klassisch</button>
-    </div>
-    <div class="row">
-      <button class="btn ghost small2" id="goalBtn">⭐ Aufgaben 0/3</button>
-      <button class="btn ghost small2" id="helpBtn">Regeln</button>
-    </div>
+    <div class="status" id="onlineStatus"></div>
+    <div class="note">Spielart und Arena wählt, wer einlädt.</div>
+    <button class="btn ghost" id="onlineBack">Zurück</button>
   </div>
 
   <!-- Online-Lobby (Gastgeber) -->
@@ -137,8 +160,13 @@
     <div class="label" style="text-align:center">Dein Spiel-Code</div>
     <div class="bigcode" id="lobbyCode">····</div>
     <div class="status" id="lobbyStatus">Verbinde …</div>
+    <div class="label" style="text-align:center">Spielart und Arena (tippen zum Ändern)</div>
+    <div class="row">
+      <button class="btn ghost small2" id="netModeBtn">🎮 Duell</button>
+      <button class="btn ghost small2" id="lobbyArenaBtn">🏟️ Klassisch</button>
+    </div>
     <button class="btn" id="shareBtn">📤 Einladungslink teilen</button>
-    <div class="note">Dein Freund öffnet den Link oder gibt den Code im Menü ein. Das Spiel startet dann automatisch.</div>
+    <div class="note">Dein Freund öffnet den Link oder gibt den Code unter „👥 Online“ ein. Das Spiel startet dann automatisch.</div>
     <button class="btn ghost" id="lobbyCancel">Abbrechen</button>
   </div>
 
@@ -185,7 +213,7 @@
       <ul>
         <li><b>Ziel:</b> Wer zuerst 3 Runden gewinnt, gewinnt das Duell.</li>
         <li><b>Lenkung „Kreis“:</b> Finger irgendwo aufsetzen und ziehen – die Zugrichtung ist die Fahrtrichtung. Der Kreis erscheint immer dort, wo du gerade hingreifst, und wandert mit.</li>
-        <li><b>Lenkung „Zum Finger“:</b> Der Wurm fährt auf die Stelle zu, die du berührst. Umschalten im Menü.</li>
+        <li><b>Lenkung „Zum Finger“:</b> Der Wurm fährt auf die Stelle zu, die du berührst. Umschalten unten auf dieser Seite.</li>
         <li><b>Sprint:</b> ⚡-Knopf halten oder auf dem Spielfeld doppelt tippen und den Finger liegen lassen (Computer: Leertaste). Macht schneller, kostet aber Länge. Am Computer lenkst du mit den Pfeiltasten.</li>
         <li><b>Verloren</b> hat, wer mit dem Kopf die Wand, den Körper des Gegners oder sich selbst berührt.</li>
         <li><b>Kopf an Kopf:</b> Die längere Schlange gewinnt. Gleich lang = unentschieden.</li>
@@ -221,13 +249,15 @@
       <ul>
         <li>Die Handys verbinden sich direkt miteinander. In manchen Netzen (z. B. Firmen-WLAN) klappt das nicht – dann hilft meist ein anderes WLAN oder mobile Daten.</li>
         <li>Das Handy des Gastgebers berechnet das Spiel und muss die Seite offen lassen.</li>
-        <li>Mit 😀 oben links schickst du deinem Freund ein Emote. Am Ende siehst du eure Bilanz.</li>
+        <li>Wer einlädt, wählt in der Lobby Spielart und Arena: Duell, Futterjagd oder Überleben (ihr beide plus zwei Computer-Würmer).</li>
+        <li>Mit 😀 oben links schickst du deinem Freund ein Emote. Am Ende siehst du eure Bilanz. Gewinnt beim Überleben ein Computer, zählt das nicht für die Bilanz.</li>
       </ul>
       <h3>Clips</h3>
       <ul>
         <li>Das Spiel nimmt die letzten Sekunden jeder Runde auf. Nach dem Duell kannst du den Clip mit 🎬 speichern oder teilen. Die Aufnahme bleibt auf deinem Handy.</li>
       </ul>
     </div>
+    <button class="btn ghost" id="steerBtn">🕹️ Lenkung: Kreis</button>
     <div class="row">
       <button class="btn ghost small2" id="vibBtn">📳 Vibration: an</button>
       <button class="btn ghost small2" id="clipToggle">🎬 Clips: an</button>
@@ -754,9 +784,10 @@ const store = {
   set(k, v) { try { localStorage.setItem("sd_" + k, JSON.stringify(v)); } catch {} },
 };
 const state = { level: store.get("level", 1), wins: store.get("wins", 0), steer: store.get("steer", "kreis") === "finger" ? "finger" : "kreis", skin: store.get("skin", "minze"), vib: store.get("vib", true) !== false,
-  arena: store.get("arena", "klassisch"), clip: store.get("clip", true) !== false };
+  arena: store.get("arena", "klassisch"), clip: store.get("clip", true) !== false, netmode: store.get("netmode", "duell") };
+if (!["duell", "futter", "ueberleben"].includes(state.netmode)) state.netmode = "duell";
 if (!Object.prototype.hasOwnProperty.call(ARENAS, state.arena)) state.arena = "klassisch";
-const save = () => { store.set("level", state.level); store.set("wins", state.wins); store.set("steer", state.steer); store.set("skin", state.skin); store.set("vib", state.vib); store.set("arena", state.arena); store.set("clip", state.clip); };
+const save = () => { store.set("level", state.level); store.set("wins", state.wins); store.set("steer", state.steer); store.set("skin", state.skin); store.set("vib", state.vib); store.set("arena", state.arena); store.set("clip", state.clip); store.set("netmode", state.netmode); };
 const ARENA_NAME = { klassisch: "Klassisch", saeulen: "Säulen", karussell: "Karussell", portale: "Portale" };
 
 const audio = { ctx: null, master: null };
@@ -873,7 +904,8 @@ const POWER_NAME = { turbo: "Turbo", ghost: "Geist", scissors: "Schere", wall: "
 const WHY = { wall: "in die Wand gefahren", body: "in einen Gegner gefahren", self: "in sich selbst gefahren", mauer: "in die Mauer gefahren", head: "Kopf an Kopf verloren",
   bomb: "von der Bombe erwischt worden", block: "gegen ein Hindernis gefahren" };
 const EMOTES = ["👋", "😂", "😎", "😱", "😡", "👍"];
-const NET_PREFIX = "snakeduell-v2-";                   // v2: neue Joker, Arenen, Emotes (v1-Spiele passen nicht mehr zusammen)
+const NET_PREFIX = "snakeduell-v3-";                   // v3: Spielarten online, mehr als zwei Würmer im Spielstand (ältere Versionen passen nicht mehr zusammen)
+const MODE_TITLE = { ueberleben: "🐍 Überleben", futter: "🍎 Futterjagd", boss: "👑 Bosswurm" };
 const PEER_URL = "https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js";
 const params = new URLSearchParams(location.search);
 const LOCAL_NET = params.get("net") === "local";      // Test-Verbindung zwischen zwei Tabs, ohne Internet
@@ -894,14 +926,14 @@ const inGame = () => app.mode === "solo" || app.mode === "host" || app.mode === 
    Darstellung
    ================================================================ */
 const stars = (() => { const r = mulberry32(4711), s = []; for (let i = 0; i < 130; i++) s.push([r() * W, r() * H, r() * 1.4 + 0.3, r()]); return s; })();
-const PANELS = ["menuPanel", "lobbyPanel", "endPanel", "helpPanel", "skinPanel", "goalPanel", "modePanel"];
+const PANELS = ["menuPanel", "lobbyPanel", "endPanel", "helpPanel", "skinPanel", "goalPanel", "modePanel", "onlinePanel"];
 
 function targetLayout() {
   if (inGame() && !app.endShown) return [600, 335];
   const stage = $("stage");
   let frac = 0.6;
   for (const id of PANELS) { const p = $(id); if (!p.classList.contains("hidden") && p.offsetHeight) frac = p.offsetTop / stage.clientHeight; }
-  const top = 0.125, bottom = Math.max(top + 0.15, frac - 0.02);
+  const top = inGame() ? 0.125 : 0.18, bottom = Math.max(top + 0.15, frac - 0.02);   // im Menü Platz für den Schriftzug
   return [((top + bottom) / 2) * H, Math.min(335, ((bottom - top) * H) / 2)];
 }
 
@@ -913,6 +945,45 @@ function drawBackground(now) {
   ctx.fillStyle = "#fff";
   for (const [x, y, r, p] of stars) { ctx.globalAlpha = 0.2 + 0.3 * (0.5 + 0.5 * Math.sin(now * 1.3 + p * 20)); ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
   ctx.globalAlpha = 1;
+}
+
+/** Startbildschirm: wippender Schriftzug mit Farbverlauf, darunter kriecht ein kleiner Wurm im eigenen Design */
+const LOGO_COLS = ["#2ee6d6", "#ffd34d", "#ff5a8a"];
+function drawLogo(now) {
+  const line = (str, y, size, track) => {
+    ctx.font = `900 ${size}px system-ui, -apple-system, Segoe UI, Roboto, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    const ch = [...str], ws = ch.map(c => ctx.measureText(c).width), total = ws.reduce((a, b) => a + b, 0) + track * (ch.length - 1);
+    let x = CX - total / 2;
+    ch.forEach((c, k) => {
+      const cx = x + ws[k] / 2, ph = now * 2.6 + k * 0.55, f = Math.max(0, Math.min(1, (cx - (CX - 270)) / 540)) * 2;
+      const base = mix(LOGO_COLS[Math.min(1, Math.floor(f))], LOGO_COLS[Math.min(2, Math.floor(f) + 1)], f - Math.floor(f));
+      ctx.save(); ctx.translate(cx, y + Math.sin(ph) * size * 0.05); ctx.rotate(Math.sin(ph + 1) * 0.045);
+      ctx.lineJoin = "round"; ctx.lineWidth = size * 0.17; ctx.strokeStyle = "#0b0c12";
+      ctx.shadowColor = base; ctx.shadowBlur = 26; ctx.strokeText(c, 0, size * 0.03); ctx.shadowBlur = 0;
+      const g = ctx.createLinearGradient(0, -size * 0.45, 0, size * 0.45);
+      g.addColorStop(0, mix(base, "#ffffff", 0.55)); g.addColorStop(0.5, base); g.addColorStop(1, mix(base, "#000000", 0.25));
+      ctx.fillStyle = g; ctx.fillText(c, 0, 0);
+      ctx.restore(); x += ws[k] + track;
+    });
+  };
+  line("WORM", 84, 108, 6);
+  line("ATTACK", 166, 66, 12);
+  // kleiner Wurm, der unter dem Schriftzug vorbeikriecht
+  const skin = skinById(app.skins[0] || state.skin), span = W + 260, hx = ((now * 95) % span) - 130, y0 = 208, r = 13;
+  const wy = x => y0 + Math.sin(x * 0.045 - now * 7) * 5;
+  for (let k = 11; k >= 1; k--) {
+    const x = hx - k * 15, rr = r * (k > 8 ? 0.55 + 0.45 * (11 - k) / 3 : 1);
+    ctx.drawImage(skin.img ? skin.img.seg : disc(skin.pal[k % skin.pal.length]), x - rr, wy(x) - rr, rr * 2, rr * 2);
+  }
+  const hy = wy(hx), R = r * 1.35;
+  if (skin.img) ctx.drawImage(skin.img.head, hx - R * 1.3, hy - R * 1.3, R * 2.6, R * 2.6);
+  else {
+    ctx.drawImage(disc(skin.main), hx - R, hy - R, R * 2, R * 2);
+    for (const side of [-1, 1]) {
+      ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(hx + R * 0.35, hy + side * R * 0.45, R * 0.36, 0, 7); ctx.fill();
+      ctx.fillStyle = "#0b0c12"; ctx.beginPath(); ctx.arc(hx + R * 0.48, hy + side * R * 0.45, R * 0.2, 0, 7); ctx.fill();
+    }
+  }
 }
 
 function text(str, x, y, size, color = "#fff", align = "center", weight = 800) {
@@ -1186,6 +1257,8 @@ function drawHud(view) {
         if (k < view.scores[i]) { ctx.fillStyle = colorOf(i); ctx.fill(); } else { ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 2.5; ctx.stroke(); }
       }
       if (!sn.alive && view.phase === "play") text("✕", W - 38, y + 1, 18, "#fff");
+      const online = app.mode === "host" || app.mode === "guest";                  // online: Wurm 0 und 1 sind die Freunde
+      text(online && i < 2 ? "Freund" : "CPU", W - 70 - WIN_ROUNDS * 24, y + 1, 17, "rgba(255,255,255,0.75)", "right", 700);
       ctx.globalAlpha = 1;
     }
   }
@@ -1214,6 +1287,7 @@ function drawBanner(view, now) {
   if (view.phase === "count") {
     const n = Math.ceil(COUNT_T - view.phaseT);
     text(`Runde ${view.round}`, CX, CY - 70, 34, "rgba(255,255,255,0.8)");
+    if (MODE_TITLE[view.mode]) text(MODE_TITLE[view.mode], CX, CY - 118, 30, "#ffd34d");
     text(String(Math.max(1, n)), CX, CY + 10, 130);
     const bob = 6 * Math.sin(now * 6);
     if (app.mode === "duo") view.snakes.forEach((sn, i) => text(`${i + 1} ▼`, CX + sn.hx * SC, CY + sn.hy * SC - 44 - bob, 26, colorOf(i)));
@@ -1284,7 +1358,7 @@ function render(view, now, dt) {
   const [ty, ts] = targetLayout(), k = Math.min(1, dt * 6);
   CY += (ty - CY) * k; SC += (ts - SC) * k;
   drawBackground(now);
-  if (!inGame()) text("WORM ATTACK", CX, 84, 58);
+  if (!inGame()) drawLogo(now);
   if (!view) return;
   // Entscheidender Crash: kurze Zeitlupe für Funken und Glieder, leichter Zoom auf die Unfallstelle, kurzer Wackler
   const sl = app.slow, slowing = now < sl.until;
@@ -1332,7 +1406,7 @@ function buildSnap(m) {
   if (full) {
     o.tr = s.snakes.map(n => n.trail.map(q));
     o.wl = s.walls.map(w => [w.owner, +(w.until - s.t).toFixed(2)].concat(w.pts.map(q)));
-    o.sk = app.skins; o.ar = s.arena;
+    o.sk = app.skins; o.ar = s.arena; o.md = s.mode;
   }
   m.netEvents = []; m.full = false; app.snaps++;
   return o;
@@ -1341,10 +1415,10 @@ function buildSnap(m) {
 function newGuestView() {
   return { phase: "wait", phaseT: 0, scores: [0, 0], round: 0, t: 0, R: 1, winner: -2, matchWinner: -2, stamp: 0,
     mode: "duell", arena: "klassisch", dur: DURATION, sdOn: true, bombs: [],
-    snakes: [0, 1].map(() => ({ trail: [], x: 0, y: 0, dir: 0, px: 0, py: 0, pdir: 0, hx: 0, hy: 0, hdir: 0, len: 0, alive: true, ghost: false, turbo: false, sprint: false,
-      shield: false, slow: false, magnet: false, lives: 1, sc: 1 })),
-    foods: [], power: null, walls: [] };
+    snakes: [guestSnake(), guestSnake()], foods: [], power: null, walls: [] };
 }
+const guestSnake = () => ({ trail: [], x: 0, y: 0, dir: 0, px: 0, py: 0, pdir: 0, hx: 0, hy: 0, hdir: 0, len: 0, alive: true, ghost: false, turbo: false, sprint: false,
+  shield: false, slow: false, magnet: false, lives: 1, sc: 1 });
 function trimByLength(tr, hx, hy, len) {
   let acc = 0, px = hx, py = hy, k = tr.length - 2;
   for (; k >= 0; k -= 2) { const d = Math.hypot(tr[k] - px, tr[k + 1] - py); if (d < JUMP) acc += d; if (acc > len) break; px = tr[k]; py = tr[k + 1]; }
@@ -1352,12 +1426,14 @@ function trimByLength(tr, hx, hy, len) {
 }
 function applySnap(o) {
   const v = app.gv; if (!v || !o || !Array.isArray(o.sn)) return;
-  const newRound = o.rd !== v.round;
+  const newRound = o.rd !== v.round, N = Math.min(8, o.sn.length), resized = N !== v.snakes.length;
+  if (resized) v.snakes = Array.from({ length: N }, guestSnake);           // Spielart mit mehr Würmern
+  if (typeof o.md === "string" && Object.prototype.hasOwnProperty.call(MODES, o.md)) { v.mode = app.kind = o.md; v.dur = MODES[o.md].dur; v.sdOn = MODES[o.md].sd; }
   v.phase = o.ph; v.phaseT = o.pt; v.scores = o.sc; v.round = o.rd; v.t = o.t; v.R = o.R / 1000; v.winner = o.w; v.matchWinner = o.mw;
-  if (newRound) { resetLooks(); input.a = null; if (joy) { joy.ox = joy.x; joy.oy = joy.y; } }
-  for (let i = 0; i < 2; i++) {
+  if (newRound || resized) { resetLooks(); input.a = null; if (joy) { joy.ox = joy.x; joy.oy = joy.y; } }
+  for (let i = 0; i < N; i++) {
     const sn = v.snakes[i], a = o.sn[i];
-    if (o.tr) sn.trail = o.tr[i].map(u => u / 1000);
+    if (o.tr) sn.trail = (o.tr[i] || []).map(u => u / 1000);
     else {
       const tr = sn.trail, n = tr.length;
       if (!n || Math.hypot(tr[n - 2] - sn.x, tr[n - 1] - sn.y) > SEG * 0.7) tr.push(sn.x, sn.y);
@@ -1371,7 +1447,7 @@ function applySnap(o) {
   }
   v.foods = []; for (let k = 0; k < o.f.length; k += 3) v.foods.push({ x: o.f[k] / 1000, y: o.f[k + 1] / 1000, v: o.f[k + 2] / 1000 });
   v.power = o.p ? { x: o.p[0] / 1000, y: o.p[1] / 1000, type: POWER_TYPES[o.p[2]] } : null;
-  if (Array.isArray(o.sk) && o.sk.length === 2) app.skins = [skinById(o.sk[0]).id, skinById(o.sk[1]).id];
+  if (Array.isArray(o.sk) && o.sk.length === N) app.skins = o.sk.map(k => skinById(k).id);
   if (typeof o.ar === "string" && Object.prototype.hasOwnProperty.call(ARENAS, o.ar)) v.arena = o.ar;
   v.bombs = Array.isArray(o.b) ? o.b.map(b => ({ x: b[0] / 1000, y: b[1] / 1000, at: o.t + b[2], owner: b[3] })) : [];
   if (o.wl) v.walls = o.wl.map(w => ({ owner: w[0], until: o.t + w[1], pts: w.slice(2).map(u => u / 1000) }));
@@ -1398,7 +1474,7 @@ function fx(e) {
   else if (e.type === "spawn") { burst(e.x, e.y, "#ffd34d", 10, 160); tone(520, 0.25, "sine", 0.2, 1.5); }
   else if (e.type === "power") {
     burst(e.x, e.y, "#ffd34d", 22, 300); tone(440, 0.35, "square", 0.18, 2);
-    const who = app.mode === "duo" ? `Spieler ${e.i + 1}` : e.i === app.me ? "dich" : app.match && app.match.sim.snakes.length > 2 ? "einen Gegner" : view0().mode === "boss" ? "den Boss" : "den Gegner";
+    const who = app.mode === "duo" ? `Spieler ${e.i + 1}` : e.i === app.me ? "dich" : view0().snakes.length > 2 ? "einen Gegner" : view0().mode === "boss" ? "den Boss" : "den Gegner";
     if (inGame()) showToast(`${POWER_ICON[e.p]} ${POWER_NAME[e.p]} für ${who}!`);
     if (mine) { vib(30); bump("joker"); if (app.mode !== "duo") stats.kinds[e.p] = 1; }
   }
@@ -1574,7 +1650,14 @@ function checkGoals() {
   for (const a of ACHS) if (!achDone[a.id] && a.val() >= a.n) { achDone[a.id] = true; starCount += a.stars; changed = true; notify(`🏅 Erfolg: ${a.text} · +${a.stars} ⭐`); }
   if (changed) { saveGoals(); refreshGoalBtn(); }
 }
-function refreshGoalBtn() { const d = ensureDaily(); $("goalBtn").textContent = `⭐ Aufgaben ${d.ids.filter(id => d.done[id]).length}/3`; }
+function refreshGoalBtn() { const d = ensureDaily(); $("goalBtn").querySelector("span").textContent = `Ziele ${d.ids.filter(id => d.done[id]).length}/3`; refreshProfile(); }
+/** Kleine Profilzeile im Menü: Stufe, Sterne, Siege, Tages-Serie */
+function refreshProfile() {
+  const d = ensureDaily(), on = streak.n > 0 && (streak.last === d.day || streak.last === dayBefore(d.day));
+  const parts = [`🏅 Stufe ${state.level}`, `⭐ ${starCount}`, `🏆 ${state.wins}`].concat(on ? [`🔥 ${streak.n}`] : []);
+  const el = $("profile"); el.innerHTML = "";
+  for (const t of parts) { const sp = document.createElement("span"); sp.textContent = t; el.appendChild(sp); }
+}
 function buildGoalList() {
   const d = ensureDaily(), list = $("goalList"); list.innerHTML = "";
   $("goalTitle").textContent = `⭐ ${starCount} ${starCount === 1 ? "Stern" : "Sterne"}` + (streak.n > 0 && (streak.last === d.day || streak.last === dayBefore(d.day)) ? ` · 🔥 ${streak.n} ${streak.n === 1 ? "Tag" : "Tage"} in Folge` : "");
@@ -1692,12 +1775,12 @@ function confetti() {
   for (let k = 0; k < 110; k++) app.particles.push({ x: Math.random() * W, y: -20 - Math.random() * 260, vx: (Math.random() - 0.5) * 160, vy: 120 + Math.random() * 220,
     g: 320, life: 2.6 + Math.random() * 1.4, max: 4, s: 5 + Math.random() * 5, c: cols[k % cols.length], conf: true, rot: Math.random() * 6, vr: (Math.random() - 0.5) * 12 });
 }
-function refreshSkinBtn() { $("skinBtn").textContent = `🐛 Wurm: ${skinById(state.skin).name}`; }
+function refreshSkinBtn() { $("skinBtn").querySelector("span").textContent = skinById(state.skin).name; }
 function showPanel(id) { for (const p of PANELS) $(p).classList.toggle("hidden", p !== id); }
 const rndSeed = () => (Math.random() * 4294967296) >>> 0;
 
 function resetLooks() {
-  const n = app.match ? app.match.sim.snakes.length : 2;
+  const n = app.match ? app.match.sim.snakes.length : app.gv ? app.gv.snakes.length : 2;
   app.bulges = Array.from({ length: n }, () => []); app.deadAt = Array(n).fill(0); app.look = Array(n).fill(0); app.lastDir = Array(n).fill(0); app.why = Array(n).fill(null);
 }
 function demoSkins() { const mine = app.preview || state.skin; app.skins = [mine, otherSkin(mine, mine === "bonbon" ? "minze" : "bonbon")]; }
@@ -1715,7 +1798,7 @@ function toMenu(msg) {
   startDemo();
   $("sprintBtn").classList.add("hidden"); $("sprintBtn2").classList.add("hidden"); $("quitBtn").classList.add("hidden"); $("emoBtn").classList.add("hidden"); $("emoBar").classList.add("hidden");
   clipStopAll(false); app.emotes = [];
-  $("soloBtn").textContent = `🤖 Gegen Computer · Stufe ${state.level}`;
+  $("soloBtn").innerHTML = `▶ SPIELEN<small>gegen Computer · Stufe ${state.level}</small>`;
   app.preview = null; refreshSkinBtn();
   const st = $("menuStatus"); st.textContent = msg || ""; st.className = "status" + (msg ? " err" : "");
   showPanel("menuPanel");
@@ -1750,10 +1833,13 @@ function startDuo() {
   app.skins = [state.skin, otherSkin(state.skin, "bonbon")];
   begin();
 }
+/** Online als Gastgeber: Spielart aus der Lobby. Überleben = beide Freunde plus zwei Computer-Würmer */
 function startNetMatch() {
-  app.mode = "host"; app.kind = "duell"; app.me = 0; app.oppName = "Freund";
-  app.match = new Match(rndSeed(), [null, null], { arena: state.arena });
-  app.skins = [state.skin, otherSkin(state.skin, app.guestSkin)];
+  const s = rndSeed(), mode = state.netmode, bl = Math.max(1, state.level - 1);
+  app.mode = "host"; app.kind = mode; app.me = 0; app.oppName = "Freund";
+  const bots = mode === "ueberleben" ? [null, null, new Bot(bl, s), new Bot(bl, s + 1)] : [null, null];
+  app.match = new Match(s, bots, { mode, arena: state.arena });
+  app.skins = pickSkins(bots.length, app.guestSkin);
   begin();
 }
 
@@ -1770,7 +1856,7 @@ function hostGame() {
     if (app.net !== net || !m || app.mode !== "host") return;
     if (m.k === "i") { const inp = app.match.inputs[1]; inp.a = typeof m.a === "number" && isFinite(m.a) ? m.a : null; inp.s = !!m.s; }
     else if (m.k === "hello") {
-      app.guestSkin = typeof m.sk === "string" ? skinById(m.sk).id : null; app.skins = [state.skin, otherSkin(state.skin, app.guestSkin)]; app.match.full = true;
+      app.guestSkin = typeof m.sk === "string" ? skinById(m.sk).id : null; app.skins = pickSkins(app.match.sim.snakes.length, app.guestSkin); app.match.full = true;
       app.rival = validId(m.id); rivalGreeting();
     }
     else if (m.k === "emo" && Number.isInteger(m.e) && m.e >= 0 && m.e < EMOTES.length) showEmote(1, m.e);
@@ -1786,7 +1872,8 @@ function hostGame() {
 }
 function joinGame(code) {
   code = String(code || "").replace(/\D/g, "");
-  const st = $("menuStatus");
+  const st = { set textContent(t) { $("menuStatus").textContent = t; $("onlineStatus").textContent = t; },
+               set className(c) { $("menuStatus").className = c; $("onlineStatus").className = c; } };   // Meldung im Menü und im Online-Bereich
   if (code.length !== 4) { st.textContent = "Bitte den 4-stelligen Code eingeben."; st.className = "status err"; return; }
   initAudio();
   st.textContent = "Verbinde …"; st.className = "status";
@@ -1835,8 +1922,9 @@ function showEnd(view) {
     } else $("againBtn").textContent = "Nochmal";
   } else $("againBtn").textContent = "Revanche";
   if ((app.mode === "host" || app.mode === "guest") && app.rival) {           // Bilanz gegen diesen Freund
-    const r = rivals[app.rival] || (rivals[app.rival] = { w: 0, l: 0, d: 0, s: 0 });
-    if (won) { r.w++; r.s = r.s > 0 ? r.s + 1 : 1; } else if (draw) r.d++; else { r.l++; r.s = r.s < 0 ? r.s - 1 : -1; }
+    const r = rivals[app.rival] || (rivals[app.rival] = { w: 0, l: 0, d: 0, s: 0 }), friend = 1 - app.me;
+    if (won) { r.w++; r.s = r.s > 0 ? r.s + 1 : 1; } else if (draw) r.d++; else if (w === friend) { r.l++; r.s = r.s < 0 ? r.s - 1 : -1; }
+    else sub += "\nEin Computer-Wurm hat gewonnen – zählt nicht für eure Bilanz.";        // Überleben: gegen Bots verloren
     store.set("rivals", rivals);
     sub += `\nBilanz gegen diesen Freund: ${r.w} : ${r.l}` + (r.d ? ` (${r.d}× unentschieden)` : "") +
       (r.s >= 2 ? ` · 🔥 ${r.s} Siege in Folge` : r.s <= -2 ? ` · ${-r.s} Niederlagen in Folge` : "");
@@ -1983,11 +2071,18 @@ $("soloBtn").onclick = () => startSolo("duell");
 $("modeBtn").onclick = () => showPanel("modePanel");
 $("modeBack").onclick = () => showPanel("menuPanel");
 for (const b of document.querySelectorAll("#modePanel [data-mode]")) b.onclick = () => (b.dataset.mode === "duo" ? startDuo() : startSolo(b.dataset.mode));
-const refreshArenaBtn = () => ($("arenaBtn").textContent = `🏟️ Arena: ${ARENA_NAME[state.arena]}`);
-$("arenaBtn").onclick = () => {
-  const ids = Object.keys(ARENAS); state.arena = ids[(ids.indexOf(state.arena) + 1) % ids.length]; save(); refreshArenaBtn();
-  startDemo();                                              // das Demo-Duell zeigt die gewählte Arena sofort
-};
+const refreshArenaBtn = () => { $("arenaBtn").querySelector("span").textContent = ARENA_NAME[state.arena]; $("lobbyArenaBtn").textContent = `🏟️ ${ARENA_NAME[state.arena]}`; };
+const nextArena = () => { const ids = Object.keys(ARENAS); state.arena = ids[(ids.indexOf(state.arena) + 1) % ids.length]; save(); refreshArenaBtn(); };
+$("arenaBtn").onclick = () => { nextArena(); startDemo(); };          // das Demo-Duell zeigt die gewählte Arena sofort
+$("lobbyArenaBtn").onclick = () => { nextArena(); if (app.mode === "lobby") startDemo(); };
+$("onlineBtn").onclick = () => { $("onlineStatus").textContent = ""; showPanel("onlinePanel"); };
+$("onlineBack").onclick = () => showPanel("menuPanel");
+/* Online-Spielart (wählt der Gastgeber in der Lobby) */
+const NET_MODES = ["duell", "futter", "ueberleben"];
+const NET_MODE_NAME = { duell: "🎮 Duell", futter: "🍎 Futterjagd", ueberleben: "🐍 Überleben (+2 Computer)" };
+const refreshNetModeBtn = () => ($("netModeBtn").textContent = NET_MODE_NAME[state.netmode]);
+$("netModeBtn").onclick = () => { state.netmode = NET_MODES[(NET_MODES.indexOf(state.netmode) + 1) % NET_MODES.length]; save(); refreshNetModeBtn(); };
+refreshNetModeBtn();
 refreshArenaBtn();
 // Emotes: Knopf öffnet eine Leiste, ein Tipp schickt das Emote (online an den Freund, sonst antwortet manchmal der Computer)
 EMOTES.forEach((em, k) => {
@@ -2069,7 +2164,7 @@ function buildSkinGrid() {
   }
 }
 $("skinBtn").onclick = () => { $("skinStatus").textContent = ""; buildSkinGrid(); showPanel("skinPanel"); };
-$("skinDone").onclick = () => { app.preview = null; demoSkins(); refreshSkinBtn(); showPanel("menuPanel"); };
+$("skinDone").onclick = () => { app.preview = null; demoSkins(); refreshSkinBtn(); refreshProfile(); showPanel("menuPanel"); };
 
 $("helpClose").onclick = () => showPanel("menuPanel");
 const refreshVibBtn = () => ($("vibBtn").textContent = `📳 Vibration: ${state.vib ? "an" : "aus"}`);

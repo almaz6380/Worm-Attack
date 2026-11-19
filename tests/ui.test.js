@@ -27,13 +27,23 @@ fs.mkdirSync(shots, { recursive: true });
   await page.click("#helpBtn"); await page.screenshot({ path: path.join(shots, "2-regeln.png") }); await page.click("#helpClose");
 
   // Lenkart umschalten: wird gespeichert und übersteht das Neuladen
-  await page.click("#steerBtn");
+  // Lenkart umschalten (im Regeln-Panel)
+  await page.click("#helpBtn"); await page.click("#steerBtn");
   check((await page.textContent("#steerBtn")).includes("Zum Finger"), "Umschalter zeigt „Zum Finger“");
   await page.reload();
   check((await page.textContent("#steerBtn")).includes("Zum Finger") && (await page.evaluate(() => SD.state.steer)) === "finger", "Lenkart bleibt nach dem Neuladen erhalten");
-  await page.click("#steerBtn");
+  await page.click("#helpBtn"); await page.click("#steerBtn");
   check((await page.textContent("#steerBtn")).includes("Kreis"), "Zurück auf „Kreis“");
-  await page.screenshot({ path: path.join(shots, "1b-menue-lenkung.png") });
+  await page.screenshot({ path: path.join(shots, "1b-regeln-lenkung.png") });
+  await page.click("#helpClose");
+  // Startbildschirm: Profilzeile, Online-Bereich
+  const prof = await page.textContent("#profile");
+  check(prof.includes("Stufe 1") && prof.includes("⭐"), `Profilzeile im Menü: ${prof}`);
+  await page.click("#onlineBtn");
+  check(await page.isVisible("#hostBtn") && await page.isVisible("#codeInput"), "„Online“ öffnet Einladen und Beitreten");
+  await page.fill("#codeInput", "12"); await page.click("#joinBtn");
+  check((await page.textContent("#onlineStatus")).includes("4-stelligen"), "Falsche Code-Länge: Hinweis im Online-Bereich");
+  await page.click("#onlineBack");
 
   // Wurm-Auswahl: Übersicht mit allen Designs, Wahl wird gespeichert, gesperrte Designs sind nur Vorschau
   await page.waitForFunction(() => SD.skinsReady, null, { timeout: 10000 });
