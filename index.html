@@ -94,6 +94,8 @@
   .emobar button { width: 40px; height: 38px; border: 0; background: transparent; font-size: 24px; line-height: 1; padding: 0; }
   .modes { display: flex; flex-direction: column; gap: 7px; }
   .modes .btn { text-align: left; font-size: 15.5px; padding: 11px 14px; }
+  .modes .btn.locked { background: #34374a; color: #a9adbd; }
+  .modes .btn.beaten { box-shadow: inset 0 0 0 2px var(--good); }
   .modes .btn small { display: block; font-size: 12px; font-weight: 600; opacity: .75; margin-top: 2px; }
   .btn small { display: block; font-size: 12.5px; font-weight: 700; opacity: .7; margin-top: 1px; letter-spacing: .02em; }
   .btn.play { font-size: 24px; font-weight: 900; letter-spacing: .06em; padding: 13px 14px 11px; border-radius: 18px;
@@ -185,10 +187,18 @@
     <div class="modes">
       <button class="btn" data-mode="ueberleben">🐍 Überleben<small>Du gegen drei Computer-Würmer. Wer zuletzt übrig ist, gewinnt.</small></button>
       <button class="btn alt" data-mode="futter">🍎 Futterjagd<small>45 Sekunden, viel Futter, niemand fliegt raus. Am Ende gewinnt der Längere.</small></button>
-      <button class="btn" data-mode="boss">👑 Bosswurm<small>Ein riesiger Wurm mit drei Leben, du hast zwei. Bring ihn dreimal zum Crash!</small></button>
+      <button class="btn" id="bossBtn">👑 Bosse<small>Vier Bosse nacheinander besiegen. Jeder besiegte Boss schaltet den nächsten frei.</small></button>
       <button class="btn alt" data-mode="duo">👫 Zwei Spieler, ein Handy<small>Untere Hälfte lenkt Spieler 1, obere Hälfte Spieler 2.</small></button>
     </div>
     <button class="btn ghost" id="modeBack">Zurück</button>
+  </div>
+
+  <!-- Boss wählen -->
+  <div class="panel hidden" id="bossPanel">
+    <div class="title" style="font-size:18px" id="bossTitle">Bosse</div>
+    <div class="modes" id="bossList"></div>
+    <div class="note">Gegen jeden Boss hast du zwei Leben. Wer zuerst 3 Runden gewinnt, gewinnt.</div>
+    <button class="btn ghost" id="bossBack">Zurück</button>
   </div>
 
   <!-- Aufgaben und Erfolge -->
@@ -242,7 +252,7 @@
       <ul>
         <li><b>Überleben:</b> Du gegen drei Computer-Würmer, die sich auch gegenseitig jagen.</li>
         <li><b>Futterjagd:</b> Wer irgendwo anstößt, verliert ein Drittel seiner Länge und ist kurz ein Geist. Nach 45 Sekunden gewinnt der Längere.</li>
-        <li><b>Bosswurm:</b> Der Boss ist dick, lang, etwas langsamer und hat drei Leben, du hast zwei. Jeder Crash kostet ein Leben und ein Drittel der Länge. Läuft die Zeit ab, gewinnt der Längere.</li>
+        <li><b>Bosse:</b> Vier Bosse nacheinander: 🦖 Riese (dick und träge), ⚡ Blitz (dünn und schnell), 👯 Zwillinge (zwei auf einmal), 💣 Bomber (legt Bomben hinter sich). Jeder besiegte Boss schaltet den nächsten frei. Du hast zwei Leben. Jeder Crash kostet ein Leben und ein Drittel der Länge. Läuft die Zeit ab, gewinnt der Längere.</li>
         <li><b>Zwei Spieler:</b> Handy flach zwischen euch legen. Jeder lenkt in seiner Hälfte, Sprint per Doppeltipp oder eigenem ⚡-Knopf.</li>
       </ul>
       <h3>Online</h3>
@@ -298,7 +308,15 @@ const MODES = {
   futter:     { n: 2, dur: 45, sd: false, food: 14, lives: 999 },   // niemand scheidet aus, Treffer kosten Länge
   boss:       { n: 2, dur: 60, sd: true,  food: 7, boss: 1 },       // Wurm 1 ist der Boss
 };
-const BOSS = { scale: 1.5, len: 1.2, speed: 0.85, turn: 0.75, lives: 3, heroLives: 2 };   // der Spieler hat gegen den Boss zwei Leben
+/* Bosse: Größe, Startlänge, Tempo und Drehrate (relativ), Leben; n = wie viele Boss-Würmer; plus = Bot-Stufe darüber;
+   bomb = legt alle so viele Sekunden eine Bombe am Schwanzende ab. Der Spieler hat gegen jeden Boss zwei Leben. */
+const BOSSES = {
+  riese:     { n: 1, scale: 1.5,  len: 1.2,  speed: 0.85, turn: 0.75, lives: 3, plus: 1 },
+  blitz:     { n: 1, scale: 0.85, len: 0.55, speed: 1.15, turn: 1.2, lives: 3, plus: 0 },
+  zwillinge: { n: 2, scale: 1.15, len: 0.6,  speed: 0.9,  turn: 0.85,  lives: 2, plus: 0 },
+  bomber:    { n: 1, scale: 1.3,  len: 1.0,  speed: 0.9,  turn: 0.85, lives: 3, plus: 0, bomb: 5 },
+};
+const BOSS_ORDER = ["riese", "blitz", "zwillinge", "bomber"], HERO_LIVES = 2;
 /* Arenen: feste Säulen [x, y, r], kreisende Blöcke [Bahnradius, Winkeltempo, Startwinkel, r], Portal-Paare */
 const ARENAS = {
   klassisch: {},
@@ -367,17 +385,24 @@ class Sim {
     this.arena = ARENAS[opts.arena] ? opts.arena : "klassisch";
     const M = MODES[this.mode];
     this.A = ARENAS[this.arena]; this.dur = M.dur; this.sdOn = M.sd; this.foodN = M.food;
+    this.boss = M.boss ? (Object.prototype.hasOwnProperty.call(BOSSES, opts.boss) ? opts.boss : "riese") : null;
     this.t = 0; this.R = 1; this.done = false; this.winner = -2; this.reason = "";
-    if (M.n === 2) this.snakes = [this.makeSnake(0, -0.5, 0.1, -Math.PI / 2), this.makeSnake(1, 0.5, -0.1, Math.PI / 2)];
+    if (this.boss && BOSSES[this.boss].n === 2)               // Zwillinge: zwei Bosse nebeneinander
+      this.snakes = [this.makeSnake(0, -0.5, 0.1, -Math.PI / 2), this.makeSnake(1, 0.32, -0.05, Math.PI / 2), this.makeSnake(2, 0.62, -0.05, Math.PI / 2)];
+    else if (M.n === 2) this.snakes = [this.makeSnake(0, -0.5, 0.1, -Math.PI / 2), this.makeSnake(1, 0.5, -0.1, Math.PI / 2)];
     else {                                                  // im Kreis verteilt, alle fahren im selben Drehsinn los
       this.snakes = [];
       for (let i = 0; i < M.n; i++) { const th = Math.PI + (i * PI2) / M.n; this.snakes.push(this.makeSnake(i, Math.cos(th) * 0.52, Math.sin(th) * 0.52, th + Math.PI / 2)); }
     }
     for (const s of this.snakes) s.lives = M.lives || 1;
-    if (M.boss) {                                           // der Boss: dicker, länger, etwas langsamer, mit drei Leben
-      const b = this.snakes[M.boss], sc = BOSS.scale;
-      this.snakes[0].lives = BOSS.heroLives;
-      Object.assign(b, this.makeSnake(b.i, b.x, b.y, b.dir, BOSS.len, -SEG / 0.3), { sc, r: HEAD_R * sc, br: BODY_R * sc, spd: BOSS.speed, trn: BOSS.turn, lives: BOSS.lives });
+    if (this.boss) {                                        // Wurm 1 (und 2) sind Bosse und bilden ein Team
+      const B = BOSSES[this.boss], sc = B.scale;
+      this.snakes[0].lives = HERO_LIVES;
+      for (const b of this.snakes.slice(1)) {
+        Object.assign(b, this.makeSnake(b.i, b.x, b.y, b.dir, B.len, B.len > 0.8 ? -SEG / 0.3 : 0),
+          { sc, r: HEAD_R * sc, br: BODY_R * sc, spd: B.speed, trn: B.turn, lives: B.lives, team: 1, boss: true });
+      }
+      this.nextDrop = B.bomb || 0;
     }
     this.foods = []; this.power = null; this.nextPower = 5 + this.rng() * 2; this.walls = []; this.bombs = [];
     for (let i = 0; i < this.foodN; i++) this.spawnFood();
@@ -394,7 +419,7 @@ class Sim {
     }
     return { i, x, y, dir, len, trail, acc: 0, drop: 0, alive: true, target: null, sprint: false, sprinting: false,
       turboUntil: -1, ghostUntil: -1, inBody: false, magnetUntil: -1, slowUntil: -1, shieldUntil: -1,
-      sc: 1, r: HEAD_R, br: BODY_R, spd: 1, trn: 1, lives: 1 };
+      sc: 1, r: HEAD_R, br: BODY_R, spd: 1, trn: 1, lives: 1, team: i, boss: false };
   }
 
   ev(e) { if (this.record) this.events.push(e); }
@@ -490,12 +515,19 @@ class Sim {
       }
     }
     for (let k = this.walls.length - 1; k >= 0; k--) if (this.walls[k].until <= t) this.walls.splice(k, 1);
+    if (this.nextDrop && t >= this.nextDrop) {               // Bomber: Bombe am Schwanzende
+      this.nextDrop = t + BOSSES[this.boss].bomb;
+      for (const b of S) if (b.boss && b.alive && b.trail.length >= 2) {
+        this.bombs.push({ owner: b.i, x: b.trail[0], y: b.trail[1], at: t + BOMB_FUSE });
+        this.ev({ type: "drop", i: b.i, x: b.trail[0], y: b.trail[1] });
+      }
+    }
     const boom = S.map(() => false);
     for (let k = this.bombs.length - 1; k >= 0; k--) {
       const b = this.bombs[k]; if (t < b.at) continue;
       this.bombs.splice(k, 1);
       this.ev({ type: "boom", i: b.owner, x: b.x, y: b.y });
-      for (const s of S) if (s.alive && s.i !== b.owner && Math.hypot(s.x - b.x, s.y - b.y) < BOMB_R + s.r) boom[s.i] = true;
+      for (const s of S) if (s.alive && s.team !== S[b.owner].team && Math.hypot(s.x - b.x, s.y - b.y) < BOMB_R + s.r) boom[s.i] = true;
     }
 
     // Kollisionen
@@ -506,9 +538,9 @@ class Sim {
       if (boom[s.i]) { dead[s.i] = "bomb"; continue; }
       if (blockGap(A, s.x, s.y, t) < s.r) { dead[s.i] = "block"; continue; }   // Hindernisse sind wie die Wand: auch für Geister fest
       let raw = false;
-      for (const o of S) if (o !== s && o.alive && hitTrail(s.x, s.y, o.trail, o.trail.length, (s.r + o.br) ** 2)) { raw = "body"; break; }
+      for (const o of S) if (o !== s && o.alive && o.team !== s.team && hitTrail(s.x, s.y, o.trail, o.trail.length, (s.r + o.br) ** 2)) { raw = "body"; break; }
       if (!raw && hitTrail(s.x, s.y, s.trail, s.trail.length - SELF_SKIP * 2, (s.r + s.br) ** 2)) raw = "self";
-      if (!raw) for (const w of this.walls) if (w.owner !== s.i && hitTrail(s.x, s.y, w.pts, w.pts.length, (s.r + w.br) ** 2)) { raw = "mauer"; break; }
+      if (!raw) for (const w of this.walls) if (S[w.owner].team !== s.team && hitTrail(s.x, s.y, w.pts, w.pts.length, (s.r + w.br) ** 2)) { raw = "mauer"; break; }
       if (s.ghostUntil > t) s.inBody = !!raw;                             // Geist: nichts passiert
       else if (raw && s.inBody && t < s.ghostUntil + 0.8) { /* Schonfrist, bis der Kopf wieder frei ist */ }
       else if (raw && s.shieldUntil > t) {                                 // Schild fängt den Treffer ab, danach Schonfrist
@@ -519,7 +551,7 @@ class Sim {
     }
     for (let p = 0; p < S.length; p++) for (let q = p + 1; q < S.length; q++) {
       const a = S[p], b = S[q];
-      if (!a.alive || !b.alive || dead[p] || dead[q] || a.ghostUntil > t || b.ghostUntil > t) continue;
+      if (!a.alive || !b.alive || dead[p] || dead[q] || a.ghostUntil > t || b.ghostUntil > t || a.team === b.team) continue;
       if ((a.x - b.x) ** 2 + (a.y - b.y) ** 2 < (a.r + b.r) ** 2) {
         const diff = a.len - b.len;
         if (Math.abs(diff) < 0.05) { dead[p] = dead[q] = "head"; }
@@ -533,10 +565,10 @@ class Sim {
       else { s.alive = false; s.lives = 0; this.ev({ type: "die", i: s.i, x: s.x, y: s.y, why: dead[s.i] }); }
     }
 
-    const alive = S.filter(s => s.alive);
-    if (alive.length <= 1) {
+    const alive = S.filter(s => s.alive), teams = new Set(alive.map(s => s.team));
+    if (teams.size <= 1) {                                    // höchstens ein Team übrig (ohne Bosse ist jeder Wurm sein eigenes Team)
       this.done = true; this.reason = "crash";
-      this.winner = alive.length ? alive[0].i : -1;
+      this.winner = alive.length ? alive[0].team : -1;
     } else if (t >= this.dur) this.finish("time");
   }
 
@@ -544,7 +576,8 @@ class Sim {
   finish(reason) {
     const alive = this.snakes.filter(s => s.alive).sort((p, q) => q.len - p.len);
     this.done = true; this.reason = reason;
-    this.winner = !alive.length ? -1 : alive.length > 1 && alive[0].len - alive[1].len < 0.02 ? -1 : alive[0].i;
+    const rival = alive.find(s => s.team !== (alive[0] && alive[0].team));     // längster Wurm eines anderen Teams
+    this.winner = !alive.length ? -1 : rival && alive[0].len - rival.len < 0.02 ? -1 : alive[0].team;
   }
 
   trim(s) {
@@ -574,7 +607,7 @@ class Sim {
   }
 
   applyPower(s, p) {
-    const t = this.t, others = this.snakes.filter(o => o !== s && o.alive);
+    const t = this.t, others = this.snakes.filter(o => o.team !== s.team && o.alive);
     if (p.type === "turbo") s.turboUntil = t + TURBO_T;
     else if (p.type === "ghost") { s.ghostUntil = t + GHOST_T; s.inBody = false; }
     else if (p.type === "scissors") for (const o of others) this.cutBody(o, 3);
@@ -610,9 +643,10 @@ class Bot {
     const me = sim.snakes[i];
     if (!me.alive) return this.out;
     // Gegner = der nächste lebende Wurm (bei mehreren Würmern)
-    const others = sim.snakes.filter(o => o !== me && o.alive);
-    let op = others[0] || sim.snakes[(i + 1) % sim.snakes.length], dOp = Math.hypot(op.x - me.x, op.y - me.y);
-    for (const o of others) { const d = Math.hypot(o.x - me.x, o.y - me.y); if (d < dOp) { dOp = d; op = o; } }
+    const others = sim.snakes.filter(o => o !== me && o.alive);       // allen Körpern ausweichen, auch dem Teamkameraden
+    const foes = others.filter(o => o.team !== me.team);
+    let op = foes[0] || sim.snakes.find(o => o.team !== me.team) || sim.snakes[(i + 1) % sim.snakes.length], dOp = Math.hypot(op.x - me.x, op.y - me.y);
+    for (const o of foes) { const d = Math.hypot(o.x - me.x, o.y - me.y); if (d < dOp) { dOp = d; op = o; } }
     const k = this.k, t = sim.t, R = sim.R;
     const longer = me.len > op.len + 0.06;
 
@@ -684,7 +718,7 @@ class Bot {
       if (wd < clear) clear = wd;
       for (const b of sim.bombs) {
         const left = b.at - sim.t - tau;                     // in der letzten Zeit vor dem Knall nicht im Umkreis sein
-        if (b.owner === me.i || left > 0.7 || left < -0.1) continue;
+        if (sim.snakes[b.owner].team === me.team || left > 0.7 || left < -0.1) continue;
         if (Math.hypot(x - b.x, y - b.y) < BOMB_R + me.r + 0.04) return { surv: (s - 1) / n, clear: 0, x, y, dir };
       }
       if (tau <= ghostLeft) continue;
@@ -695,7 +729,7 @@ class Bot {
       { const thr = me.r + me.br, inv = 1 / (thr * thr);
         for (let q = 0; q < mEnd; q += 4) { const dx = mt[q] - x, dy = mt[q + 1] - y, r2 = (dx * dx + dy * dy) * inv; if (r2 < mr) { mr = r2; mthr = thr; } } }
       for (const w of sim.walls) {
-        if (w.owner === me.i || w.until < sim.t + tau) continue;
+        if (sim.snakes[w.owner].team === me.team || w.until < sim.t + tau) continue;
         const p = w.pts, thr = me.r + w.br, inv = 1 / (thr * thr);
         for (let q = 0; q < p.length; q += 4) { const dx = p[q] - x, dy = p[q + 1] - y, r2 = (dx * dx + dy * dy) * inv; if (r2 < mr) { mr = r2; mthr = thr; } }
       }
@@ -906,6 +940,15 @@ const WHY = { wall: "in die Wand gefahren", body: "in einen Gegner gefahren", se
 const EMOTES = ["👋", "😂", "😎", "😱", "😡", "👍"];
 const NET_PREFIX = "snakeduell-v3-";                   // v3: Spielarten online, mehr als zwei Würmer im Spielstand (ältere Versionen passen nicht mehr zusammen)
 const MODE_TITLE = { ueberleben: "🐍 Überleben", futter: "🍎 Futterjagd", boss: "👑 Bosswurm" };
+/* Bosse für die Oberfläche: Name, Bild, Beschreibung, Design */
+const BOSS_INFO = {
+  riese:     { name: "Riese",     icon: "🦖", skin: "lava",       text: "Dick, lang und etwas träge. Drei Leben." },
+  blitz:     { name: "Blitz",     icon: "⚡", skin: "gold",       text: "Dünn und sehr schnell, lenkt flink. Drei Leben." },
+  zwillinge: { name: "Zwillinge", icon: "👯", skin: "regenbogen", text: "Zwei Bosse auf einmal, je zwei Leben. Du musst beide erwischen." },
+  bomber:    { name: "Bomber",    icon: "💣", skin: "galaxie",    text: "Legt alle 5 Sekunden eine Bombe hinter sich. Drei Leben." },
+};
+const bossesBeaten = store.get("bosses", {}) || {};                // besiegte Bosse (sd_bosses)
+const bossOpen = id => { const k = BOSS_ORDER.indexOf(id); return k <= 0 || bossesBeaten[BOSS_ORDER[k - 1]] === true; };
 const PEER_URL = "https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js";
 const params = new URLSearchParams(location.search);
 const LOCAL_NET = params.get("net") === "local";      // Test-Verbindung zwischen zwei Tabs, ohne Internet
@@ -917,7 +960,7 @@ const app = {
   oppName: "Computer", why: [null, null], particles: [],
   slow: { t0: -9, until: -9, x: 0, y: 0 }, shakeUntil: -9, lastPhase: null, lastCount: 0, roundSprint: false, surviveAcc: 0, goalTick: 0,
   skins: ["minze", "bonbon"], guestSkin: null, preview: null, bulges: [[], []], look: [0, 0], lastDir: [0, 0], deadAt: [0, 0],
-  kind: "duell", emotes: [], lastEmo: 0, rival: null,
+  kind: "duell", emotes: [], lastEmo: 0, rival: null, boss: "riese",
 };
 const input = { a: null, s: false }, input2 = { a: null, s: false };   // input2: Spieler 2 im Modus „Zwei Spieler“
 const inGame = () => app.mode === "solo" || app.mode === "host" || app.mode === "guest" || app.mode === "duo";
@@ -926,7 +969,7 @@ const inGame = () => app.mode === "solo" || app.mode === "host" || app.mode === 
    Darstellung
    ================================================================ */
 const stars = (() => { const r = mulberry32(4711), s = []; for (let i = 0; i < 130; i++) s.push([r() * W, r() * H, r() * 1.4 + 0.3, r()]); return s; })();
-const PANELS = ["menuPanel", "lobbyPanel", "endPanel", "helpPanel", "skinPanel", "goalPanel", "modePanel", "onlinePanel"];
+const PANELS = ["menuPanel", "lobbyPanel", "endPanel", "helpPanel", "skinPanel", "goalPanel", "modePanel", "onlinePanel", "bossPanel"];
 
 function targetLayout() {
   if (inGame() && !app.endShown) return [600, 335];
@@ -1101,7 +1144,7 @@ function segPositions(sn, gap = SEG_GAP * (sn.sc || 1)) {
 const IMG_HEAD_SCALE = 1.8;                 // Bild-Köpfe: sichtbare Größe gegenüber der Trefferfläche (auf Wunsch etwas größer als 1,6)
 function drawHead(sn, i, skin, now, hx, hy) {
   const sc = sn.sc || 1, r = HEAD_R * SC * 1.32 * sc, d = sn.hdir, cos = Math.cos(d), sin = Math.sin(d);
-  if (sc > 1 && sn.alive) text("👑", hx, hy - r * 1.75, r * 1.25);   // der Boss trägt eine Krone
+  if (sn.boss && sn.alive) text("👑", hx, hy - r * 1.75, Math.max(r * 1.25, 22));   // jeder Boss trägt eine Krone
   if (skin.img) {                                         // Bild-Kopf: bringt sein Gesicht mit, wird in Fahrtrichtung gedreht
     const R = HEAD_R * SC * IMG_HEAD_SCALE * sc;
     ctx.save(); ctx.translate(hx, hy); ctx.rotate(d);
@@ -1233,7 +1276,8 @@ const icons = sn => (sn.turbo ? " ⚡" : "") + (sn.ghost ? " 👻" : "") + (sn.s
 const playerName = i => (app.mode === "duo" ? `Spieler ${i + 1}` : i === app.me ? "DU" : app.oppName);
 function drawHud(view) {
   const me = app.me, N = view.snakes.length, sd = view.sdOn && view.t >= SD_START && view.phase === "play";
-  const hearts = sn => (view.mode === "boss" ? " " + "❤️".repeat(Math.max(0, sn.lives)) : "");
+  const bossMode = view.mode === "boss";
+  const hearts = sn => (!bossMode ? "" : sn.boss ? " " + view.snakes.filter(b => b.boss).map(b => "❤️".repeat(Math.max(0, b.lives))).join(" · ") : " " + "❤️".repeat(Math.max(0, sn.lives)));
   const side = (i, x, align, label) => {
     const sn = view.snakes[i], dir = align === "left" ? 1 : -1;
     ctx.fillStyle = colorOf(i); ctx.beginPath(); ctx.arc(x + dir * 12, 62, 12, 0, 7); ctx.fill();
@@ -1244,7 +1288,7 @@ function drawHud(view) {
     }
   };
   side(me, 120, "left", app.mode === "duo" ? "SPIELER 1" : "DU");
-  if (N === 2) side(1 - me, W - 30, "right", app.mode === "duo" ? "SPIELER 2" : app.oppName);
+  if (N === 2 || bossMode) side(1 - me, W - 30, "right", app.mode === "duo" ? "SPIELER 2" : app.oppName);
   else {                                                  // mehrere Gegner: je eine kleine Zeile mit Farbe, Punkten und Zustand
     let row = 0;
     for (let i = 0; i < N; i++) {
@@ -1269,7 +1313,7 @@ function drawHud(view) {
   // Längen-Balken
   const y = CY + SC + 48, maxLen = Math.max(1.2, ...view.snakes.map(n => n.len)), bw = 250;
   text("LÄNGE", CX, y, 18, "rgba(255,255,255,0.55)", "center", 700);
-  if (N === 2) {
+  if (N === 2 || bossMode) {
     for (const [i, dir] of [[me, -1], [1 - me, 1]]) {
       const x0 = CX + dir * 50, wv = bw * (view.snakes[i].len / maxLen);
       ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(dir > 0 ? x0 : x0 - bw, y - 8, bw, 16);
@@ -1287,7 +1331,8 @@ function drawBanner(view, now) {
   if (view.phase === "count") {
     const n = Math.ceil(COUNT_T - view.phaseT);
     text(`Runde ${view.round}`, CX, CY - 70, 34, "rgba(255,255,255,0.8)");
-    if (MODE_TITLE[view.mode]) text(MODE_TITLE[view.mode], CX, CY - 118, 30, "#ffd34d");
+    const mt = view.mode === "boss" && BOSS_INFO[view.boss] ? `${BOSS_INFO[view.boss].icon} Boss: ${BOSS_INFO[view.boss].name}` : MODE_TITLE[view.mode];
+    if (mt) text(mt, CX, CY - 118, 30, "#ffd34d");
     text(String(Math.max(1, n)), CX, CY + 10, 130);
     const bob = 6 * Math.sin(now * 6);
     if (app.mode === "duo") view.snakes.forEach((sn, i) => text(`${i + 1} ▼`, CX + sn.hx * SC, CY + sn.hy * SC - 44 - bob, 26, colorOf(i)));
@@ -1299,8 +1344,9 @@ function drawBanner(view, now) {
     let sub = view.t >= view.dur - 0.001 ? (view.sdOn ? "Zeit um – die längere Schlange gewinnt" : "Zeit um – der Längere gewinnt") : "";
     if (!sub && duo && w >= 0 && app.why[1 - w]) sub = `Spieler ${2 - w} ist ${WHY[app.why[1 - w]]}`;
     if (!sub && !duo && w !== me && app.why[me]) sub = "Du bist " + WHY[app.why[me]];
-    if (!sub && !duo && N === 2 && w === me && app.why[1 - me]) sub = view.mode === "boss" ? "Der Boss ist besiegt!" : opName + WHY[app.why[1 - me]];
-    if (!sub && N > 2 && w === me) sub = "Du bist als Letzter übrig!";
+    if (!sub && !duo && view.mode === "boss" && w === me) sub = N > 2 ? "Beide Bosse sind besiegt!" : "Der Boss ist besiegt!";
+    if (!sub && !duo && N === 2 && w === me && app.why[1 - me]) sub = opName + WHY[app.why[1 - me]];
+    if (!sub && N > 2 && w === me && view.mode !== "boss") sub = "Du bist als Letzter übrig!";
     if (!sub && w === -1) sub = N > 2 ? "Gleich lang – niemand gewinnt" : "Beide gleichzeitig raus";
     ctx.fillStyle = "rgba(5,6,10,0.72)"; ctx.beginPath(); ctx.roundRect(CX - 300, CY - 80, 600, 150, 24); ctx.fill();
     text(title, CX, CY - 28, 50, w === -1 ? "#fff" : duo ? colorOf(w) : w === me ? "#3ddc84" : "#ff6b6b");
@@ -1389,9 +1435,9 @@ function render(view, now, dt) {
 function hostView(m) {
   const s = m.sim, t = s.t;
   return { phase: m.phase, phaseT: m.phaseT, scores: m.scores, round: m.round, t, R: s.R, winner: s.winner, matchWinner: m.matchWinner,
-    mode: s.mode, arena: s.arena, dur: s.dur, sdOn: s.sdOn, bombs: s.bombs,
+    mode: s.mode, arena: s.arena, dur: s.dur, sdOn: s.sdOn, bombs: s.bombs, boss: s.boss,
     snakes: s.snakes.map(n => ({ trail: n.trail, hx: n.x, hy: n.y, hdir: n.dir, len: n.len, alive: n.alive, ghost: n.ghostUntil > t, turbo: n.turboUntil > t, sprint: n.sprinting,
-      shield: n.shieldUntil > t, slow: n.slowUntil > t, magnet: n.magnetUntil > t, lives: n.lives, sc: n.sc })),
+      shield: n.shieldUntil > t, slow: n.slowUntil > t, magnet: n.magnetUntil > t, lives: n.lives, sc: n.sc, boss: n.boss })),
     foods: s.foods, power: s.power, walls: s.walls };
 }
 const q = v => Math.round(v * 1000);
@@ -1479,6 +1525,7 @@ function fx(e) {
     if (mine) { vib(30); bump("joker"); if (app.mode !== "duo") stats.kinds[e.p] = 1; }
   }
   else if (e.type === "clash") { burst(e.x, e.y, "#fff", 26, 380); tone(140, 0.3, "sawtooth", 0.3, 0.5); }
+  else if (e.type === "drop") { burst(e.x, e.y, "#ff6b6b", 8, 140); tone(200, 0.12, "square", 0.15, 0.7); }
   else if (e.type === "warp") { burst(e.x, e.y, "#36e7ff", 10, 200); burst(e.x2, e.y2, "#ff5ac8", 14, 240); tone(300, 0.2, "sine", 0.22, 2.6); }
   else if (e.type === "boom") {
     burst(e.x, e.y, "#ff7a2b", 34, 520); burst(e.x, e.y, "#ffd34d", 20, 300); tone(90, 0.55, "sawtooth", 0.35, 0.4);
@@ -1491,7 +1538,7 @@ function fx(e) {
   else if (e.type === "hurt") {
     burst(e.x, e.y, colorOf(e.i), 18, 300); tone(260, 0.25, "square", 0.2, 0.5);
     if (inGame()) { app.shakeUntil = app.lastTs + 0.15; if (mine) vib(50); }
-    if (inGame() && view0().mode === "boss") showToast(e.i === 1 ? `👑 Boss getroffen! Noch ${e.lives} Leben` : `💥 Getroffen! Du hast noch ${e.lives} Leben`);
+    if (inGame() && view0().mode === "boss") showToast(e.i !== app.me ? `👑 Boss getroffen! Noch ${e.lives} Leben` : `💥 Getroffen! Du hast noch ${e.lives} Leben`);
   }
   else if (e.type === "die") {
     app.why[e.i] = e.why; app.deadAt[e.i] = app.lastTs; burst(e.x, e.y, colorOf(e.i), 30, 420); tone(380, 0.5, "sawtooth", 0.3, 0.25);
@@ -1609,7 +1656,8 @@ const ACHS = [
   { id: "serie3",    text: "3 Duelle in Folge gewonnen",     stars: 4, n: 3,   val: () => stats.bestStreak },
   { id: "tage7",     text: "7 Tage in Folge eine Aufgabe geschafft", stars: 5, n: 7, val: () => streak.best },
   { id: "sauber",    text: "10 Runden ohne Sprint gewonnen", stars: 3, n: 10,  val: () => stats.nosprint },
-  { id: "boss",      text: "Den Bosswurm besiegt",           stars: 3, n: 1,   val: () => stats.boss },
+  { id: "boss",      text: "Einen Boss besiegt",             stars: 3, n: 1,   val: () => stats.boss },
+  { id: "bosse",     text: "Alle vier Bosse besiegt",        stars: 5, n: 4,   val: () => BOSS_ORDER.filter(b => bossesBeaten[b] === true).length },
   { id: "ueberleben", text: "Überleben gewonnen",            stars: 3, n: 1,   val: () => stats.ueberleben },
   { id: "futter",    text: "Futterjagd gewonnen",            stars: 2, n: 1,   val: () => stats.futter },
 ];
@@ -1820,10 +1868,15 @@ function startSolo(kind = "duell") {
   app.mode = "solo"; app.kind = kind; app.me = 0;
   let bots;
   if (kind === "ueberleben") { const bl = Math.max(1, L - 1); bots = [null, new Bot(bl, s), new Bot(bl, s + 1), new Bot(bl, s + 2)]; app.oppName = "3 Computer"; }
-  else if (kind === "boss") { bots = [null, new Bot(Math.min(10, L + 1), s)]; app.oppName = "BOSS"; }
+  else if (kind === "boss") {
+    const B = BOSSES[app.boss] || BOSSES.riese, bl = Math.min(10, L + B.plus);
+    bots = [null]; for (let k = 0; k < B.n; k++) bots.push(new Bot(bl, s + k));
+    app.oppName = BOSS_INFO[app.boss].name.toUpperCase();
+  }
   else { bots = [null, new Bot(L, s)]; app.oppName = `Computer · St. ${L}`; }
-  app.match = new Match(s, bots, { mode: kind, arena: state.arena });
-  app.skins = pickSkins(bots.length, kind === "boss" ? "lava" : SKINS[L % SKINS.length].id);
+  app.match = new Match(s, bots, { mode: kind, arena: state.arena, boss: app.boss });
+  app.skins = pickSkins(bots.length, kind === "boss" ? BOSS_INFO[app.boss].skin : SKINS[L % SKINS.length].id);
+  if (kind === "boss" && bots.length > 2) app.skins[2] = app.skins[1];      // Zwillinge sehen gleich aus
   begin();
 }
 /** Zwei Spieler an einem Handy: untere Hälfte = Spieler 1 (Wurm 0), obere Hälfte = Spieler 2 (Wurm 1) */
@@ -1908,7 +1961,7 @@ function showEnd(view) {
   app.endShown = true; joy = null; joy2 = null; sprintHeld = false; sprintHeld2 = false; refreshSprint();
   $("sprintBtn").classList.add("hidden"); $("sprintBtn2").classList.add("hidden"); $("emoBar").classList.add("hidden");
   const w = view.matchWinner, won = w === app.me, draw = w === -1, duo = app.mode === "duo";
-  const others = view.scores.filter((_, i) => i !== app.me);
+  const others = view.mode === "boss" ? [view.scores[1]] : view.scores.filter((_, i) => i !== app.me);
   const score = others.length === 1 ? `${view.scores[app.me]} : ${others[0]}` : `${view.scores[app.me]} : ${Math.max(...others)} (bester Gegner)`;
   let sub = `Endstand ${duo ? `${view.scores[0]} : ${view.scores[1]}` : score}`;
   if (app.mode === "solo") {
@@ -1920,6 +1973,11 @@ function showEnd(view) {
       }
       $("againBtn").textContent = won ? `Weiter: Stufe ${state.level}` : "Nochmal versuchen";
     } else $("againBtn").textContent = "Nochmal";
+    if (app.kind === "boss" && won) {                                          // Boss besiegt: nächsten freischalten
+      const first = bossesBeaten[app.boss] !== true, next = BOSS_ORDER[BOSS_ORDER.indexOf(app.boss) + 1];
+      bossesBeaten[app.boss] = true; store.set("bosses", bossesBeaten);
+      if (first && next) { sub += ` · Neuer Boss freigeschaltet: ${BOSS_INFO[next].name}`; app.boss = next; $("againBtn").textContent = `Weiter: ${BOSS_INFO[next].name}`; }
+    }
   } else $("againBtn").textContent = "Revanche";
   if ((app.mode === "host" || app.mode === "guest") && app.rival) {           // Bilanz gegen diesen Freund
     const r = rivals[app.rival] || (rivals[app.rival] = { w: 0, l: 0, d: 0, s: 0 }), friend = 1 - app.me;
@@ -1929,7 +1987,7 @@ function showEnd(view) {
     sub += `\nBilanz gegen diesen Freund: ${r.w} : ${r.l}` + (r.d ? ` (${r.d}× unentschieden)` : "") +
       (r.s >= 2 ? ` · 🔥 ${r.s} Siege in Folge` : r.s <= -2 ? ` · ${-r.s} Niederlagen in Folge` : "");
   }
-  const title = view.mode === "boss" && won ? "Boss besiegt! 👑" : "Duell gewonnen! 🏆";
+  const title = view.mode === "boss" && won ? `${BOSS_INFO[view.boss] ? BOSS_INFO[view.boss].name : "Boss"} besiegt! 👑` : "Duell gewonnen! 🏆";
   $("endTitle").innerHTML = draw ? "Unentschieden" : duo ? `<span class="win">Spieler ${w + 1} gewinnt! 🏆</span>` :
     won ? `<span class="win">${title}</span>` : `<span class="lose">${app.kind === "boss" ? "Der Boss war stärker" : "Duell verloren"}</span>`;
   $("endSub").textContent = sub;
@@ -2071,6 +2129,21 @@ $("soloBtn").onclick = () => startSolo("duell");
 $("modeBtn").onclick = () => showPanel("modePanel");
 $("modeBack").onclick = () => showPanel("menuPanel");
 for (const b of document.querySelectorAll("#modePanel [data-mode]")) b.onclick = () => (b.dataset.mode === "duo" ? startDuo() : startSolo(b.dataset.mode));
+/* Boss-Auswahl: besiegte Bosse grün umrandet, gesperrte grau mit Hinweis */
+function buildBossList() {
+  const list = $("bossList"); list.innerHTML = "";
+  $("bossTitle").textContent = `👑 Bosse · ${BOSS_ORDER.filter(b => bossesBeaten[b] === true).length}/4 besiegt`;
+  BOSS_ORDER.forEach((id, k) => {
+    const info = BOSS_INFO[id], open = bossOpen(id), beaten = bossesBeaten[id] === true;
+    const b = document.createElement("button"); b.className = "btn" + (k % 2 ? " alt" : "") + (open ? "" : " locked") + (beaten ? " beaten" : ""); b.dataset.boss = id;
+    b.textContent = `${info.icon} ${info.name}${beaten ? " ✓" : ""}`;
+    const sm = document.createElement("small"); sm.textContent = open ? info.text : `🔒 Besiege zuerst: ${BOSS_INFO[BOSS_ORDER[k - 1]].name}`; b.appendChild(sm);
+    b.onclick = () => { if (!open) { showToast(`🔒 Erst ${BOSS_INFO[BOSS_ORDER[k - 1]].name} besiegen`); return; } app.boss = id; startSolo("boss"); };
+    list.appendChild(b);
+  });
+}
+$("bossBtn").onclick = () => { buildBossList(); showPanel("bossPanel"); };
+$("bossBack").onclick = () => showPanel("modePanel");
 const refreshArenaBtn = () => { $("arenaBtn").querySelector("span").textContent = ARENA_NAME[state.arena]; $("lobbyArenaBtn").textContent = `🏟️ ${ARENA_NAME[state.arena]}`; };
 const nextArena = () => { const ids = Object.keys(ARENAS); state.arena = ids[(ids.indexOf(state.arena) + 1) % ids.length]; save(); refreshArenaBtn(); };
 $("arenaBtn").onclick = () => { nextArena(); startDemo(); };          // das Demo-Duell zeigt die gewählte Arena sofort
@@ -2190,7 +2263,7 @@ $("shareBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
-window.SD = { app, state, input, input2, Sim, Bot, Match, SKINS, ARENAS, clip, rivals, startSolo, startDuo, skinsReady: false,
+window.SD = { app, state, input, input2, Sim, Bot, Match, SKINS, ARENAS, BOSSES, bossesBeaten, clip, rivals, startSolo, startDuo, skinsReady: false,
   goals: { stats, streak, achDone, owned, TASKS, ACHS, today, daily: () => ensureDaily(), stars: () => starCount, setStars: n => { starCount = n; saveGoals(); }, bump, check: checkGoals } };
 loadImageSkins().finally(() => { window.SD.skinsReady = true; if (!inGame()) { demoSkins(); refreshSkinBtn(); if (!$("skinPanel").classList.contains("hidden")) buildSkinGrid(); } });
 

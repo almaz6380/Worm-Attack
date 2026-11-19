@@ -36,7 +36,7 @@ Bilder für neue Wurm-Designs kannst du einfach in den Chat schicken.
 | Duell | Zwei Würmer in runder Arena, wer zuerst 3 Runden gewinnt. Futter, Sprint, acht Joker (Turbo, Geist, Schere, Mauer, Magnet, Eis, Schild, Bombe), Sudden Death ab Sekunde 40 |
 | Arenen | Klassisch, Säulen, Karussell (kreisende Blöcke), Portale. Umschalten im Menü |
 | Gegen Computer | 10 Stufen, jeder Duell-Sieg schaltet die nächste frei |
-| Spielarten | Überleben (du gegen drei Computer), Futterjagd (45 s, niemand fliegt raus), Bosswurm (Boss mit drei Leben, du mit zwei), Zwei Spieler an einem Handy |
+| Spielarten | Überleben (du gegen drei Computer), Futterjagd (45 s, niemand fliegt raus), vier Bosse zum Freischalten (Riese, Blitz, Zwillinge, Bomber; du hast zwei Leben), Zwei Spieler an einem Handy |
 | Online | Freund per 4-stelligem Code oder Link einladen, direkte Verbindung zwischen den Handys. Spielart Duell, Futterjagd oder Überleben (mit zwei Computer-Würmern). Emotes, Bilanz gegen jeden Freund mit Sieges-Serie |
 | Startbildschirm | Wippender Schriftzug mit kriechendem Wurm, Profilzeile (Stufe, Sterne, Siege), großer Spielen-Knopf, Kacheln für Wurm, Arena, Ziele, Regeln |
 | Clips | Die letzten 8 bis 16 Sekunden jeder Runde werden mit Ton aufgenommen. Nach dem Duell speichern oder teilen (z. B. für TikTok) |
@@ -60,6 +60,8 @@ Bilder für neue Wurm-Designs kannst du einfach in den Chat schicken.
 7. **Acht weitere Designs** (von Claude gezeichnet), Auswahl-Übersicht, Prompts für alle Designs.
 8. **Sprint per Doppeltipp.**
 9. **Effekte, Tagesaufgaben, Erfolge, Sterne-Designs.**
+12. **Vier Bosse:** Riese, Blitz (dünn und schnell), Zwillinge (zwei auf einmal), Bomber (legt Bomben). Einer nach
+    dem anderen freischalten, neuer Erfolg „Alle vier Bosse besiegt“.
 11. **Spielarten online und neuer Startbildschirm:** Futterjagd und Überleben (ihr zwei plus zwei Computer-Würmer)
     online. Neuer Schriftzug, großer Spielen-Knopf, aufgeräumtes Menü. Online-Version auf v3.
 10. **Ideen 3 bis 8 auf einmal:** vier neue Joker, drei neue Arenen, drei neue Spielarten, zwei Spieler an einem
@@ -76,6 +78,7 @@ Bilder für neue Wurm-Designs kannst du einfach in den Chat schicken.
 | Ideen 1 und 2 umsetzen | Effekte, Aufgaben und Erfolge eingebaut |
 | „mach 3 bis 8“ | Joker, Arenen, Spielarten, zwei Spieler, Emotes und Bilanz, Clips eingebaut |
 | „mach 9 … und mach einen besseren Startbildschirm“ | Spielarten online, neuer Startbildschirm |
+| „mach 12“ | Vier Bosse mit Freischalten |
 
 ## Was noch niemand auf einem echten Handy geprüft hat
 
@@ -97,6 +100,7 @@ zurückmelden:
   dem Kopf steht?
 - **Startbildschirm:** Gefällt er dir? Findest du alles (Lenkart steht jetzt unter „Regeln“)?
 - **Online-Überleben:** Klappt es zu zweit gegen die Computer-Würmer?
+- **Bosse:** Ist die Reihenfolge Riese → Blitz → Zwillinge → Bomber richtig schwer? Ist Blitz zu fies?
 - **Clips:** Lässt sich der Clip auf dem iPhone speichern und teilen? Ruckelt das Spiel während der Aufnahme? Wenn
   ja, unter „Regeln“ die Clips ausschalten und mir Bescheid geben.
 
@@ -127,13 +131,14 @@ Die Ideen 1 bis 8 aus der alten Liste sind alle umgesetzt. Neue Ideen:
 | --- | --- | --- | --- |
 | 10 | Namen für Freunde in der Bilanz, Liste „Meine Gegner“ | klein | |
 | 11 | Bestenliste auf dem Gerät: längster Wurm, schnellster Boss-Sieg | klein | ohne Server |
-| 12 | Weitere Bosse (z. B. ein schneller, dünner Boss oder zwei Bosse) | mittel | |
 | 13 | Turnier zu zweit an einem Handy: mehrere Arenen nacheinander | klein | |
 | 14 | Pause-Hinweis online („Warte auf Gastgeber …“) | klein | stand schon in der Aufgabenliste |
 
 **Empfehlung von Claude:** Zuerst alles Neue auf dem echten Handy ausprobieren, am besten auch mit einem Freund
 online und zu zweit an einem Handy, und die Fragen oben beantworten. Danach Schwierigkeit und Boss nach deiner
-Rückmeldung einstellen. Von den Ideen bringt Nummer 12 (weitere Bosse) oder ein Boss zu zweit online am meisten Spaß.
+Rückmeldung einstellen. Neue Idee mit viel Spaß: Bosse zu zweit online (ihr beide gegen einen Boss).
+
+Idee 12 (weitere Bosse) ist umgesetzt.
 
 Die Idee 9 (Spielarten online) ist umgesetzt.
 

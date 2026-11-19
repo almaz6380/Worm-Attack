@@ -66,7 +66,9 @@ simulierte Browser auf einem Rechner.
 ## Spielregeln (so ist es umgesetzt)
 
 Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am Anfang des SIM-Blocks
-(`MODES`, `ARENAS`, `BOSS` eingeschlossen). `Sim(seed, record, { mode, arena })` kann beliebig viele Würmer.
+(`MODES`, `ARENAS`, `BOSSES` eingeschlossen). `Sim(seed, record, { mode, arena, boss })` kann beliebig viele Würmer.
+Jeder Wurm hat ein Team (`team`, sonst = eigene Nummer). Teamkameraden prallen nicht aneinander ab, Joker und
+Bomben treffen nur andere Teams, die Runde endet, wenn höchstens ein Team übrig ist; Sieger ist die Nummer des Teams.
 
 - **Format:** Wer zuerst 3 Runden gewinnt, gewinnt das Duell. Höchstens 9 Runden, 3 s Countdown vor jeder Runde.
 - **Bewegung:** Tempo 0,42 pro Sekunde, Sprint 0,68. Drehrate 3,6 rad/s. Die Schlange dreht zur Zielrichtung
@@ -117,7 +119,16 @@ Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am
   | `duell` | 2 | 60 s | wie oben, auch online und zu zweit |
   | `ueberleben` | 4 | 60 s | du gegen drei Bots (Stufe − 1), alle gegen alle, 10 Futter |
   | `futter` | 2 | 45 s | keine schrumpfende Arena, 14 Futter, 999 Leben: Treffer kosten nur Länge |
-  | `boss` | 2 | 60 s | Wurm 1 ist der Boss (`BOSS`): 1,5-fach dick, Länge 1,2, Tempo 85 %, Drehrate 75 %, 3 Leben, Bot-Stufe + 1. Der Spieler hat 2 Leben |
+  | `boss` | 2 oder 3 | 60 s | Wurm 1 (und 2) sind Bosse (`BOSSES`, Team 1, Krone). Der Spieler hat 2 Leben (`HERO_LIVES`) |
+
+- **Bosse** (`BOSSES`, Reihenfolge `BOSS_ORDER`, besiegte in `sd_bosses`; jeder besiegte schaltet den nächsten frei):
+
+  | Boss | Größe | Länge | Tempo | Drehrate | Leben | Bot-Stufe | Besonderheit |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | `riese` | 1,5 | 1,2 | 85 % | 75 % | 3 | + 1 | |
+  | `blitz` | 0,85 | 0,55 | 115 % | 120 % | 3 | + 0 | |
+  | `zwillinge` | 1,15 | 0,6 | 90 % | 85 % | je 2 | + 0 | zwei Bosse in einem Team |
+  | `bomber` | 1,3 | 1,0 | 90 % | 85 % | 3 | + 0 | alle 5 s eine Bombe am Schwanzende (Ereignis `drop`) |
 
 - **Sudden Death:** Ab Sekunde 40 schrumpft die Arena gleichmäßig bis Sekunde 60 auf Radius 0,45.
   Nach 60 s gewinnt die längere Schlange (Unterschied unter 0,02 ⇒ unentschieden).
@@ -141,7 +152,9 @@ Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am
   Stufe 5 schlägt Stufe 1 in 80 %, Stufe 10 schlägt Stufe 5 in 56 % (vorher 91 / 80 / 64 %). Mehr Joker heißt mehr
   Glück, vor allem Schild und Bombe gleichen aus. Mittlere Rundendauer: 14 s, 32 s, 52 s.
 - Arenen, Stufe 5 gegen 5: Säulen 25 s, Karussell 27 s, Portale 42 s im Mittel, Startseiten fair.
-- Spielarten, ein Bot spielt den Menschen (Rundensiege): Bosswurm 43 % (Stufe 1), 35 % (5), 28 % (10).
+- Spielarten, ein Bot spielt den Menschen (Rundensiege, Stufe 1 / 5 / 10): Riese 43 / 35 / 28 %, Blitz 20 / 34 / 48 %,
+  Zwillinge etwa 36 / 31 / 33 %, Bomber 43 / 34 / 25 %. Blitz ist für sehr schwache Spieler hart, kommt aber erst
+  nach dem Riesen.
   Überleben 29 bis 38 % (Zufall wäre 25 %). Futterjagd etwa 50 %.
 - Der Bot sucht bei mehreren Gegnern den nächsten als Ziel, weicht aber allen Körpern aus. In der Vorschau kennt er
   Hindernisse zur jeweiligen Zeit, springt durch Portale, meidet gegnerische Bomben kurz vor dem Knall und rechnet
@@ -160,6 +173,7 @@ Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am
 | `sd_streak` | Tages-Serie: aktuelle Länge, beste, letzter Tag |
 | `sd_ach` | Erledigte Erfolge |
 | `sd_owned` | Für Sterne freigeschaltete Designs |
+| `sd_bosses` | Besiegte Bosse `{riese: true, …}` |
 | `sd_arena`, `sd_clip`, `sd_netmode` | Gewählte Arena, Clip-Aufnahme an/aus, Online-Spielart des Gastgebers |
 | `sd_id` | Zufällige Kennung dieses Geräts (für die Bilanz gegen Freunde) |
 | `sd_rivals` | Bilanz pro Freund: `{Kennung: {w, l, d, s}}`, `s` = aktuelle Serie (positiv Siege, negativ Niederlagen) |
@@ -221,7 +235,8 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
 | `drawArenaFeatures`, `drawBombs`, `drawEmotes` | Hindernisse, Portale, Bomben mit Warnkreis, Emotes über dem Kopf |
 | `clip…` | Clip-Aufnahme (`MediaRecorder` auf `cv.captureStream`, Ton über `audio.dest`), `saveClip()` teilt oder lädt herunter |
 | `myId`, `rivals`, `rivalGreeting` | Bilanz gegen Freunde |
-| `window.SD` | Zugriff für Tests: `app`, `state`, `input`, `input2`, `Sim`, `Bot`, `Match`, `SKINS`, `ARENAS`, `clip`, `rivals`, `startSolo`, `startDuo`, `goals` |
+| `BOSS_INFO`, `bossesBeaten`, `bossOpen`, `buildBossList` | Bosse für die Oberfläche: Name, Bild, Design, Freischalten. `app.boss` = gewählter Boss |
+| `window.SD` | Zugriff für Tests: `app`, `state`, `input`, `input2`, `Sim`, `Bot`, `Match`, `SKINS`, `ARENAS`, `BOSSES`, `bossesBeaten`, `clip`, `rivals`, `startSolo`, `startDuo`, `goals` |
 
 **Startbildschirm:** Oben `drawLogo()` (wippende Buchstaben mit Farbverlauf, darunter kriecht ein kleiner Wurm im
 gewählten Design), in der Mitte ein Demo-Duell Bot gegen Bot in der gewählten Arena. Das Menü-Panel hat eine
@@ -301,14 +316,15 @@ vier Kacheln: Wurm, Arena, Ziele, Regeln. Die Lenkart steht im Regeln-Panel.
   Tag immer dieselben). Jede gibt 1 ⭐, alle drei zusammen 2 ⭐ extra. `streak` zählt Tage in Folge mit mindestens
   einer geschafften Aufgabe.
 - `ACHS`: 15 dauerhafte Erfolge mit 2 bis 5 ⭐. Ihre Werte kommen aus `stats`, `state.level` und `streak`.
-  `joker4` heißt aus Kompatibilität noch so, verlangt aber alle 8 Joker. Neu: `boss`, `ueberleben`, `futter`.
+  `joker4` heißt aus Kompatibilität noch so, verlangt aber alle 8 Joker. Neu: `boss` (irgendein Boss), `bosse`
+  (alle vier), `ueberleben`, `futter`.
 - Im Modus „Zwei Spieler“ zählt nichts (`bump` bricht ab).
 - Gezählt wird **nur in echten Partien** (`inGame()`), nie im Demo-Duell: `fx` zählt Futter, Joker und „Gegner
   fuhr in meinen Körper“; `trackFrame` zählt pro Bild Länge, Überlebenszeit und Sprint-Nutzung und erkennt
   Rundensiege am Phasenwechsel; `showEnd` zählt Duell-Siege und die Sieges-Serie.
 - `bump(key, n, isMax)` erhöht Statistik und heutige Aufgabe, `checkGoals()` vergibt Sterne und meldet per
   `notify`. Gespeichert wird bei Abschlüssen, am Duell-Ende und beim Wechsel ins Menü (`saveGoals`).
-- Sterne kann man nur für Designs ausgeben. Insgesamt gibt es 50 ⭐ aus Erfolgen plus bis zu 5 ⭐ pro Tag; die
+- Sterne kann man nur für Designs ausgeben. Insgesamt gibt es 55 ⭐ aus Erfolgen plus bis zu 5 ⭐ pro Tag; die
   drei Sterne-Designs kosten zusammen 42 ⭐.
 - Test-Schalter: `?tag=2026-03-10` setzt das Datum für die Tagesaufgaben fest.
 
@@ -334,6 +350,7 @@ enthält die vollständige Ideenliste mit Empfehlung.
 - Aussehen: Glieder-Würmer mit Gesicht, 19 Designs (9 eingebaut, 10 mit Bildern), Auswahl-Übersicht,
   Bild-Designs aus `skins/` samt Anleitung und Prompts.
 - Effekte: Vibration, Zeitlupe, Konfetti. Tagesaufgaben, Erfolge, Sterne, Sterne-Designs.
+- Idee 12 (19.11.2026): vier Bosse (Riese, Blitz, Zwillinge, Bomber) mit Auswahl `bossPanel` und Freischalten.
 - Idee 9 und neuer Startbildschirm (19.11.2026): Futterjagd und Überleben auch online.
 - Ideen 3 bis 8 (19.11.2026): Joker Magnet, Eis, Schild, Bombe; Arenen Säulen, Karussell, Portale; Spielarten
   Überleben, Futterjagd, Bosswurm; zwei Spieler an einem Handy; Online-Emotes und Bilanz gegen Freunde; Clips.

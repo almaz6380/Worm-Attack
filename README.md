@@ -79,7 +79,7 @@ Fertige Prompts für alle Bild-Designs stehen in [`skins/PROMPTS.md`](skins/PROM
 ## Aufgaben, Erfolge und Sterne
 - **Tagesaufgaben:** Jeden Tag drei Aufgaben, zum Beispiel „Friss 25 Futter“ oder „Gewinne eine Runde ohne
   Sprint“. Jede gibt 1 ⭐, alle drei zusammen 2 ⭐ extra.
-- **Erfolge:** 15 dauerhafte Ziele mit 2 bis 5 ⭐, zum Beispiel „10 Duelle gewonnen“ oder „Den Bosswurm besiegt“.
+- **Erfolge:** 16 dauerhafte Ziele mit 2 bis 5 ⭐, zum Beispiel „10 Duelle gewonnen“ oder „Den Bosswurm besiegt“.
 - **Tages-Serie:** Zählt die Tage in Folge, an denen du mindestens eine Aufgabe geschafft hast.
 - **Sterne-Designs:** Zebra (5 ⭐), Gold (12 ⭐) und Galaxie (25 ⭐) gibt es nur für Sterne. In der Wurm-Auswahl
   zweimal antippen zum Freischalten.
@@ -110,8 +110,12 @@ oder teilt der Knopf „🎬 Clip speichern“ das Video der letzten Runde, zum 
   - **Überleben:** du gegen drei Computer-Würmer, die sich auch gegenseitig jagen. Wer zuletzt übrig ist, gewinnt.
   - **Futterjagd:** 45 Sekunden, doppelt so viel Futter, die Arena schrumpft nicht. Wer anstößt, verliert ein
     Drittel seiner Länge und ist kurz ein Geist. Am Ende gewinnt der Längere.
-  - **Bosswurm:** ein dicker, langer, etwas trägerer Boss mit drei Leben. Du hast zwei. Jeder Crash kostet ein Leben
-    und ein Drittel der Länge.
+  - **Bosse:** vier Bosse, einer nach dem anderen freizuschalten. Du hast jeweils zwei Leben, jeder Crash kostet ein
+    Leben und ein Drittel der Länge.
+    1. 🦖 **Riese:** dick, lang, etwas träge, drei Leben.
+    2. ⚡ **Blitz:** dünn und sehr schnell, drei Leben.
+    3. 👯 **Zwillinge:** zwei Bosse auf einmal mit je zwei Leben. Sie können durch einander hindurchfahren.
+    4. 💣 **Bomber:** legt alle 5 Sekunden eine Bombe hinter sich ab, drei Leben.
   - **Zwei Spieler, ein Handy:** Handy flach hinlegen. Die untere Hälfte lenkt Spieler 1, die obere Spieler 2,
     jeder hat einen eigenen ⚡-Knopf.
 

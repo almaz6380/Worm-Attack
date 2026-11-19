@@ -6,7 +6,7 @@ const path = require("path");
 const html = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
 const a = html.indexOf("/* SIM-START"), b = html.indexOf("/* SIM-END */");
 if (a < 0 || b < 0) throw new Error("SIM-Marker in index.html nicht gefunden");
-const { Sim, Bot, Match, DT, DURATION, ARENAS, BOMB_FUSE } = new Function(html.slice(a, b) + ";return { Sim, Bot, Match, DT, DURATION, ARENAS, BOMB_FUSE };")();
+const { Sim, Bot, Match, DT, DURATION, ARENAS, BOMB_FUSE, BOSSES } = new Function(html.slice(a, b) + ";return { Sim, Bot, Match, DT, DURATION, ARENAS, BOMB_FUSE, BOSSES };")();
 
 let failed = 0;
 const check = (ok, msg) => { console.log(`${ok ? "OK  " : "FAIL"} ${msg}`); if (!ok) failed++; };
@@ -152,6 +152,51 @@ for (const ar of ["saeulen", "karussell", "portale"]) {
   const x = new Match(77, [new Bot(5, 1), new Bot(5, 2)], { mode: "boss", arena: "portale" }), y = new Match(77, [new Bot(5, 1), new Bot(5, 2)], { mode: "boss", arena: "portale" });
   g = 0; while (!x.over && g++ < 60 * 80 * 10) { x.tick(); y.tick(); }
   check(x.over && x.scores.join() === y.scores.join() && x.sim.t === y.sim.t, `Bosswurm in der Portal-Arena ist wiederholbar (${x.scores.join(":")})`);
+}
+
+// 8) Weitere Bosse
+{
+  const z = new Sim(21, true, { mode: "boss", boss: "zwillinge" }), [me, b1, b2] = z.snakes;
+  check(z.snakes.length === 3 && b1.boss && b2.boss && b1.team === 1 && b2.team === 1 && b1.lives === 2 && me.lives === 2, "Zwillinge: zwei Bosse in einem Team, je zwei Leben");
+  b1.x = b2.trail[20]; b1.y = b2.trail[21]; b2.x = b1.x + 0.3; z.step();
+  check(b1.alive && b1.lives === 2, "Zwillinge fahren durch den Körper des anderen Zwillings, ohne Schaden");
+  for (const b of [b1, b2]) b.lives = 1;
+  b1.x = 0.99; b1.y = 0; z.step();
+  check(!z.done && !b1.alive, "Ein Zwilling raus: Runde läuft weiter");
+  b2.x = 0.99; b2.y = 0.05; b2.ghostUntil = -1; z.step();
+  check(z.done && z.winner === 0, "Beide Zwillinge raus: Spieler gewinnt");
+  const z2 = new Sim(22, true, { mode: "boss", boss: "zwillinge" }); z2.snakes[0].lives = 1; z2.snakes[0].x = 0.99; z2.snakes[0].y = 0; z2.step();
+  check(z2.done && z2.winner === 1, "Spieler raus: Die Zwillinge gewinnen (Punkt für Wurm 1)");
+}
+{
+  const s = new Sim(23, true, { mode: "boss", boss: "bomber" }), b = s.snakes[1];
+  for (const n of s.snakes) n.spd = 0;                     // stillstehen, damit niemand vorher an die Wand fährt
+  let drops = 0; while (s.t < 10.05) { s.step(); drops += s.events.filter(e => e.type === "drop").length; s.events.length = 0; if (s.done) break; }
+  check(drops >= 1 && BOSSES.bomber.bomb === 5, `Bomber legt alle 5 s eine Bombe (${drops} in 10 s)`);
+  const t2 = new Sim(24, true, { mode: "boss", boss: "bomber" }), me = t2.snakes[0];
+  t2.bombs.push({ owner: 1, x: me.x, y: me.y, at: t2.t + DT }); me.spd = 0; t2.snakes[1].x = me.x + 0.05; t2.snakes[1].y = me.y; t2.snakes[1].ghostUntil = 99;
+  t2.step(); t2.step();
+  check(me.lives === 1 && t2.snakes[1].lives === 3, "Bomber-Bombe trifft den Spieler (ein Leben weg), nicht den Boss selbst");
+}
+{
+  const s = new Sim(25, true, { mode: "boss", boss: "blitz" }), b = s.snakes[1], x0 = b.x, y0 = b.y;
+  b.target = b.dir; s.step();
+  const v = Math.hypot(b.x - x0, b.y - y0) / DT;
+  check(b.sc < 1 && Math.abs(v - 0.42 * BOSSES.blitz.speed) < 0.01, `Blitz ist dünn und schnell (Tempo ${v.toFixed(3)})`);
+  const x = new Match(31, [new Bot(5, 1), new Bot(5, 2), new Bot(5, 3)], { mode: "boss", boss: "zwillinge" }), y = new Match(31, [new Bot(5, 1), new Bot(5, 2), new Bot(5, 3)], { mode: "boss", boss: "zwillinge" });
+  let g = 0; while (!x.over && g++ < 60 * 80 * 10) { x.tick(); y.tick(); }
+  check(x.over && x.scores[2] === 0 && x.scores.join() === y.scores.join(), `Zwillinge-Duell endet, wiederholbar, Punkte nur für Wurm 0 oder 1 (${x.scores.join(":")})`);
+}
+for (const boss of Object.keys(BOSSES)) {
+  let w = 0; const n = 40;
+  for (let s = 0; s < n; s++) {
+    const seed = 5000 + s * 7919, sim = new Sim(seed, false, { mode: "boss", boss });
+    const bots = sim.snakes.map((_, i) => new Bot(i === 0 ? 5 : 5 + BOSSES[boss].plus, seed + i));
+    let g = 0; while (!sim.done && g++ < 5000) { for (let i = 0; i < sim.snakes.length; i++) { const o = bots[i].think(sim, i); sim.snakes[i].target = o.a; sim.snakes[i].sprint = o.s; } sim.step(); }
+    if (sim.winner === 0) w++;
+  }
+  console.log(`     Boss ${boss}, Spieler-Bot Stufe 5: ${Math.round(w / n * 100)} % Rundensiege`);
+  check(w / n >= 0.12 && w / n <= 0.65, `Boss ${boss} ist schaffbar, aber kein Selbstläufer`);
 }
 
 console.log(`     Laufzeit ${((Date.now() - t0) / 1000).toFixed(1)} s`);
