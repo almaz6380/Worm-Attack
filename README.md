@@ -56,6 +56,20 @@ zum Beispiel aus einer Bild-KI. Wie das geht, steht mit fertigen Prompts in [`sk
 Als Vorlage liegt `skins/beispiel/` bei, als fertiges Beispiel aus KI-Bildern der „Smaragddrache“ in `skins/drache/`.
 Fertige Prompts für alle Bild-Designs stehen in [`skins/PROMPTS.md`](skins/PROMPTS.md).
 
+## Aufgaben, Erfolge und Sterne
+- **Tagesaufgaben:** Jeden Tag drei Aufgaben, zum Beispiel „Friss 25 Futter“ oder „Gewinne eine Runde ohne
+  Sprint“. Jede gibt 1 ⭐, alle drei zusammen 2 ⭐ extra.
+- **Erfolge:** Zwölf dauerhafte Ziele mit 2 bis 5 ⭐, zum Beispiel „10 Duelle gewonnen“.
+- **Tages-Serie:** Zählt die Tage in Folge, an denen du mindestens eine Aufgabe geschafft hast.
+- **Sterne-Designs:** Zebra (5 ⭐), Gold (12 ⭐) und Galaxie (25 ⭐) gibt es nur für Sterne. In der Wurm-Auswahl
+  zweimal antippen zum Freischalten.
+- Gezählt wird in Partien gegen den Computer und online. Der Knopf „⭐ Aufgaben“ im Menü zeigt den Stand.
+
+## Effekte
+- Kurze Zeitlupe mit Zoom beim entscheidenden Crash, Sternenregen beim Rundensieg, Konfetti beim Duell-Sieg.
+- Vibration bei Joker, Crash und Sieg. Abschaltbar unter „Regeln“. iPhones unterstützen Vibration im Browser
+  nicht.
+
 ## Modi
 - **Gegen Computer:** Jeder Sieg schaltet die nächste Stufe frei. Mit jeder Stufe schaut der Computer weiter voraus,
   reagiert schneller, macht weniger Fehler und greift ab Stufe 5 aktiv an. Ab Stufe 10 wird er nicht mehr stärker.
