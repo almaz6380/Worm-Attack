@@ -10,14 +10,17 @@ fs.mkdirSync(shots, { recursive: true });
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ ...devices["iPhone 13"] });
+  // Vibration mitschreiben (echte Geräte vibrieren, im Test zählen wir die Aufrufe)
+  await ctx.addInitScript(() => { window.__vib = []; try { Object.defineProperty(navigator, "vibrate", { value: p => { window.__vib.push(p); return true; }, configurable: true }); } catch {} });
   const page = await ctx.newPage();
+  page.on("dialog", d => d.accept());
   const errors = [];
   page.on("pageerror", e => errors.push(e.message));
   page.on("console", m => m.type() === "error" && errors.push(m.text()));
   let failed = 0;
   const check = (ok, msg) => { console.log(`${ok ? "OK  " : "FAIL"} ${msg}`); if (!ok) failed++; };
 
-  await page.goto(URL);
+  await page.goto(URL + "?tag=2026-03-10");            // festes Datum für die Tagesaufgaben
   await page.waitForTimeout(4500);                       // Demo-Duell im Hintergrund läuft an
   await page.screenshot({ path: path.join(shots, "1-menue.png") });
   check((await page.textContent("#soloBtn")).includes("Stufe 1"), "Menü zeigt Stufe 1");
@@ -36,7 +39,7 @@ fs.mkdirSync(shots, { recursive: true });
   await page.waitForFunction(() => SD.skinsReady, null, { timeout: 10000 });
   await page.click("#skinBtn");
   const tiles = await page.evaluate(() => ({ n: document.querySelectorAll(".skintile").length, total: SD.SKINS.length, img: SD.SKINS.filter(k => k.img).length, locked: document.querySelectorAll(".skintile.locked").length }));
-  check(tiles.n === 16 && tiles.total === 16 && tiles.img === 10, `Übersicht zeigt ${tiles.n} Designs, davon ${tiles.img} mit Bildern, ${tiles.locked} gesperrt`);
+  check(tiles.n === 19 && tiles.total === 19 && tiles.img === 10, `Übersicht zeigt ${tiles.n} Designs, davon ${tiles.img} mit Bildern, ${tiles.locked} gesperrt`);
   await page.click('.skintile[data-id="bonbon"]');
   await page.click("#skinDone");
   check((await page.textContent("#skinBtn")).includes("Bonbon"), "Gewähltes Design steht auf dem Knopf (Bonbon)");
@@ -112,20 +115,22 @@ fs.mkdirSync(shots, { recursive: true });
     const cv = document.getElementById("cv"), wait = ms => new Promise(r => setTimeout(r, ms));
     const ev = (type, id, px, py) => cv.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: px, clientY: py, bubbles: true, cancelable: true, pointerType: "touch" }));
     const out = {};
-    ev("pointerdown", 31, x, y); ev("pointerup", 31, x, y); await wait(80);
+    ev("pointerdown", 31, x, y); ev("pointerup", 31, x, y); await wait(15);
     ev("pointerdown", 32, x + 10, y + 5); out.on = SD.input.s; out.btn = document.getElementById("sprintBtn").classList.contains("on");
-    const len0 = SD.app.match.sim.snakes[0].len; await wait(450); out.shorter = SD.app.match.sim.snakes[0].len < len0 || !SD.app.match.sim.snakes[0].alive;
+    const len0 = SD.app.match.sim.snakes[0].len; await wait(450);
+    // kürzer wird der Wurm nur, solange die Runde läuft und er lebt (die Runde kann im Test zufällig gerade enden)
+    out.shorter = SD.app.match.sim.snakes[0].len < len0 || !SD.app.match.sim.snakes[0].alive || SD.app.match.phase !== "play";
     ev("pointerup", 32, x + 10, y + 5); out.off = SD.input.s === false;
     await wait(500);                                           // zu langsam
     ev("pointerdown", 33, x, y); out.slow = SD.input.s; ev("pointerup", 33, x, y); await wait(60);
     ev("pointerdown", 34, x + 120, y); out.far = SD.input.s; ev("pointerup", 34, x + 120, y);   // zu weit weg
     await wait(400);
-    ev("pointerdown", 35, x, y); ev("pointerup", 35, x, y); await wait(60);
+    ev("pointerdown", 35, x, y); ev("pointerup", 35, x, y); await wait(15);
     ev("pointerdown", 36, x, y); out.on2 = SD.input.s;         // Sprint läuft, Loslassen geht „verloren“
     ev("pointerdown", 37, x - 100, y - 100); out.stuck = SD.input.s; ev("pointerup", 37, x - 100, y - 100);
     return out;
   }, [box.x + box.width * 0.5, box.y + box.height * 0.85]);
-  check(dt.on && dt.btn && dt.shorter && dt.off, "Doppeltipp und halten sprintet, Loslassen beendet den Sprint");
+  check(dt.on && dt.btn && dt.shorter && dt.off, `Doppeltipp und halten sprintet, Loslassen beendet den Sprint${dt.on && dt.btn && dt.shorter && dt.off ? "" : " – " + JSON.stringify(dt)}`);
   check(dt.slow === false && dt.far === false, "Zu langsame oder zu weit entfernte Tipps lösen keinen Sprint aus");
   check(dt.on2 && dt.stuck === false, "Sprint bleibt nicht hängen, wenn ein neuer Finger aufsetzt");
 
@@ -148,6 +153,75 @@ fs.mkdirSync(shots, { recursive: true });
   check(end.scores[0] > end.scores[1] ? end.level === 2 : end.level === 1, `Stufe nach dem Duell: ${end.level}`);
   await page.click("#menuBtn");
   check(await page.isVisible("#menuPanel"), "Zurück im Menü");
+
+  // ---------- Tagesaufgaben, Erfolge, Sterne ----------
+  const g0 = await page.evaluate(() => ({ ids: SD.goals.daily().ids, food: SD.goals.stats.food, duel: SD.goals.stats.duel, stars: SD.goals.stars(), sieg1: !!SD.goals.achDone.sieg1 }));
+  check(g0.food > 0, `Futter aus der Partie wurde gezählt (${g0.food})`);
+  check(g0.duel === (end.scores[0] > end.scores[1] ? 1 : 0) && g0.sieg1 === (g0.duel === 1), `Duell-Sieg gezählt (${g0.duel}), Erfolg „Erster Duell-Sieg“: ${g0.sieg1}, Sterne: ${g0.stars}`);
+  await page.click("#goalBtn");
+  const gp = await page.evaluate(() => ({ rows: document.querySelectorAll("#goalList .goal").length, title: document.getElementById("goalTitle").textContent }));
+  check(gp.rows === 15, `Aufgaben-Panel zeigt 3 Tagesaufgaben und 12 Erfolge (${gp.title})`);
+  await page.screenshot({ path: path.join(shots, "7-aufgaben.png") });
+  await page.click("#goalDone");
+  await page.reload();
+  await page.waitForFunction(() => SD.skinsReady, null, { timeout: 10000 });
+  const g1 = await page.evaluate(() => ({ ids: SD.goals.daily().ids, food: SD.goals.stats.food }));
+  check(JSON.stringify(g1.ids) === JSON.stringify(g0.ids) && g1.food === g0.food, `Am selben Tag bleiben Aufgaben und Zähler nach dem Neuladen gleich (${g1.ids.join(", ")})`);
+  await page.waitForTimeout(3500);                         // Demo-Duell im Menü läuft
+  check((await page.evaluate(() => SD.goals.stats.food)) === g0.food, "Das Demo-Duell im Menü zählt nicht");
+  // Aufgabe erfüllen ⇒ Stern
+  const t1 = await page.evaluate(() => { const d = SD.goals.daily(), id = d.ids.find(x => !d.done[x]), t = SD.goals.TASKS.find(x => x.id === id), before = SD.goals.stars();
+    SD.goals.bump(id, t.n, !!t.max); SD.goals.check(); const d2 = SD.goals.daily();
+    return { id, before, after: SD.goals.stars(), done: !!d2.done[id], all: d2.ids.every(x => d2.done[x]), btn: document.getElementById("goalBtn").textContent }; });
+  // 1 Stern pro Aufgabe; sind damit alle drei geschafft, kommen 2 Bonus-Sterne dazu
+  check(t1.done && t1.after === t1.before + 1 + (t1.all ? 2 : 0), `Geschaffte Aufgabe „${t1.id}“ gibt einen Stern${t1.all ? " plus 2 Bonus für alle drei" : ""} (${t1.before} → ${t1.after}), Knopf: ${t1.btn}`);
+  // Sterne-Design: erst mit genug Sternen, zweimal tippen, Sterne werden abgezogen
+  await page.evaluate(() => SD.goals.setStars(3));
+  await page.click("#skinBtn");
+  await page.locator('.skintile[data-id="zebra"]').scrollIntoViewIfNeeded();
+  await page.click('.skintile[data-id="zebra"]');
+  const z0 = await page.evaluate(() => ({ skin: SD.state.skin, owned: !!SD.goals.owned.zebra, status: document.getElementById("skinStatus").textContent, sub: document.querySelector('.skintile[data-id="zebra"] small').textContent }));
+  check(!z0.owned && z0.skin !== "zebra" && z0.sub.includes("5"), `Zu wenig Sterne: Zebra bleibt gesperrt („${z0.status}“)`);
+  await page.click("#skinDone");
+  await page.evaluate(() => SD.goals.setStars(6));
+  await page.click("#skinBtn");
+  await page.locator('.skintile[data-id="zebra"]').scrollIntoViewIfNeeded();
+  await page.click('.skintile[data-id="zebra"]');
+  const z1 = await page.evaluate(() => ({ owned: !!SD.goals.owned.zebra, status: document.getElementById("skinStatus").textContent }));
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(shots, "8-sterne-design.png") });
+  await page.click('.skintile[data-id="zebra"]');
+  const z2 = await page.evaluate(() => ({ skin: SD.state.skin, owned: !!SD.goals.owned.zebra, stars: SD.goals.stars() }));
+  check(!z1.owned && z1.status.includes("Nochmal tippen") && z2.owned && z2.skin === "zebra" && z2.stars === 1, `Zebra für 5 ⭐ freigeschaltet nach zweitem Tippen, Rest ${z2.stars} ⭐`);
+  await page.click("#skinDone");
+
+  // ---------- Effekte: Zeitlupe, Vibration, Rundensieg zählt ----------
+  await page.click("#soloBtn");
+  await page.waitForFunction(() => SD.app.match.phase === "play", null, { timeout: 8000 });
+  const r0 = await page.evaluate(() => { window.__vib.length = 0; const m = SD.app.match; m.bots = [new SD.Bot(10, 3), null]; const o = m.sim.snakes[1]; o.x = 0.99; o.y = 0; return SD.goals.stats.rounds; });
+  await page.waitForFunction(() => SD.app.match.phase === "end", null, { timeout: 5000 });
+  await page.waitForTimeout(150);
+  const fxs = await page.evaluate(() => ({ slow: SD.app.slow.until > SD.app.lastTs, vib: window.__vib.length, rounds: SD.goals.stats.rounds, winner: SD.app.match.sim.winner }));
+  await page.screenshot({ path: path.join(shots, "9-crash-zeitlupe.png") });
+  check(fxs.winner === 0 && fxs.slow && fxs.vib > 0, `Crash: Zeitlupe aktiv, Vibration ausgelöst (${fxs.vib} Aufruf)`);
+  check(fxs.rounds === r0 + 1, `Rundensieg gezählt (${r0} → ${fxs.rounds})`);
+  await page.waitForTimeout(1500);
+  check(await page.evaluate(() => SD.app.slow.until < SD.app.lastTs), "Zeitlupe endet wieder");
+  await page.waitForFunction(() => SD.app.match.round === 2 && SD.app.match.phase === "play", null, { timeout: 12000 });
+  await page.evaluate(() => { SD.state.vib = false; window.__vib.length = 0; const o = SD.app.match.sim.snakes[1]; o.x = 0.99; o.y = 0; });
+  await page.waitForFunction(() => SD.app.match.phase === "end", null, { timeout: 5000 });
+  await page.waitForTimeout(150);
+  check((await page.evaluate(() => window.__vib.length)) === 0, "Mit „Vibration: aus“ vibriert nichts");
+  // Duell zu Ende spielen lassen ⇒ Konfetti beim Sieg
+  await page.evaluate(() => { SD.state.vib = true; const m = SD.app.match; m.scores = [2, 0]; });
+  await page.waitForFunction(() => SD.app.match.round === 3 && SD.app.match.phase === "play", null, { timeout: 12000 });
+  await page.evaluate(() => { const o = SD.app.match.sim.snakes[1]; o.x = 0.99; o.y = 0; });
+  await page.waitForSelector("#endPanel:not(.hidden)", { timeout: 8000 });
+  await page.waitForTimeout(900);
+  const conf = await page.evaluate(() => SD.app.particles.filter(p => p.conf).length);
+  await page.screenshot({ path: path.join(shots, "10-sieg-konfetti.png") });
+  check(conf > 20, `Konfetti beim Duell-Sieg (${conf} Teilchen)`);
+  await page.click("#menuBtn");
   check(errors.length === 0, `Keine Konsolenfehler${errors.length ? ": " + errors.join("; ") : ""}`);
 
   // Fehlt ein Bild, fällt das Design auf die eingebaute Darstellung zurück und das Spiel läuft trotzdem
@@ -158,6 +232,13 @@ fs.mkdirSync(shots, { recursive: true });
   page2.on("pageerror", e => crashes.push(e.message));
   await page2.route("**/skins/beispiel/glied.png", r => r.abort());
   await page2.goto(URL);
+  // anderer Tag ⇒ andere Tagesaufgaben
+  const page3 = await ctx2.newPage();
+  await page3.goto(URL + "?tag=2026-03-11");
+  const other = await page3.evaluate(() => SD.goals.daily().ids);
+  const same = await page.evaluate(() => SD.goals.daily().ids);
+  check(JSON.stringify(other) !== JSON.stringify(same), `Anderer Tag, andere Aufgaben (${other.join(", ")} statt ${same.join(", ")})`);
+  await page3.close();
   await page2.waitForFunction(() => SD.skinsReady, null, { timeout: 10000 });
   const fb = await page2.evaluate(() => { const k = SD.SKINS.find(x => x.id === "beispiel"); return { there: !!k, img: k && k.img }; });
   await page2.evaluate(() => { SD.state.skin = "beispiel"; });
