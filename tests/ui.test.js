@@ -43,6 +43,17 @@ fs.mkdirSync(shots, { recursive: true });
   check(await page.isVisible("#hostBtn") && await page.isVisible("#codeInput"), "„Online“ öffnet Einladen und Beitreten");
   await page.fill("#codeInput", "12"); await page.click("#joinBtn");
   check((await page.textContent("#onlineStatus")).includes("4-stelligen"), "Falsche Code-Länge: Hinweis im Online-Bereich");
+  // Eigener Name und Liste „Meine Gegner“
+  await page.fill("#nameInput", "  Kalle<b>  "); await page.press("#nameInput", "Enter"); await page.click("#onlineStatus");
+  check((await page.evaluate(() => JSON.parse(localStorage.getItem("sd_name")))) === "Kalleb", "Eigener Name wird bereinigt und gespeichert");
+  await page.evaluate(() => { const r = SD.rivalsList(); r.abcdef1234 = { w: 3, l: 1, d: 0, s: 2, n: "Mia", t: Date.now() }; r.zzzzzz9999 = { w: 0, l: 2, d: 1, s: -2, n: "Tom", t: Date.now() - 86400000 }; });
+  await page.click("#rivalBtn");
+  const rows = await page.evaluate(() => [...document.querySelectorAll("#rivalList .goal")].map(e => e.querySelector("input").value + " " + e.querySelector(".gr span").textContent));
+  check(rows.join(" | ") === "Mia 3 : 1 | Tom 0 : 2", `Meine Gegner, zuletzt gespielte zuerst: ${rows.join(" | ")}`);
+  await page.fill('#rivalList input[data-id="zzzzzz9999"]', "Tommy"); await page.press('#rivalList input[data-id="zzzzzz9999"]', "Enter"); await page.click("#rivalList .note, #rivalPanel .title");
+  check((await page.evaluate(() => { const r = JSON.parse(localStorage.getItem("sd_rivals")); return r.zzzzzz9999.nick + "/" + r.zzzzzz9999.n; })) === "Tommy/Tom", "Gegner umbenennen speichert einen eigenen Spitznamen");
+  await page.screenshot({ path: path.join(shots, "1e-meine-gegner.png") });
+  await page.click("#rivalDone");
   await page.click("#onlineBack");
 
   // Wurm-Auswahl: Übersicht mit allen Designs, Wahl wird gespeichert, gesperrte Designs sind nur Vorschau
@@ -172,6 +183,11 @@ fs.mkdirSync(shots, { recursive: true });
   const gp = await page.evaluate(() => ({ rows: document.querySelectorAll("#goalList .goal").length, title: document.getElementById("goalTitle").textContent }));
   check(gp.rows === 19, `Aufgaben-Panel zeigt 3 Tagesaufgaben und 16 Erfolge (${gp.title})`);
   await page.screenshot({ path: path.join(shots, "7-aufgaben.png") });
+  await page.click("#tabRecords");
+  const rl = await page.evaluate(() => ({ n: document.querySelectorAll("#goalList [data-rec]").length, set: document.querySelectorAll("#goalList [data-rec].done").length }));
+  check(rl.n === 10 && rl.set >= 2, `Reiter „Rekorde“ zeigt 10 Rekorde, davon ${rl.set} schon gesetzt`);
+  await page.screenshot({ path: path.join(shots, "7b-rekorde.png") });
+  await page.click("#tabGoals");
   await page.click("#goalDone");
   await page.reload();
   await page.waitForFunction(() => SD.skinsReady, null, { timeout: 10000 });
@@ -231,6 +247,13 @@ fs.mkdirSync(shots, { recursive: true });
   const conf = await page.evaluate(() => SD.app.particles.filter(p => p.conf).length);
   await page.screenshot({ path: path.join(shots, "10-sieg-konfetti.png") });
   check(conf > 20, `Konfetti beim Duell-Sieg (${conf} Teilchen)`);
+  // Rekorde: schnellster Duell-Sieg, Länge, Futter
+  const rec = await page.evaluate(() => ({ duel: SD.records.duel && SD.records.duel.v, len: SD.records.len && SD.records.len.v, alive: SD.records.alive && SD.records.alive.v }));
+  check(rec.duel > 0 && rec.len > 0.5 && rec.alive > 0, `Rekorde gespeichert: Duell-Sieg in ${rec.duel} s, Länge ${rec.len}, überlebt ${rec.alive} s`);
+  const better = await page.evaluate(() => { const old = SD.records.duel.v; return { worse: SD.setRecord("duel", old + 5), better: SD.setRecord("duel", old / 2) }; });
+  // Meldungen kommen nacheinander, die Rekord-Meldung kann also kurz warten
+  const rt = await page.waitForFunction(() => /Neuer Rekord: Schnellster Duell-Sieg/.test(document.getElementById("toast").textContent) && document.getElementById("toast").textContent, null, { timeout: 9000 }).then(h => h.jsonValue(), () => "");
+  check(!better.worse && better.better && !!rt, `Nur bessere Werte zählen, mit Meldung („${rt}“)`);
   // Clip der letzten Sekunden: nach dem Duell bereit zum Speichern
   await page.waitForFunction(() => SD.clip.blob, null, { timeout: 6000 }).catch(() => {});
   const cl = await page.evaluate(() => ({ size: SD.clip.blob ? SD.clip.blob.size : 0, type: SD.clip.blob ? SD.clip.blob.type : "", btn: !document.getElementById("clipBtn").classList.contains("hidden") && !document.getElementById("clipBtn").disabled }));

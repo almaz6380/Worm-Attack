@@ -86,6 +86,11 @@ Fertige Prompts für alle Bild-Designs stehen in [`skins/PROMPTS.md`](skins/PROM
 - Gezählt wird in Partien gegen den Computer und online, nicht zu zweit an einem Handy. Der Knopf „⭐ Aufgaben“
   im Menü zeigt den Stand.
 
+## Rekorde
+Unter „Ziele“ → „🏆 Rekorde“ stehen deine Bestwerte auf diesem Handy: längster Wurm, meiste Futter in einer Runde,
+am längsten überlebt, längste Sieges-Serie, schnellster Duell-Sieg gegen den Computer, beste Futterjagd und der
+schnellste Sieg gegen jeden Boss. Brichst du einen Rekord, gibt es eine Meldung.
+
 ## Effekte
 - Kurze Zeitlupe mit Zoom beim entscheidenden Crash, Sternenregen beim Rundensieg, Konfetti beim Duell-Sieg.
 - Vibration bei Joker, Crash und Sieg. Abschaltbar unter „Regeln“. iPhones unterstützen Vibration im Browser
@@ -106,6 +111,8 @@ oder teilt der Knopf „🎬 Clip speichern“ das Video der letzten Runde, zum 
   3. Das Duell startet automatisch. Nach dem Ende kann jeder eine Revanche starten.
   4. Mit 😀 oben links schickt man Emotes (👋 😂 😎 😱 😡 👍). Nach jedem Duell steht die Bilanz gegen diesen Freund
      da, mit Sieges-Serie.
+  5. Unter „👥 Online“ trägst du deinen Namen ein, dein Freund sieht ihn oben im Spiel. „📋 Meine Gegner“ zeigt die
+     Bilanz gegen jeden Freund. Dort kannst du Namen auch umbenennen (nur bei dir).
 - **Spielarten** (Knopf „🎮 Spielarten“):
   - **Überleben:** du gegen drei Computer-Würmer, die sich auch gegenseitig jagen. Wer zuletzt übrig ist, gewinnt.
   - **Futterjagd:** 45 Sekunden, doppelt so viel Futter, die Arena schrumpft nicht. Wer anstößt, verliert ein

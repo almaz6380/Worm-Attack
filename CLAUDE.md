@@ -174,9 +174,11 @@ Bomben treffen nur andere Teams, die Runde endet, wenn höchstens ein Team übri
 | `sd_ach` | Erledigte Erfolge |
 | `sd_owned` | Für Sterne freigeschaltete Designs |
 | `sd_bosses` | Besiegte Bosse `{riese: true, …}` |
+| `sd_name` | Eigener Name (höchstens 14 Zeichen, bereinigt mit `cleanName`), wird online mitgeschickt |
+| `sd_records` | Rekorde auf diesem Gerät `{id: {v: Wert, d: Tag}}`, siehe `RECS` |
 | `sd_arena`, `sd_clip`, `sd_netmode` | Gewählte Arena, Clip-Aufnahme an/aus, Online-Spielart des Gastgebers |
 | `sd_id` | Zufällige Kennung dieses Geräts (für die Bilanz gegen Freunde) |
-| `sd_rivals` | Bilanz pro Freund: `{Kennung: {w, l, d, s}}`, `s` = aktuelle Serie (positiv Siege, negativ Niederlagen) |
+| `sd_rivals` | Bilanz pro Freund: `{Kennung: {w, l, d, s, n, nick, t}}`, `s` = aktuelle Serie (positiv Siege, negativ Niederlagen), `n` = Name, den der Freund selbst gewählt hat, `nick` = eigener Spitzname für ihn, `t` = zuletzt gespielt |
 
 Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der User seinen Fortschritt.
 
@@ -193,8 +195,8 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
 
   | Art | Richtung | Inhalt |
   | --- | --- | --- |
-  | `hello` | Gast → Gastgeber | nach dem Verbinden, mit `sk` = gewähltes Design, `id` = Gerätekennung |
-  | `hi` | Gastgeber → Gast | nach dem Verbinden, `id` = Gerätekennung des Gastgebers |
+  | `hello` | Gast → Gastgeber | nach dem Verbinden, mit `sk` = gewähltes Design, `id` = Gerätekennung, `nm` = Name |
+  | `hi` | Gastgeber → Gast | nach dem Verbinden, `id` = Gerätekennung des Gastgebers, `nm` = Name |
   | `emo` | beide | Emote, `e` = Nummer in `EMOTES` (0 bis 5) |
   | `i` | Gast → Gastgeber | Eingabe: `a` Zielrichtung (rad oder `null`), `s` Sprint. Bei Änderung, sonst alle 100 ms |
   | `s` | Gastgeber → Gast | Spielstand, 30-mal pro Sekunde (alle 2 Ticks). Zahlen ×1000 gerundet |
@@ -234,7 +236,8 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
 | Steuerung | Zwei Lenkarten (`state.steer`, gespeichert als `sd_steer`): „Kreis“ = schwebender Joystick, „Zum Finger“ = `aimAtFinger(p)`. Dazu Sprint-Knopf und Tastatur. Zwei Spieler: `joy2`, `input2`, `sprintBtn2`, Pfad über `padJoy(p)` / `padInput(p)` |
 | `drawArenaFeatures`, `drawBombs`, `drawEmotes` | Hindernisse, Portale, Bomben mit Warnkreis, Emotes über dem Kopf |
 | `clip…` | Clip-Aufnahme (`MediaRecorder` auf `cv.captureStream`, Ton über `audio.dest`), `saveClip()` teilt oder lädt herunter |
-| `myId`, `rivals`, `rivalGreeting` | Bilanz gegen Freunde |
+| `myId`, `rivals`, `meetRival`, `rivalName`, `buildRivalList` | Bilanz gegen Freunde mit Namen, Liste „Meine Gegner“ (`rivalPanel`, Namen dort direkt umbenennbar) |
+| `RECS`, `records`, `setRecord`, `buildRecordList` | Rekorde: längster Wurm, meiste Futter und längstes Überleben in einer Runde, Sieges-Serie, schnellster Duell-Sieg, beste Futterjagd, schnellster Sieg pro Boss. Zeit = `Match.playTime` (gespielte Sekunden aller Runden). Meldung nur, wenn ein alter Rekord gebrochen wird; nicht im Modus „Zwei Spieler“ |
 | `BOSS_INFO`, `bossesBeaten`, `bossOpen`, `buildBossList` | Bosse für die Oberfläche: Name, Bild, Design, Freischalten. `app.boss` = gewählter Boss |
 | `window.SD` | Zugriff für Tests: `app`, `state`, `input`, `input2`, `Sim`, `Bot`, `Match`, `SKINS`, `ARENAS`, `BOSSES`, `bossesBeaten`, `clip`, `rivals`, `startSolo`, `startDuo`, `goals` |
 
@@ -242,7 +245,8 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
 gewählten Design), in der Mitte ein Demo-Duell Bot gegen Bot in der gewählten Arena. Das Menü-Panel hat eine
 Profilzeile (`refreshProfile`: Stufe, Sterne, Siege, Tages-Serie), den großen Knopf „▶ SPIELEN“ (`soloBtn`, Duell
 gegen den Computer), „🎮 Spielarten“ (`modePanel`), „👥 Online“ (`onlinePanel` mit Einladen und Code-Eingabe) und
-vier Kacheln: Wurm, Arena, Ziele, Regeln. Die Lenkart steht im Regeln-Panel.
+vier Kacheln: Wurm, Arena, Ziele, Regeln. Die Lenkart steht im Regeln-Panel. Im Online-Bereich: eigener Name und
+„📋 Meine Gegner“. „Ziele“ hat zwei Reiter: Aufgaben und Rekorde.
 
 **Aussehen der Würmer** (nur Darstellung, die Simulation weiß nichts davon):
 - Der Körper wird aus Gliedern gestempelt: `disc(farbe)` zeichnet ein Glied einmal vor (28 px, Glanzlicht, Rand),
@@ -303,7 +307,8 @@ vier Kacheln: Wurm, Arena, Ziele, Regeln. Die Lenkart steht im Regeln-Panel.
 - Emotes (`EMOTES`): 😀-Knopf oben links öffnet eine Leiste, höchstens eins alle 0,7 s. Online geht es an den Freund
   (`emo`), gegen den Computer antwortet der manchmal, und nach seinem Rundensieg jubelt er gelegentlich. Nicht im
   Modus „Zwei Spieler“.
-- Bilanz: Nach jedem Online-Duell `rivals[Kennung]` nachführen und im Ergebnis zeigen, Begrüßung per Toast.
+- Bilanz: Nach jedem Online-Duell `rivals[Kennung]` nachführen und im Ergebnis zeigen („Bilanz gegen Anna“),
+  Begrüßung per Toast. Der Name des Freundes steht oben in der Anzeige (`app.oppName`).
 - Clips: Während `play` laufen höchstens zwei versetzte Aufnahmen (alle 8 s eine neue, jede höchstens 16,5 s).
   1,4 s nach Rundenende wird die älteste behalten (`clip.blob`), die anderen verworfen. Nach dem Duell zeigt der
   Ergebnis-Bildschirm „🎬 Clip speichern“: `navigator.share` mit Datei, sonst Download. Format: MP4, wenn der Browser
@@ -350,6 +355,7 @@ enthält die vollständige Ideenliste mit Empfehlung.
 - Aussehen: Glieder-Würmer mit Gesicht, 19 Designs (9 eingebaut, 10 mit Bildern), Auswahl-Übersicht,
   Bild-Designs aus `skins/` samt Anleitung und Prompts.
 - Effekte: Vibration, Zeitlupe, Konfetti. Tagesaufgaben, Erfolge, Sterne, Sterne-Designs.
+- Ideen 10 und 11 (19.11.2026): Namen und Liste „Meine Gegner“, Rekorde auf dem Gerät.
 - Idee 12 (19.11.2026): vier Bosse (Riese, Blitz, Zwillinge, Bomber) mit Auswahl `bossPanel` und Freischalten.
 - Idee 9 und neuer Startbildschirm (19.11.2026): Futterjagd und Überleben auch online.
 - Ideen 3 bis 8 (19.11.2026): Joker Magnet, Eis, Schild, Bombe; Arenen Säulen, Karussell, Portale; Spielarten

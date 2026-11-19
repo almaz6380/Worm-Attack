@@ -60,6 +60,8 @@ Bilder für neue Wurm-Designs kannst du einfach in den Chat schicken.
 7. **Acht weitere Designs** (von Claude gezeichnet), Auswahl-Übersicht, Prompts für alle Designs.
 8. **Sprint per Doppeltipp.**
 9. **Effekte, Tagesaufgaben, Erfolge, Sterne-Designs.**
+13. **Namen und Rekorde:** Eigener Name unter „Online“, der Freund sieht ihn. Liste „Meine Gegner“ mit Bilanz
+    gegen jeden Freund. Rekorde auf dem Handy (längster Wurm, schnellste Siege usw.) unter „Ziele“ → „Rekorde“.
 12. **Vier Bosse:** Riese, Blitz (dünn und schnell), Zwillinge (zwei auf einmal), Bomber (legt Bomben). Einer nach
     dem anderen freischalten, neuer Erfolg „Alle vier Bosse besiegt“.
 11. **Spielarten online und neuer Startbildschirm:** Futterjagd und Überleben (ihr zwei plus zwei Computer-Würmer)
@@ -79,6 +81,7 @@ Bilder für neue Wurm-Designs kannst du einfach in den Chat schicken.
 | „mach 3 bis 8“ | Joker, Arenen, Spielarten, zwei Spieler, Emotes und Bilanz, Clips eingebaut |
 | „mach 9 … und mach einen besseren Startbildschirm“ | Spielarten online, neuer Startbildschirm |
 | „mach 12“ | Vier Bosse mit Freischalten |
+| „mach 10 und 11“ | Namen, Liste „Meine Gegner“, Rekorde |
 
 ## Was noch niemand auf einem echten Handy geprüft hat
 
@@ -100,6 +103,7 @@ zurückmelden:
   dem Kopf steht?
 - **Startbildschirm:** Gefällt er dir? Findest du alles (Lenkart steht jetzt unter „Regeln“)?
 - **Online-Überleben:** Klappt es zu zweit gegen die Computer-Würmer?
+- **Namen und Rekorde:** Taucht dein Name beim Freund auf? Motivieren dich die Rekorde?
 - **Bosse:** Ist die Reihenfolge Riese → Blitz → Zwillinge → Bomber richtig schwer? Ist Blitz zu fies?
 - **Clips:** Lässt sich der Clip auf dem iPhone speichern und teilen? Ruckelt das Spiel während der Aufnahme? Wenn
   ja, unter „Regeln“ die Clips ausschalten und mir Bescheid geben.
@@ -129,8 +133,6 @@ Die Ideen 1 bis 8 aus der alten Liste sind alle umgesetzt. Neue Ideen:
 
 | Nr. | Idee | Aufwand | Hinweis |
 | --- | --- | --- | --- |
-| 10 | Namen für Freunde in der Bilanz, Liste „Meine Gegner“ | klein | |
-| 11 | Bestenliste auf dem Gerät: längster Wurm, schnellster Boss-Sieg | klein | ohne Server |
 | 13 | Turnier zu zweit an einem Handy: mehrere Arenen nacheinander | klein | |
 | 14 | Pause-Hinweis online („Warte auf Gastgeber …“) | klein | stand schon in der Aufgabenliste |
 
@@ -138,7 +140,7 @@ Die Ideen 1 bis 8 aus der alten Liste sind alle umgesetzt. Neue Ideen:
 online und zu zweit an einem Handy, und die Fragen oben beantworten. Danach Schwierigkeit und Boss nach deiner
 Rückmeldung einstellen. Neue Idee mit viel Spaß: Bosse zu zweit online (ihr beide gegen einen Boss).
 
-Idee 12 (weitere Bosse) ist umgesetzt.
+Die Ideen 9 bis 12 sind umgesetzt.
 
 Die Idee 9 (Spielarten online) ist umgesetzt.
 

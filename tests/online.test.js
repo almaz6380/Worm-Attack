@@ -14,6 +14,7 @@ fs.mkdirSync(shots, { recursive: true });
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ ...devices["iPhone 13"] });
+  await ctx.addInitScript(() => { try { if (!localStorage.getItem("sd_name")) localStorage.setItem("sd_name", '"Anna"'); } catch {} });   // beide Fenster teilen sich den Speicher
   const host = await ctx.newPage(), guest = await ctx.newPage();
   const errors = [];
   for (const [n, p] of [["Gastgeber", host], ["Gast", guest]]) {
@@ -96,7 +97,9 @@ fs.mkdirSync(shots, { recursive: true });
                 await guest.evaluate(() => [document.getElementById("endTitle").textContent, document.getElementById("endSub").textContent])];
   check(/gewonnen|verloren|Unentschieden/.test(ends[0][0]) && /gewonnen|verloren|Unentschieden/.test(ends[1][0]), `Ergebnis Gastgeber: ${ends[0].join(" · ")} | Gast: ${ends[1].join(" · ")}`);
   check(ends[0][0] !== ends[1][0] || ends[0][0].includes("Unentschieden"), "Beide sehen das passende Gegenstück (Sieg/Niederlage)");
-  check(ends[0][1].includes("Bilanz gegen diesen Freund") && ends[1][1].includes("Bilanz gegen diesen Freund"), "Beide sehen die Bilanz gegen diesen Freund");
+  check(ends[0][1].includes("Bilanz gegen Anna") && ends[1][1].includes("Bilanz gegen Anna"), "Beide sehen die Bilanz mit dem Namen des Freundes (Anna)");
+  const rv = await host.evaluate(() => { const r = SD.rivalsList(), id = SD.app.rival; return { name: r[id] && r[id].n, opp: SD.app.oppName, t: r[id] && r[id].t > 0 }; });
+  check(rv.name === "Anna" && rv.opp === "Anna" && rv.t, `Name des Freundes gespeichert und oben angezeigt (${rv.opp})`);
   await guest.screenshot({ path: path.join(shots, `online-${MODE}-4-ende-gast.png`) });
 
   // Revanche vom Gast aus – der Gastgeber hat inzwischen „Überleben“ gewählt (beide Freunde plus zwei Computer-Würmer)
@@ -114,7 +117,9 @@ fs.mkdirSync(shots, { recursive: true });
   check(JSON.stringify(ue.skins) === JSON.stringify(hu.skins) && new Set(ue.skins).size === 4, `Alle vier Designs stimmen überein (${ue.skins.join(", ")})`);
   await guest.bringToFront(); await guest.screenshot({ path: path.join(shots, `online-${MODE}-5-ueberleben-gast.png`) });
   await host.bringToFront();
-  await host.evaluate(() => { const m = SD.app.match; m.bots[0] = new SD.Bot(8, 1); m.bots[1] = new SD.Bot(8, 2); let g = 0; while (!m.over && g++ < 60 * 70 * 9) m.tick(); });
+  await host.evaluate(() => { const m = SD.app.match; m.bots[0] = new SD.Bot(8, 1); m.bots[1] = new SD.Bot(8, 2); });
+  // in kleinen Stücken vorspulen: Ein lange blockiertes Fenster hält der echte Vermittlungsdienst sonst für getrennt
+  for (let k = 0; k < 400 && !(await host.evaluate(() => { const m = SD.app.match; for (let g = 0; g < 600 && !m.over; g++) m.tick(); return m.over; })); k++) await host.waitForTimeout(20);
   await host.waitForSelector("#endPanel:not(.hidden)", { timeout: 8000 });
   await guest.bringToFront();
   await guest.waitForSelector("#endPanel:not(.hidden)", { timeout: 8000 }).catch(() => {});

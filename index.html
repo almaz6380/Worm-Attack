@@ -112,6 +112,11 @@
   .tile span { font-size: 11.5px; font-weight: 700; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 3px; }
   .profile { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; margin-top: -2px; }
   .profile span { font-size: 12.5px; font-weight: 800; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,0.07); border: 1px solid var(--line); }
+  input.name { flex: 1.2; min-width: 0; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,0.06);
+    color: var(--text); font: inherit; font-size: 15px; font-weight: 700; user-select: text; -webkit-user-select: text; }
+  .tab.on { background: rgba(255,211,77,0.16); border-color: var(--accent); color: var(--accent); }
+  .goal input.rn { width: 100%; border: 0; background: transparent; color: var(--text); font: inherit; font-weight: 800; font-size: 14.5px; padding: 0; user-select: text; -webkit-user-select: text; }
+  .goal .sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
   .quit { position: absolute; left: 12px; top: max(10px, env(safe-area-inset-top)); width: 38px; height: 38px; border-radius: 50%;
     border: 1px solid var(--line); background: rgba(10,12,20,0.7); color: var(--muted); font: inherit; font-size: 16px; }
 </style>
@@ -153,8 +158,20 @@
       <button class="btn ghost" id="joinBtn" style="flex:1">Beitreten</button>
     </div>
     <div class="status" id="onlineStatus"></div>
-    <div class="note">Spielart und Arena wählt, wer einlädt.</div>
+    <div class="row">
+      <input class="name" id="nameInput" maxlength="14" placeholder="Dein Name" autocomplete="off" aria-label="Dein Name">
+      <button class="btn ghost" id="rivalBtn" style="flex:1">📋 Meine Gegner</button>
+    </div>
+    <div class="note">Spielart und Arena wählt, wer einlädt. Dein Name wird deinem Freund angezeigt.</div>
     <button class="btn ghost" id="onlineBack">Zurück</button>
+  </div>
+
+  <!-- Meine Gegner: Bilanz gegen jeden Freund -->
+  <div class="panel hidden" id="rivalPanel">
+    <div class="title" style="font-size:18px">📋 Meine Gegner</div>
+    <div class="goals" id="rivalList"></div>
+    <div class="note">Tippe auf einen Namen, um ihn zu ändern. Das ändert nur, wie er bei dir heißt.</div>
+    <button class="btn" id="rivalDone">Fertig</button>
   </div>
 
   <!-- Online-Lobby (Gastgeber) -->
@@ -204,6 +221,10 @@
   <!-- Aufgaben und Erfolge -->
   <div class="panel hidden" id="goalPanel">
     <div class="title" style="font-size:18px" id="goalTitle">Aufgaben &amp; Erfolge</div>
+    <div class="row">
+      <button class="btn ghost small2 tab on" id="tabGoals">⭐ Aufgaben</button>
+      <button class="btn ghost small2 tab" id="tabRecords">🏆 Rekorde</button>
+    </div>
     <div class="goals" id="goalList"></div>
     <button class="btn" id="goalDone">Fertig</button>
   </div>
@@ -761,7 +782,7 @@ class Match {
     this.scores = bots.map(() => 0); this.round = 0;
     this.inputs = bots.map(() => ({ a: null, s: false }));
     this.over = false; this.matchWinner = -2;
-    this.events = []; this.netEvents = []; this.full = true; this.ticks = 0;
+    this.events = []; this.netEvents = []; this.full = true; this.ticks = 0; this.playTime = 0;   // playTime = gespielte Sekunden aller Runden
     this.nextRound();
   }
   nextRound() {
@@ -777,7 +798,7 @@ class Match {
     if (this.phase === "count") {
       if (this.phaseT >= COUNT_T) { this.phase = "play"; this.phaseT = 0; }
     } else if (this.phase === "play") {
-      const sim = this.sim;
+      const sim = this.sim; this.playTime += DT;
       for (let i = 0; i < sim.snakes.length; i++) {
         const inp = this.bots[i] ? this.bots[i].think(sim, i) : this.inputs[i];
         sim.snakes[i].target = inp.a; sim.snakes[i].sprint = !!inp.s;
@@ -821,7 +842,7 @@ const state = { level: store.get("level", 1), wins: store.get("wins", 0), steer:
   arena: store.get("arena", "klassisch"), clip: store.get("clip", true) !== false, netmode: store.get("netmode", "duell") };
 if (!["duell", "futter", "ueberleben"].includes(state.netmode)) state.netmode = "duell";
 if (!Object.prototype.hasOwnProperty.call(ARENAS, state.arena)) state.arena = "klassisch";
-const save = () => { store.set("level", state.level); store.set("wins", state.wins); store.set("steer", state.steer); store.set("skin", state.skin); store.set("vib", state.vib); store.set("arena", state.arena); store.set("clip", state.clip); store.set("netmode", state.netmode); };
+const save = () => { store.set("name", state.name); store.set("level", state.level); store.set("wins", state.wins); store.set("steer", state.steer); store.set("skin", state.skin); store.set("vib", state.vib); store.set("arena", state.arena); store.set("clip", state.clip); store.set("netmode", state.netmode); };
 const ARENA_NAME = { klassisch: "Klassisch", saeulen: "Säulen", karussell: "Karussell", portale: "Portale" };
 
 const audio = { ctx: null, master: null };
@@ -969,7 +990,7 @@ const inGame = () => app.mode === "solo" || app.mode === "host" || app.mode === 
    Darstellung
    ================================================================ */
 const stars = (() => { const r = mulberry32(4711), s = []; for (let i = 0; i < 130; i++) s.push([r() * W, r() * H, r() * 1.4 + 0.3, r()]); return s; })();
-const PANELS = ["menuPanel", "lobbyPanel", "endPanel", "helpPanel", "skinPanel", "goalPanel", "modePanel", "onlinePanel", "bossPanel"];
+const PANELS = ["menuPanel", "lobbyPanel", "endPanel", "helpPanel", "skinPanel", "goalPanel", "modePanel", "onlinePanel", "bossPanel", "rivalPanel"];
 
 function targetLayout() {
   if (inGame() && !app.endShown) return [600, 335];
@@ -1302,7 +1323,7 @@ function drawHud(view) {
       }
       if (!sn.alive && view.phase === "play") text("✕", W - 38, y + 1, 18, "#fff");
       const online = app.mode === "host" || app.mode === "guest";                  // online: Wurm 0 und 1 sind die Freunde
-      text(online && i < 2 ? "Freund" : "CPU", W - 70 - WIN_ROUNDS * 24, y + 1, 17, "rgba(255,255,255,0.75)", "right", 700);
+      text(online && i < 2 ? app.oppName : "CPU", W - 70 - WIN_ROUNDS * 24, y + 1, 17, "rgba(255,255,255,0.75)", "right", 700);
       ctx.globalAlpha = 1;
     }
   }
@@ -1516,6 +1537,7 @@ const view0 = () => app.view || { mode: "duell", snakes: [] };
 function vib(pattern) { if (!state.vib || !inGame() || !navigator.vibrate) return; try { navigator.vibrate(pattern); } catch {} }
 function fx(e) {
   const mine = inGame() && e.i === app.me;
+  if (e.type === "eat" && mine) app.roundFood = (app.roundFood || 0) + 1;
   if (e.type === "eat") { burst(e.x, e.y, colorOf(e.i), 5, 120); app.bulges[e.i].push(app.lastTs); if (e.i === app.me) tone(660, 0.07, "triangle", 0.25, 1.4); if (mine) bump("food"); }
   else if (e.type === "spawn") { burst(e.x, e.y, "#ffd34d", 10, 160); tone(520, 0.25, "sine", 0.2, 1.5); }
   else if (e.type === "power") {
@@ -1706,6 +1728,44 @@ function refreshProfile() {
   const el = $("profile"); el.innerHTML = "";
   for (const t of parts) { const sp = document.createElement("span"); sp.textContent = t; el.appendChild(sp); }
 }
+/* Rekorde auf diesem Gerät (sd_records): {id: {v: Wert, d: Tag}}; low = kleiner ist besser */
+const records = store.get("records", {}) || {};
+const fmtLen = v => v.toFixed(2).replace(".", ","), fmtTime = v => (v >= 60 ? `${Math.floor(v / 60)}:${String(Math.floor(v % 60)).padStart(2, "0")} min` : `${v.toFixed(1).replace(".", ",")} s`);
+const RECS = [
+  { id: "len",    text: "Längster Wurm",                         fmt: fmtLen },
+  { id: "food",   text: "Meiste Futter in einer Runde",          fmt: v => String(v) },
+  { id: "alive",  text: "Am längsten überlebt (eine Runde)",     fmt: fmtTime },
+  { id: "streak", text: "Längste Sieges-Serie",                  fmt: v => `${v} ${v === 1 ? "Duell" : "Duelle"}` },
+  { id: "duel",   text: "Schnellster Duell-Sieg gegen Computer", fmt: fmtTime, low: true },
+  { id: "futter", text: "Beste Futterjagd (Länge am Ende)",      fmt: fmtLen },
+].concat(BOSS_ORDER.map(b => ({ id: "boss_" + b, text: `Schnellster Sieg gegen ${BOSS_INFO[b].name}`, fmt: fmtTime, low: true })));
+/** Neuen Wert eintragen, wenn er besser ist. Meldung nur, wenn es vorher schon einen Rekord gab */
+function setRecord(id, v) {
+  const def = RECS.find(r => r.id === id); if (!def || app.mode === "duo" || !(v > 0)) return false;
+  const old = records[id];
+  if (old && !(def.low ? v < old.v - 1e-6 : v > old.v + 1e-6)) return false;
+  records[id] = { v: Math.round(v * 100) / 100, d: today() }; store.set("records", records);
+  if (old) notify(`🏆 Neuer Rekord: ${def.text} – ${def.fmt(v)}`);
+  return true;
+}
+let goalTab = "goals";
+function buildRecordList() {
+  const list = $("goalList"); list.innerHTML = "";
+  const head = document.createElement("div"); head.className = "ghead"; head.textContent = "Deine Bestwerte auf diesem Handy"; list.append(head);
+  for (const def of RECS) {
+    const r = records[def.id], el = document.createElement("div"); el.className = "goal" + (r ? " done" : ""); el.dataset.rec = def.id;
+    const top = document.createElement("div"); top.className = "gr";
+    const a = document.createElement("span"); a.textContent = def.text;
+    const b = document.createElement("span"); b.textContent = r ? def.fmt(r.v) : "–";
+    top.append(a, b); el.append(top);
+    if (r) { const sub = document.createElement("div"); sub.className = "sub"; const [y, m, dd] = r.d.split("-"); sub.textContent = `am ${dd}.${m}.${y}`; el.append(sub); }
+    list.append(el);
+  }
+}
+function showGoalTab(tab) {
+  goalTab = tab; $("tabGoals").classList.toggle("on", tab === "goals"); $("tabRecords").classList.toggle("on", tab === "records");
+  if (tab === "records") buildRecordList(); else buildGoalList();
+}
 function buildGoalList() {
   const d = ensureDaily(), list = $("goalList"); list.innerHTML = "";
   $("goalTitle").textContent = `⭐ ${starCount} ${starCount === 1 ? "Stern" : "Sterne"}` + (streak.n > 0 && (streak.last === d.day || streak.last === dayBefore(d.day)) ? ` · 🔥 ${streak.n} ${streak.n === 1 ? "Tag" : "Tage"} in Folge` : "");
@@ -1730,7 +1790,7 @@ function trackFrame(view, dt) {
   const me = view.snakes[app.me];
   if (view.phase !== app.lastPhase) {
     const prev = app.lastPhase; app.lastPhase = view.phase;
-    if (view.phase === "count") { app.roundSprint = false; app.lastCount = 0; }
+    if (view.phase === "count") { app.roundSprint = false; app.lastCount = 0; app.roundFood = 0; app.roundAlive = 0; app.roundMaxLen = 0; }
     else if (view.phase === "play" && prev === "count") tone(880, 0.22, "triangle", 0.3);
     else if (view.phase === "end" && prev === "play" && view.winner === app.me) {
       bump("rounds"); if (!app.roundSprint) bump("nosprint");
@@ -1739,6 +1799,8 @@ function trackFrame(view, dt) {
       tone(660, 0.14, "triangle", 0.3); setTimeout(() => tone(990, 0.22, "triangle", 0.3), 130);
     }
     if (view.phase === "end" && prev === "play") {
+      setRecord("len", app.roundMaxLen); setRecord("food", app.roundFood); setRecord("alive", app.roundAlive);   // Rekorde dieser Runde
+      if (view.mode === "futter") setRecord("futter", me.len);
       if (clip.recs.length) clip.finalizeAt = app.lastTs + 1.4;            // Clip: noch Zeitlupe und Banner mitnehmen, dann abschließen
       if (app.mode === "solo" && view.winner > 0 && Math.random() < 0.45)   // der Computer freut sich manchmal
         setTimeout(() => { if (app.mode === "solo") showEmote(view.winner, [1, 2, 5][Math.floor(Math.random() * 3)]); }, 500);
@@ -1747,6 +1809,7 @@ function trackFrame(view, dt) {
   if (view.phase === "count") { const n = Math.ceil(COUNT_T - view.phaseT); if (n !== app.lastCount && n >= 1) { app.lastCount = n; tone(440, 0.09, "triangle", 0.25); } }
   if (view.phase === "play" && me.alive) {
     if (me.sprint && !me.turbo) app.roundSprint = true;
+    app.roundAlive = (app.roundAlive || 0) + dt; app.roundMaxLen = Math.max(app.roundMaxLen || 0, me.len);
     const len = Math.floor(me.len * 100); if (len > (stats.len || 0) || (daily && daily.ids.includes("len") && len > (daily.prog.len || 0))) bump("len", len, true);
     app.surviveAcc += dt; if (app.surviveAcc >= 1) { app.surviveAcc -= 1; bump("survive"); }
   }
@@ -1813,9 +1876,35 @@ async function saveClip() {
 const myId = (() => { let id = store.get("id", ""); if (typeof id !== "string" || !/^[a-z0-9]{6,16}$/.test(id)) { id = (Math.random().toString(36).slice(2) + "000000").slice(0, 10); store.set("id", id); } return id; })();
 const rivals = store.get("rivals", {}) || {};
 const validId = id => (typeof id === "string" && /^[a-z0-9]{6,16}$/.test(id) && id !== "__proto__" ? id : null);
-function rivalGreeting() {
-  const r = app.rival && rivals[app.rival];
-  if (r && r.w + r.l + r.d > 0) showToast(`Bilanz gegen diesen Freund: ${r.w} : ${r.l}`);
+/** Namen: eigener (sd_name) wird beim Verbinden mitgeschickt; beim Freund gespeichert als rivals[id].n, eigener Spitzname als .nick */
+const cleanName = v => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f<>]/g, "").replace(/\s+/g, " ").trim().slice(0, 14) : "");
+state.name = cleanName(store.get("name", ""));
+const rivalName = id => { const r = id && rivals[id]; return (r && (r.nick || r.n)) || "Freund"; };
+/** Freund ist bekannt: Namen merken, in der Anzeige verwenden, Bilanz zur Begrüßung zeigen */
+function meetRival(id, name) {
+  app.rival = validId(id); if (!app.rival) return;
+  const r = rivals[app.rival] || (rivals[app.rival] = { w: 0, l: 0, d: 0, s: 0 });
+  const nm = cleanName(name); if (nm) r.n = nm;
+  r.t = Date.now(); store.set("rivals", rivals);
+  app.oppName = rivalName(app.rival);
+  if (r.w + r.l + r.d > 0) showToast(`Bilanz gegen ${app.oppName}: ${r.w} : ${r.l}`);
+}
+function buildRivalList() {
+  const list = $("rivalList"); list.innerHTML = "";
+  const ids = Object.keys(rivals).filter(validId).sort((a, b) => (rivals[b].t || 0) - (rivals[a].t || 0));
+  if (!ids.length) { const e = document.createElement("div"); e.className = "note"; e.textContent = "Noch keine Gegner. Lade einen Freund unter „Online“ ein!"; list.append(e); return; }
+  for (const id of ids) {
+    const r = rivals[id], el = document.createElement("div"); el.className = "goal" + (r.w > r.l ? " done" : "");
+    const top = document.createElement("div"); top.className = "gr";
+    const inp = document.createElement("input"); inp.className = "rn"; inp.maxLength = 14; inp.value = rivalName(id); inp.dataset.id = id;
+    inp.onchange = () => { const v = cleanName(inp.value); r.nick = v && v !== r.n ? v : undefined; if (!r.nick) delete r.nick; inp.value = rivalName(id); store.set("rivals", rivals); };
+    const sc = document.createElement("span"); sc.textContent = `${r.w} : ${r.l}`;
+    top.append(inp, sc);
+    const sub = document.createElement("div"); sub.className = "sub";
+    sub.textContent = [`${r.w + r.l + r.d} Duelle`, r.d ? `${r.d}× unentschieden` : "", r.s >= 2 ? `🔥 ${r.s} Siege in Folge` : r.s <= -2 ? `${-r.s} Niederlagen in Folge` : "",
+      r.t ? `zuletzt ${new Date(r.t).toLocaleDateString("de-DE")}` : ""].filter(Boolean).join(" · ");
+    el.append(top, sub); list.append(el);
+  }
 }
 
 function confetti() {
@@ -1889,7 +1978,7 @@ function startDuo() {
 /** Online als Gastgeber: Spielart aus der Lobby. Überleben = beide Freunde plus zwei Computer-Würmer */
 function startNetMatch() {
   const s = rndSeed(), mode = state.netmode, bl = Math.max(1, state.level - 1);
-  app.mode = "host"; app.kind = mode; app.me = 0; app.oppName = "Freund";
+  app.mode = "host"; app.kind = mode; app.me = 0; app.oppName = rivalName(app.rival);
   const bots = mode === "ueberleben" ? [null, null, new Bot(bl, s), new Bot(bl, s + 1)] : [null, null];
   app.match = new Match(s, bots, { mode, arena: state.arena });
   app.skins = pickSkins(bots.length, app.guestSkin);
@@ -1904,13 +1993,13 @@ function hostGame() {
   showPanel("lobbyPanel");
   const net = (app.net = makeTransport(app.code, "host"));
   net.onready = () => { if (app.net === net) $("lobbyStatus").textContent = "Warte auf deinen Freund …"; };
-  net.onopen = () => { if (app.net === net) { app.rival = null; startNetMatch(); net.send({ k: "hi", id: myId }); } };
+  net.onopen = () => { if (app.net === net) { app.rival = null; startNetMatch(); net.send({ k: "hi", id: myId, nm: state.name }); } };
   net.onmessage = m => {
     if (app.net !== net || !m || app.mode !== "host") return;
     if (m.k === "i") { const inp = app.match.inputs[1]; inp.a = typeof m.a === "number" && isFinite(m.a) ? m.a : null; inp.s = !!m.s; }
     else if (m.k === "hello") {
       app.guestSkin = typeof m.sk === "string" ? skinById(m.sk).id : null; app.skins = pickSkins(app.match.sim.snakes.length, app.guestSkin); app.match.full = true;
-      app.rival = validId(m.id); rivalGreeting();
+      meetRival(m.id, m.nm);
     }
     else if (m.k === "emo" && Number.isInteger(m.e) && m.e >= 0 && m.e < EMOTES.length) showEmote(1, m.e);
     else if (m.k === "again" && app.match.over) startNetMatch();
@@ -1940,12 +2029,12 @@ function joinGame(code) {
     app.mode = "guest"; app.kind = "duell"; app.me = 1; app.oppName = "Freund"; app.match = null; app.gv = newGuestView(); app.rival = null;
     begin();
     app.skins = [otherSkin(state.skin, null), state.skin];
-    net.send({ k: "hello", sk: state.skin, id: myId });
+    net.send({ k: "hello", sk: state.skin, id: myId, nm: state.name });
   };
   net.onmessage = m => {
     if (app.net !== net || !m) return;
     if (m.k === "s") applySnap(m);
-    else if (m.k === "hi") { app.rival = validId(m.id); rivalGreeting(); }
+    else if (m.k === "hi") meetRival(m.id, m.nm);
     else if (m.k === "emo" && Number.isInteger(m.e) && m.e >= 0 && m.e < EMOTES.length) showEmote(0, m.e);
     else if (m.k === "bye") toMenu("Dein Freund hat das Spiel verlassen.");
   };
@@ -1980,11 +2069,11 @@ function showEnd(view) {
     }
   } else $("againBtn").textContent = "Revanche";
   if ((app.mode === "host" || app.mode === "guest") && app.rival) {           // Bilanz gegen diesen Freund
-    const r = rivals[app.rival] || (rivals[app.rival] = { w: 0, l: 0, d: 0, s: 0 }), friend = 1 - app.me;
+    const r = rivals[app.rival] || (rivals[app.rival] = { w: 0, l: 0, d: 0, s: 0 }), friend = 1 - app.me; r.t = Date.now();
     if (won) { r.w++; r.s = r.s > 0 ? r.s + 1 : 1; } else if (draw) r.d++; else if (w === friend) { r.l++; r.s = r.s < 0 ? r.s - 1 : -1; }
     else sub += "\nEin Computer-Wurm hat gewonnen – zählt nicht für eure Bilanz.";        // Überleben: gegen Bots verloren
     store.set("rivals", rivals);
-    sub += `\nBilanz gegen diesen Freund: ${r.w} : ${r.l}` + (r.d ? ` (${r.d}× unentschieden)` : "") +
+    sub += `\nBilanz gegen ${rivalName(app.rival)}: ${r.w} : ${r.l}` + (r.d ? ` (${r.d}× unentschieden)` : "") +
       (r.s >= 2 ? ` · 🔥 ${r.s} Siege in Folge` : r.s <= -2 ? ` · ${-r.s} Niederlagen in Folge` : "");
   }
   const title = view.mode === "boss" && won ? `${BOSS_INFO[view.boss] ? BOSS_INFO[view.boss].name : "Boss"} besiegt! 👑` : "Duell gewonnen! 🏆";
@@ -1997,6 +2086,8 @@ function showEnd(view) {
     bump("duel"); if (app.mode === "host" || app.mode === "guest") bump("online");
     if (app.mode === "solo" && app.kind !== "duell") bump(app.kind);
     stats.winStreak = (stats.winStreak || 0) + 1; stats.bestStreak = Math.max(stats.bestStreak || 0, stats.winStreak);
+    setRecord("streak", stats.winStreak);
+    if (app.mode === "solo" && app.match) setRecord(app.kind === "boss" ? "boss_" + (view.boss || app.boss) : app.kind === "duell" ? "duel" : "-", app.match.playTime);
     confetti(); vib([40, 60, 40, 60, 160]);
     [523, 659, 784, 1047].forEach((f, k) => setTimeout(() => tone(f, k === 3 ? 0.5 : 0.16, "triangle", 0.3), k * 140));   // Fanfare
   } else { if (!draw) stats.winStreak = 0; tone(220, 0.6, "triangle", 0.3, 0.5); }
@@ -2243,8 +2334,14 @@ $("helpClose").onclick = () => showPanel("menuPanel");
 const refreshVibBtn = () => ($("vibBtn").textContent = `📳 Vibration: ${state.vib ? "an" : "aus"}`);
 $("vibBtn").onclick = () => { state.vib = !state.vib; save(); refreshVibBtn(); if (state.vib && navigator.vibrate) try { navigator.vibrate(30); } catch {} };
 refreshVibBtn();
-$("goalBtn").onclick = () => { buildGoalList(); showPanel("goalPanel"); };
+$("goalBtn").onclick = () => { showGoalTab("goals"); showPanel("goalPanel"); };
 $("goalDone").onclick = () => showPanel("menuPanel");
+$("tabGoals").onclick = () => showGoalTab("goals");
+$("tabRecords").onclick = () => showGoalTab("records");
+$("nameInput").value = state.name;
+$("nameInput").addEventListener("change", () => { state.name = cleanName($("nameInput").value); $("nameInput").value = state.name; save(); });
+$("rivalBtn").onclick = () => { buildRivalList(); showPanel("rivalPanel"); };
+$("rivalDone").onclick = () => showPanel("onlinePanel");
 $("menuBtn").onclick = () => toMenu();
 $("quitBtn").onclick = () => { if (confirm("Spiel wirklich verlassen?")) toMenu(); };
 $("againBtn").onclick = () => {
@@ -2263,7 +2360,7 @@ $("shareBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
-window.SD = { app, state, input, input2, Sim, Bot, Match, SKINS, ARENAS, BOSSES, bossesBeaten, clip, rivals, startSolo, startDuo, skinsReady: false,
+window.SD = { app, state, records, setRecord, rivalsList: () => rivals, input, input2, Sim, Bot, Match, SKINS, ARENAS, BOSSES, bossesBeaten, clip, rivals, startSolo, startDuo, skinsReady: false,
   goals: { stats, streak, achDone, owned, TASKS, ACHS, today, daily: () => ensureDaily(), stars: () => starCount, setStars: n => { starCount = n; saveGoals(); }, bump, check: checkGoals } };
 loadImageSkins().finally(() => { window.SD.skinsReady = true; if (!inGame()) { demoSkins(); refreshSkinBtn(); if (!$("skinPanel").classList.contains("hidden")) buildSkinGrid(); } });
 
