@@ -5,8 +5,9 @@ bevor du etwas änderst.
 
 ## Worum es geht
 
-**Worm Attack** ist ein Schlangen-Duell 1 gegen 1 fürs Handy. Zwei Schlangen bewegen sich frei und fließend
-(kein Raster) in einer runden Arena. Man spielt **gegen den Computer** oder **online gegen Freunde**.
+**Worm Attack** ist ein Schlangen-Duell fürs Handy. Die Schlangen bewegen sich frei und fließend
+(kein Raster) in einer runden Arena. Man spielt **gegen den Computer** (Duell, Überleben gegen drei, Futterjagd,
+Bosswurm), **online gegen Freunde** oder **zu zweit an einem Handy**. Vier Arenen, acht Joker.
 Es läuft als Web-App im Handy-Browser, veröffentlicht über GitHub Pages unter
 `https://almaz6380.github.io/Worm-Attack/`.
 
@@ -18,8 +19,10 @@ getestet. Was bisher gebaut wurde, was der User zurückgemeldet hat und was als 
 bisher: Der Steuerkreis blieb an alter Stelle hängen. Das ist umgebaut, eine Bestätigung steht noch aus.
 
 **Noch nie auf echten Geräten geprüft:** Schwierigkeit für Menschen, Online zwischen zwei echten Handys in
-verschiedenen Netzen, Flüssigkeit bei langen Würmern, Doppeltipp-Sprint, Vibration, Zeitlupe. Bisher liefen
-dafür nur Bots und simulierte Browser auf einem Rechner.
+verschiedenen Netzen, Flüssigkeit bei langen Würmern, Doppeltipp-Sprint, Vibration, Zeitlupe, und alles aus der
+Erweiterung vom 19.11.2026: neue Joker, Arenen, Spielarten, zwei Spieler an einem Handy, Emotes, Bilanz, Clips
+(besonders: Aufnahme und Teilen in iPhone-Safari, Ruckeln während der Aufnahme). Bisher liefen dafür nur Bots und
+simulierte Browser auf einem Rechner.
 
 **Zusammenarbeit mit dem User:**
 - Er schreibt kurz und auf Deutsch und ist kein Programmierer. Antworten auf Deutsch, ohne Fachbegriffe.
@@ -40,8 +43,9 @@ dafür nur Bots und simulierte Browser auf einem Rechner.
 - **Wiederholbar:** Zwischen den Markern `/* SIM-START` und `/* SIM-END */` (Klassen `Sim`, `Bot`, `Match`)
   kein `Math.random()`, kein `Date`, kein DOM. Nur der Seed-Zufall (`mulberry32`). Gleicher Seed ⇒ gleicher Ablauf.
 - **Marker stehen lassen:** `tests/sim.test.js` liest den Code zwischen `SIM-START` und `SIM-END` aus `index.html`.
-- **Kompatibel bleiben:** Speicher-Präfix `sd_` (localStorage) und Netz-Präfix `snakeduell-v1-` nicht ändern.
-  Wenn sich das Online-Protokoll unverträglich ändert, die Versionsnummer im Netz-Präfix hochzählen.
+- **Kompatibel bleiben:** Speicher-Präfix `sd_` (localStorage) nicht ändern. Netz-Präfix ist `snakeduell-v2-`
+  (seit den neuen Jokern und Arenen; v1-Spiele passen nicht mehr zusammen). Wenn sich das Online-Protokoll
+  unverträglich ändert, die Versionsnummer im Netz-Präfix hochzählen.
 - **Eigenes Spiel:** Regeln, Grafik und Namen sind eigene. Nichts von bestehenden Spielen kopieren.
 - `localStorage` immer in try/catch. Das Spiel muss auch ohne Speicher laufen.
 
@@ -55,23 +59,28 @@ dafür nur Bots und simulierte Browser auf einem Rechner.
 | `README.md` | Regeln und Anleitung für Menschen |
 | `CLAUDE.md` | Diese Arbeitsanweisung |
 | `UEBERGABE.md` | Stand, Verlauf, Rückmeldungen des Users, offene Punkte und Ideen. Nach jeder größeren Änderung nachführen |
-| `tests/sim.test.js` | Simulation ohne Browser: Determinismus, Rundenverlauf, Bot-Stufen |
-| `tests/ui.test.js` | Simuliertes iPhone (Playwright): Menü, Lenkung, Sprint, Designs, Aufgaben, Sterne, Effekte, eine ganze Partie |
-| `tests/online.test.js` | Online-Duell mit zwei Fenstern: `local` (ohne Internet) oder `peer` (echter Dienst) |
+| `tests/sim.test.js` | Simulation ohne Browser: Determinismus, Rundenverlauf, Bot-Stufen, jeder neue Joker, Arenen, Spielarten |
+| `tests/ui.test.js` | Simuliertes iPhone (Playwright): Menü, Lenkung, Sprint, Designs, Aufgaben, Sterne, Effekte, Clip, Arenen, Spielarten, zwei Spieler, Emotes, eine ganze Partie |
+| `tests/online.test.js` | Online-Duell mit zwei Fenstern: `local` (ohne Internet) oder `peer` (echter Dienst). Prüft auch Arena, Emotes, Bilanz |
 
 ## Spielregeln (so ist es umgesetzt)
 
-Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am Anfang des SIM-Blocks.
+Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am Anfang des SIM-Blocks
+(`MODES`, `ARENAS`, `BOSS` eingeschlossen). `Sim(seed, record, { mode, arena })` kann beliebig viele Würmer.
 
 - **Format:** Wer zuerst 3 Runden gewinnt, gewinnt das Duell. Höchstens 9 Runden, 3 s Countdown vor jeder Runde.
 - **Bewegung:** Tempo 0,42 pro Sekunde, Sprint 0,68. Drehrate 3,6 rad/s. Die Schlange dreht zur Zielrichtung
   der Eingabe und fährt sonst geradeaus.
 - **Körper:** Spur aus Punkten im Abstand 0,012. Startlänge 0,55, Mindestlänge 0,28, Höchstlänge 3.
   Kopf-Radius 0,028, Körper-Radius 0,021.
-- **Verloren:** Kopf berührt Arena-Wand, Körper des Gegners, eigenen Körper (die neuesten 20 Spurpunkte zählen
-  nicht) oder eine Joker-Mauer des Gegners.
+- **Verloren:** Kopf berührt Arena-Wand, ein Hindernis der Arena, Körper eines Gegners, eigenen Körper (die
+  neuesten 20 Spurpunkte zählen nicht), eine Joker-Mauer eines Gegners oder steht im Umkreis einer gegnerischen Bombe.
+  Mit mehreren Leben (`lives`, Futterjagd und Bosswurm) kostet ein Treffer stattdessen ein Leben (`hurt`): ein Drittel
+  der Länge wird Futter, 1,5 s Geist, an Wand oder Hindernis dreht der Wurm um.
 - **Kopf an Kopf:** Die längere Schlange gewinnt. Unterschied unter 0,05 ⇒ beide raus, Runde unentschieden.
-- **Futter:** Immer 7 normale Futterpunkte (+0,07 Länge).
+- **Runde vorbei:** wenn höchstens ein Wurm übrig ist. Mehr als zwei Würmer: Ist kein Mensch mehr dabei, entscheidet
+  sofort die Länge (`finish("out")`).
+- **Futter:** Immer 7 normale Futterpunkte (+0,07 Länge), je nach Spielart mehr.
 - **Sprint:** kostet 0,11 Länge pro Sekunde, nur über Mindestlänge möglich. Verlorene Länge bleibt als kleines
   Futter (+0,04) am Schwanzende liegen.
 - **Joker:** Der erste erscheint nach 5 bis 7 s, danach 6 bis 9 s nach dem Einsammeln. Höchstens einer im Feld.
@@ -82,6 +91,33 @@ Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am
   | Geist | 2 s durch Körper und Joker-Mauern fahren, nicht durch die Arena-Wand. Danach bis 0,8 s Schonfrist, solange der Kopf noch in einem Körper steckt |
   | Schere | Gegner verliert ein Drittel seiner Länge, das abgeschnittene Stück wird Futter |
   | Mauer | Kopie der eigenen Spur bleibt 4 s als Hindernis für den Gegner stehen |
+  | Magnet | 4 s: Futter im Umkreis 0,5 fliegt mit 0,9 pro Sekunde zum Kopf |
+  | Eis | alle Gegner 2,5 s mit 55 % Tempo und 60 % Drehrate |
+  | Schild | fängt bis zu 8 s lang den nächsten Treffer an Körper oder Mauer ab, danach Schonfrist wie beim Geist. Nicht gegen Wand, Hindernis, Bombe, Kopf an Kopf |
+  | Bombe | liegt an der Joker-Stelle, zündet nach 1,5 s. Gegner-Köpfe im Umkreis 0,2 sind raus, der Besitzer nicht |
+
+  Schere und Eis wirken bei mehreren Gegnern auf alle.
+
+- **Arenen** (`ARENAS`, gewählt als `sd_arena`, gilt für alle Spielarten):
+
+  | Arena | Inhalt |
+  | --- | --- |
+  | `klassisch` | leer |
+  | `saeulen` | Mittelsäule (Radius 0,11) und vier Säulen (0,07) auf Radius 0,62. Fest wie die Wand, auch für Geister |
+  | `karussell` | zwei Blöcke kreisen auf Radius 0,3 (0,5 rad/s), vier auf Radius 0,74 gegenläufig (0,32 rad/s) |
+  | `portale` | zwei Portal-Paare (Radius 0,055) auf Radius 0,73. Austritt hinter dem Partner in Fahrtrichtung. Offen nur, solange die Arena groß genug ist (ab etwa Sekunde 47 zu) |
+
+  Futter und Joker erscheinen nicht in Hindernissen oder Portalen (`freeSpot`). Die Spur hat nach einem Portal eine
+  Lücke: Zeichnen und Längen-Abgleich behandeln Abstände über 0,12 (`JUMP`) als Sprung.
+
+- **Spielarten** (`MODES`):
+
+  | Spielart | Würmer | Dauer | Besonderheit |
+  | --- | --- | --- | --- |
+  | `duell` | 2 | 60 s | wie oben, auch online und zu zweit |
+  | `ueberleben` | 4 | 60 s | du gegen drei Bots (Stufe − 1), alle gegen alle, 10 Futter |
+  | `futter` | 2 | 45 s | keine schrumpfende Arena, 14 Futter, 999 Leben: Treffer kosten nur Länge |
+  | `boss` | 2 | 60 s | Wurm 1 ist der Boss (`BOSS`): 1,5-fach dick, Länge 1,2, Tempo 85 %, Drehrate 75 %, 3 Leben, Bot-Stufe + 1. Der Spieler hat 2 Leben |
 
 - **Sudden Death:** Ab Sekunde 40 schrumpft die Arena gleichmäßig bis Sekunde 60 auf Radius 0,45.
   Nach 60 s gewinnt die längere Schlange (Unterschied unter 0,02 ⇒ unentschieden).
@@ -101,10 +137,16 @@ Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am
 
 - Der Bot testet 7 Lenkrichtungen (`BOT_DELTAS`) und bewertet Überleben, Abstand zu Hindernissen und Nähe zum Ziel.
 - Ziel-Reihenfolge: Joker, dann Gegner abschneiden, dann Futter, dann Arena-Mitte.
-- **Gemessen** (`tests/sim.test.js`, Bot gegen Bot, entschiedene Runden): Stufe 10 schlägt Stufe 1 in 91 %,
-  Stufe 5 schlägt Stufe 1 in 80 %, Stufe 10 schlägt Stufe 5 in 64 %. Mittlere Rundendauer: 14 s (Stufe 1),
-  30 s (Stufe 5), 54 s (Stufe 10).
-- Sieg ⇒ Stufe +1, gespeichert als `sd_level`. Siege gesamt in `sd_wins`.
+- **Gemessen** (`tests/sim.test.js`, Bot gegen Bot, entschiedene Runden, je 200 Runden pro Startseite, acht Joker): Stufe 10 schlägt Stufe 1 in 89 %,
+  Stufe 5 schlägt Stufe 1 in 80 %, Stufe 10 schlägt Stufe 5 in 56 % (vorher 91 / 80 / 64 %). Mehr Joker heißt mehr
+  Glück, vor allem Schild und Bombe gleichen aus. Mittlere Rundendauer: 14 s, 32 s, 52 s.
+- Arenen, Stufe 5 gegen 5: Säulen 25 s, Karussell 27 s, Portale 42 s im Mittel, Startseiten fair.
+- Spielarten, ein Bot spielt den Menschen (Rundensiege): Bosswurm 43 % (Stufe 1), 35 % (5), 28 % (10).
+  Überleben 29 bis 38 % (Zufall wäre 25 %). Futterjagd etwa 50 %.
+- Der Bot sucht bei mehreren Gegnern den nächsten als Ziel, weicht aber allen Körpern aus. In der Vorschau kennt er
+  Hindernisse zur jeweiligen Zeit, springt durch Portale, meidet gegnerische Bomben kurz vor dem Knall und rechnet
+  das Ende von Eis mit ein.
+- Nur das Duell gegen den Computer ändert die Stufe: Sieg ⇒ Stufe +1, gespeichert als `sd_level`. Siege gesamt in `sd_wins`.
 
 ## Gespeicherte Daten (localStorage, Präfix `sd_`)
 
@@ -118,6 +160,9 @@ Arena-Radius = 1. Fester Zeitschritt 1/60 s. Alle Werte stehen als Konstanten am
 | `sd_streak` | Tages-Serie: aktuelle Länge, beste, letzter Tag |
 | `sd_ach` | Erledigte Erfolge |
 | `sd_owned` | Für Sterne freigeschaltete Designs |
+| `sd_arena`, `sd_clip` | Gewählte Arena, Clip-Aufnahme an/aus |
+| `sd_id` | Zufällige Kennung dieses Geräts (für die Bilanz gegen Freunde) |
+| `sd_rivals` | Bilanz pro Freund: `{Kennung: {w, l, d, s}}`, `s` = aktuelle Serie (positiv Siege, negativ Niederlagen) |
 
 Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der User seinen Fortschritt.
 
@@ -125,20 +170,24 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
 
 - **Verbinden:** Gastgeber erzeugt einen 4-stelligen Code. Der Gast tritt per Code oder Link `?join=CODE` bei.
   WebRTC-Datenkanal über `peerjs@1.5.5`, Vermittlung über den öffentlichen PeerJS-Dienst.
-  Peer-ID des Gastgebers: `snakeduell-v1-<Code>`.
+  Peer-ID des Gastgebers: `snakeduell-v2-<Code>`.
 - **Wer rechnet:** Der Gastgeber ist Schlange 0 und lässt `Match` laufen. Der Gast ist Schlange 1.
+  Online gibt es nur das Duell, aber in der Arena, die der Gastgeber gewählt hat.
 - **Nachrichten** (JSON):
 
   | Art | Richtung | Inhalt |
   | --- | --- | --- |
-  | `hello` | Gast → Gastgeber | nach dem Verbinden, mit `sk` = gewähltes Design |
+  | `hello` | Gast → Gastgeber | nach dem Verbinden, mit `sk` = gewähltes Design, `id` = Gerätekennung |
+  | `hi` | Gastgeber → Gast | nach dem Verbinden, `id` = Gerätekennung des Gastgebers |
+  | `emo` | beide | Emote, `e` = Nummer in `EMOTES` (0 bis 5) |
   | `i` | Gast → Gastgeber | Eingabe: `a` Zielrichtung (rad oder `null`), `s` Sprint. Bei Änderung, sonst alle 100 ms |
   | `s` | Gastgeber → Gast | Spielstand, 30-mal pro Sekunde (alle 2 Ticks). Zahlen ×1000 gerundet |
   | `again` | Gast → Gastgeber | Revanche nach Duell-Ende |
   | `bye` | beide | Spiel verlassen |
 
-- **Spielstand `s`:** Phase, Punkte, Runde, Zeit, Arena-Radius, Köpfe (Position, Richtung, Länge, Zustände),
-  Futter, Joker, Ereignisse. Die Spuren baut der Gast aus den Kopf-Positionen selbst mit (`applySnap`,
+- **Spielstand `s`:** Phase, Punkte, Runde, Zeit, Arena-Radius, Köpfe (Position, Richtung, Länge, Zustände als
+  Bits: 1 lebt, 2 Geist, 4 Turbo, 8 Sprint, 16 Schild, 32 Eis, 64 Magnet), Futter, Joker, Bomben (`b`), Ereignisse.
+  Die Arena (`ar`) kommt in vollen Spielständen; Hindernisse und Portale rechnet der Gast aus Arena und Zeit selbst. Die Spuren baut der Gast aus den Kopf-Positionen selbst mit (`applySnap`,
   `trimByLength`). Ein **voller Abgleich** mit Spuren und Mauern kommt alle 15 Spielstände sowie bei Rundenstart,
   Schere und Mauer (`m.full`).
 - **Darstellung beim Gast:** Köpfe werden zwischen den letzten zwei Spielständen weich zwischengerechnet
@@ -151,9 +200,10 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
 
 | Baustein | Aufgabe |
 | --- | --- |
-| `Sim` | Eine Runde: `step()` rechnet einen Zeitschritt. Eingaben über `snakes[i].target` und `.sprint`. Ereignisse in `events` |
+| `Sim` | Eine Runde: `step()` rechnet einen Zeitschritt. Eingaben über `snakes[i].target` und `.sprint`. Ereignisse in `events` (`eat`, `spawn`, `power`, `clash`, `die`, `hurt`, `warp`, `boom`, `shield`) |
+| `MODES`, `ARENAS`, `BOSS`, `blockGap`, `blockList`, `portalExit` | Spielarten, Arenen und ihre Geometrie (Hindernisse hängen von der Zeit ab) |
 | `Bot` | `think(sim, i)` liefert `{a, s}`; `roll()` ist die Vorschau |
-| `Match` | Runden, Punkte, Phasen `count → play → end → over`; `tick()` |
+| `Match` | `Match(seed, bots, { mode, arena })`: Runden, Punkte (eine Zahl pro Wurm), Phasen `count → play → end → over`; `tick()` |
 | `hostView` / `guestView` | Bauen die Ansicht für `render()`: lokal aus `Match`, beim Gast aus dem Netz |
 | `buildSnap` / `applySnap` | Spielstand senden und empfangen |
 | `makeTransport(code, rolle)` | Verbindung: PeerJS oder Test-Kanal, gleiche Schnittstelle |
@@ -162,9 +212,12 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
 | `fx(e)` | Ereignisse ⇒ Töne (WebAudio), Funken, Hinweise, Vibration (`vib`), Zeitlupe (`app.slow`), Zählen für Aufgaben (`bump`) |
 | `TASKS`, `ACHS`, `bump()`, `checkGoals()`, `trackFrame()` | Tagesaufgaben, Erfolge, Sterne (siehe „Aufgaben, Erfolge, Sterne“) |
 | `notify()` / `showToast()` | Hinweise oben: `notify` reiht wichtige Hinweise nacheinander, `showToast` ist für Joker-Meldungen |
-| `startSolo` / `hostGame` / `joinGame` / `startNetMatch` / `showEnd` / `toMenu` | Spielablauf |
-| Steuerung | Zwei Lenkarten (`state.steer`, gespeichert als `sd_steer`): „Kreis“ = schwebender Joystick, „Zum Finger“ = `aimAtFinger()`. Dazu Sprint-Knopf und Tastatur |
-| `window.SD` | Zugriff für Tests: `app`, `state`, `input`, `Sim`, `Bot`, `Match`, `SKINS`, `goals` |
+| `startSolo(kind)` / `startDuo` / `hostGame` / `joinGame` / `startNetMatch` / `showEnd` / `toMenu` | Spielablauf. `app.mode` = menu, lobby, solo, host, guest, duo; `app.kind` = Spielart |
+| Steuerung | Zwei Lenkarten (`state.steer`, gespeichert als `sd_steer`): „Kreis“ = schwebender Joystick, „Zum Finger“ = `aimAtFinger(p)`. Dazu Sprint-Knopf und Tastatur. Zwei Spieler: `joy2`, `input2`, `sprintBtn2`, Pfad über `padJoy(p)` / `padInput(p)` |
+| `drawArenaFeatures`, `drawBombs`, `drawEmotes` | Hindernisse, Portale, Bomben mit Warnkreis, Emotes über dem Kopf |
+| `clip…` | Clip-Aufnahme (`MediaRecorder` auf `cv.captureStream`, Ton über `audio.dest`), `saveClip()` teilt oder lädt herunter |
+| `myId`, `rivals`, `rivalGreeting` | Bilanz gegen Freunde |
+| `window.SD` | Zugriff für Tests: `app`, `state`, `input`, `input2`, `Sim`, `Bot`, `Match`, `SKINS`, `ARENAS`, `clip`, `rivals`, `startSolo`, `startDuo`, `goals` |
 
 Im Menü läuft im Hintergrund ein Demo-Duell Bot gegen Bot.
 
@@ -218,19 +271,36 @@ Im Menü läuft im Hintergrund ein Demo-Duell Bot gegen Bot.
   Unfallstelle und wackelt 0,2 s (`app.shakeUntil`). Das Runden-Banner erscheint erst danach.
 - Rundensieg: Sternenregen (Partikel mit `star`). Duell-Sieg: `confetti()` (Partikel mit `conf` und Schwerkraft
   `g`) und Fanfare. Countdown-Töne bei 3, 2, 1 und Start.
-- Im Demo-Duell des Menüs gibt es keine dieser Effekte und keine Töne.
+- Im Demo-Duell des Menüs gibt es keine dieser Effekte und keine Töne. Es läuft in der gewählten Arena.
+- Bei mehr als zwei Würmern gibt es Zeitlupe und Wackler nur beim eigenen Crash.
+- Schild = schimmernde Blase, Eis = hellblauer, gestrichelter Körper, Magnet = gestrichelter Kreis, Boss = Krone,
+  Herzen in der Anzeige. Bombe: 💣 mit rotem Warnkreis, der immer schneller pulsiert.
+
+**Emotes, Bilanz, Clips:**
+- Emotes (`EMOTES`): 😀-Knopf oben links öffnet eine Leiste, höchstens eins alle 0,7 s. Online geht es an den Freund
+  (`emo`), gegen den Computer antwortet der manchmal, und nach seinem Rundensieg jubelt er gelegentlich. Nicht im
+  Modus „Zwei Spieler“.
+- Bilanz: Nach jedem Online-Duell `rivals[Kennung]` nachführen und im Ergebnis zeigen, Begrüßung per Toast.
+- Clips: Während `play` laufen höchstens zwei versetzte Aufnahmen (alle 8 s eine neue, jede höchstens 16,5 s).
+  1,4 s nach Rundenende wird die älteste behalten (`clip.blob`), die anderen verworfen. Nach dem Duell zeigt der
+  Ergebnis-Bildschirm „🎬 Clip speichern“: `navigator.share` mit Datei, sonst Download. Format: MP4, wenn der Browser
+  es kann, sonst WebM. Unten im Bild steht „WORM ATTACK“. Abschaltbar im Regeln-Panel (`sd_clip`).
+- Gemessen im simulierten Handy (ohne Grafikkarte): vier Würmer der Länge 2 in der Karussell-Arena kosten etwa 10 ms
+  Zeichnen pro Bild, mit laufender Aufnahme trotzdem 60 Bilder pro Sekunde (95 % der Bilder unter 22 ms).
 
 **Aufgaben, Erfolge, Sterne:**
 - `TASKS`: acht mögliche Tagesaufgaben. `ensureDaily()` wählt pro Tag drei, berechnet aus dem Datum (am selben
   Tag immer dieselben). Jede gibt 1 ⭐, alle drei zusammen 2 ⭐ extra. `streak` zählt Tage in Folge mit mindestens
   einer geschafften Aufgabe.
-- `ACHS`: zwölf dauerhafte Erfolge mit 2 bis 5 ⭐. Ihre Werte kommen aus `stats`, `state.level` und `streak`.
+- `ACHS`: 15 dauerhafte Erfolge mit 2 bis 5 ⭐. Ihre Werte kommen aus `stats`, `state.level` und `streak`.
+  `joker4` heißt aus Kompatibilität noch so, verlangt aber alle 8 Joker. Neu: `boss`, `ueberleben`, `futter`.
+- Im Modus „Zwei Spieler“ zählt nichts (`bump` bricht ab).
 - Gezählt wird **nur in echten Partien** (`inGame()`), nie im Demo-Duell: `fx` zählt Futter, Joker und „Gegner
   fuhr in meinen Körper“; `trackFrame` zählt pro Bild Länge, Überlebenszeit und Sprint-Nutzung und erkennt
   Rundensiege am Phasenwechsel; `showEnd` zählt Duell-Siege und die Sieges-Serie.
 - `bump(key, n, isMax)` erhöht Statistik und heutige Aufgabe, `checkGoals()` vergibt Sterne und meldet per
   `notify`. Gespeichert wird bei Abschlüssen, am Duell-Ende und beim Wechsel ins Menü (`saveGoals`).
-- Sterne kann man nur für Designs ausgeben. Insgesamt gibt es 42 ⭐ aus Erfolgen plus bis zu 5 ⭐ pro Tag; die
+- Sterne kann man nur für Designs ausgeben. Insgesamt gibt es 50 ⭐ aus Erfolgen plus bis zu 5 ⭐ pro Tag; die
   drei Sterne-Designs kosten zusammen 42 ⭐.
 - Test-Schalter: `?tag=2026-03-10` setzt das Datum für die Tagesaufgaben fest.
 
@@ -256,6 +326,8 @@ enthält die vollständige Ideenliste mit Empfehlung.
 - Aussehen: Glieder-Würmer mit Gesicht, 19 Designs (9 eingebaut, 10 mit Bildern), Auswahl-Übersicht,
   Bild-Designs aus `skins/` samt Anleitung und Prompts.
 - Effekte: Vibration, Zeitlupe, Konfetti. Tagesaufgaben, Erfolge, Sterne, Sterne-Designs.
+- Ideen 3 bis 8 (19.11.2026): Joker Magnet, Eis, Schild, Bombe; Arenen Säulen, Karussell, Portale; Spielarten
+  Überleben, Futterjagd, Bosswurm; zwei Spieler an einem Handy; Online-Emotes und Bilanz gegen Freunde; Clips.
 
 ### Offen: Rückmeldung vom echten Handy einholen
 - Bleibt der Steuerkreis noch irgendwo hängen? Welche Lenkart fühlt sich besser an?
@@ -263,6 +335,8 @@ enthält die vollständige Ideenliste mit Empfehlung.
 - Ist Stufe 1 zu leicht oder zu schwer? Ruckelt es bei langen Würmern?
 - Klappt Online zwischen zwei Handys (gleiches WLAN, und WLAN gegen mobile Daten)? Stört die Verzögerung beim Gast?
 - Fühlen sich Vibration (nur Android) und Zeitlupe gut an oder stören sie?
+- Neue Joker, Arenen, Spielarten: Macht es Spaß? Ist der Boss zu schwer? Klappen zwei Spieler an einem Handy?
+- Clip: Lässt er sich auf dem iPhone speichern und teilen? Ruckelt das Spiel während der Aufnahme?
 
 ### Schwierigkeit für Menschen einstellen (nach Rückmeldung)
 - Ziel: Stufe 1 gewinnt ein Neuling meistens, ab Stufe 5 wird es fordernd.
@@ -279,10 +353,8 @@ enthält die vollständige Ideenliste mit Empfehlung.
 - **Fertig, wenn:** `online.test.js local` und `peer` grün, ein Test für die Pause ergänzt.
 
 ### Ideen, die der User noch nicht gewählt hat
-Neue Joker (Magnet, Eis, Schild, Bombe), neue Arenen (Hindernisse, Portale), neue Modi (Überleben gegen drei
-Computer-Würmer, Futterjagd, Bosswurm), zwei Spieler an einem Handy, Online-Emotes, Clip teilen. Joker, Arenen
-und Modi ändern die Simulation: Dann `sim.test.js` erweitern, Balance-Zahlen vorher und nachher vergleichen und
-bei Online-Wirkung das Protokoll prüfen.
+Siehe `UEBERGABE.md`. Neue Joker, Arenen und Modi ändern die Simulation: Dann `sim.test.js` erweitern,
+Balance-Zahlen vorher und nachher vergleichen und bei Online-Wirkung das Protokoll prüfen.
 
 ### Nur auf ausdrückliche Anweisung
 - Rangliste oder Matchmaking mit Fremden (braucht einen Server, also Kosten klären).

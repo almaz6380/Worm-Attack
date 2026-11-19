@@ -160,7 +160,7 @@ fs.mkdirSync(shots, { recursive: true });
   check(g0.duel === (end.scores[0] > end.scores[1] ? 1 : 0) && g0.sieg1 === (g0.duel === 1), `Duell-Sieg gezählt (${g0.duel}), Erfolg „Erster Duell-Sieg“: ${g0.sieg1}, Sterne: ${g0.stars}`);
   await page.click("#goalBtn");
   const gp = await page.evaluate(() => ({ rows: document.querySelectorAll("#goalList .goal").length, title: document.getElementById("goalTitle").textContent }));
-  check(gp.rows === 15, `Aufgaben-Panel zeigt 3 Tagesaufgaben und 12 Erfolge (${gp.title})`);
+  check(gp.rows === 18, `Aufgaben-Panel zeigt 3 Tagesaufgaben und 15 Erfolge (${gp.title})`);
   await page.screenshot({ path: path.join(shots, "7-aufgaben.png") });
   await page.click("#goalDone");
   await page.reload();
@@ -221,7 +221,89 @@ fs.mkdirSync(shots, { recursive: true });
   const conf = await page.evaluate(() => SD.app.particles.filter(p => p.conf).length);
   await page.screenshot({ path: path.join(shots, "10-sieg-konfetti.png") });
   check(conf > 20, `Konfetti beim Duell-Sieg (${conf} Teilchen)`);
+  // Clip der letzten Sekunden: nach dem Duell bereit zum Speichern
+  await page.waitForFunction(() => SD.clip.blob, null, { timeout: 6000 }).catch(() => {});
+  const cl = await page.evaluate(() => ({ size: SD.clip.blob ? SD.clip.blob.size : 0, type: SD.clip.blob ? SD.clip.blob.type : "", btn: !document.getElementById("clipBtn").classList.contains("hidden") && !document.getElementById("clipBtn").disabled }));
+  check(cl.size > 1000 && cl.btn, `Clip aufgenommen (${Math.round(cl.size / 1024)} KB, ${cl.type}), Knopf „Clip speichern“ bereit`);
+  const dl = page.waitForEvent("download", { timeout: 5000 }).catch(() => null);
+  await page.click("#clipBtn");
+  const file = await dl;
+  check(!!file && /^worm-attack-clip\.(mp4|webm)$/.test(file.suggestedFilename()), `Clip wird als Datei gespeichert (${file && file.suggestedFilename()})`);
   await page.click("#menuBtn");
+
+  // ---------- Arenen ----------
+  await page.click("#arenaBtn");
+  check((await page.textContent("#arenaBtn")).includes("Säulen") && (await page.evaluate(() => SD.app.match.sim.arena)) === "saeulen", "Arena umschalten: Säulen, das Demo-Duell zeigt sie sofort");
+  await page.reload(); await page.waitForFunction(() => SD.skinsReady, null, { timeout: 10000 });
+  check((await page.evaluate(() => SD.state.arena)) === "saeulen", "Gewählte Arena bleibt nach dem Neuladen erhalten");
+  await page.click("#arenaBtn"); await page.click("#arenaBtn");
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(shots, "11-menue-portale.png") });
+  check((await page.textContent("#arenaBtn")).includes("Portale"), "Arena „Portale“ gewählt");
+
+  // ---------- Spielarten ----------
+  await page.click("#modeBtn");
+  await page.screenshot({ path: path.join(shots, "12-spielarten.png") });
+  await page.click('[data-mode="ueberleben"]');
+  await page.waitForFunction(() => SD.app.match.phase === "play", null, { timeout: 8000 });
+  const ue = await page.evaluate(() => ({ n: SD.app.match.sim.snakes.length, skins: SD.app.skins, arena: SD.app.match.sim.arena, mode: SD.app.match.sim.mode }));
+  check(ue.n === 4 && new Set(ue.skins).size === 4 && ue.arena === "portale" && ue.mode === "ueberleben", `Überleben: 4 Würmer mit 4 Designs (${ue.skins.join(", ")}) in der Arena ${ue.arena}`);
+  // Emote: Leiste öffnen, eins schicken ⇒ schwebt über dem eigenen Kopf
+  await page.click("#emoBtn"); await page.click('#emoBar button[data-e="2"]');
+  const em = await page.evaluate(() => SD.app.emotes.map(e => e.i + e.e));
+  check(em.includes("0😎") && await page.isHidden("#emoBar"), `Emote gesendet und angezeigt (${em.join(" ")})`);
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(shots, "13-ueberleben.png") });
+  await page.evaluate(() => { SD.app.match.sim.snakes[0].x = 0.99; SD.app.match.sim.snakes[0].y = 0; });
+  await page.waitForFunction(() => SD.app.match.phase === "end", null, { timeout: 5000 });
+  const ue2 = await page.evaluate(() => ({ reason: SD.app.match.sim.reason, why: SD.app.why[0] }));
+  check(ue2.reason === "out" && ue2.why === "wall", "Überleben: Wer selbst rausfliegt, beendet die Runde sofort");
+  await page.click("#quitBtn"); await page.waitForTimeout(200);
+
+  await page.click("#modeBtn"); await page.click('[data-mode="boss"]');
+  await page.waitForFunction(() => SD.app.match.phase === "play", null, { timeout: 8000 });
+  await page.evaluate(() => { const b = SD.app.match.sim.snakes[1]; b.x = 0.99; b.y = 0; b.ghostUntil = -1; });
+  await page.waitForTimeout(250);
+  const bo = await page.evaluate(() => ({ lives: SD.app.match.sim.snakes[1].lives, alive: SD.app.match.sim.snakes[1].alive, sc: SD.app.match.sim.snakes[1].sc, toast: document.getElementById("toast").textContent }));
+  check(bo.alive && bo.lives === 2 && bo.sc > 1 && bo.toast.includes("Boss getroffen"), `Bosswurm: Crash kostet ein Leben (${bo.lives} übrig, „${bo.toast}“)`);
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(shots, "14-boss.png") });
+  await page.click("#quitBtn"); await page.waitForTimeout(200);
+
+  await page.click("#modeBtn"); await page.click('[data-mode="futter"]');
+  await page.waitForFunction(() => SD.app.match.phase === "play", null, { timeout: 8000 });
+  await page.evaluate(() => { const me = SD.app.match.sim.snakes[0]; me.x = 0.99; me.y = 0; me.ghostUntil = -1; });
+  await page.waitForTimeout(250);
+  const fu = await page.evaluate(() => ({ alive: SD.app.match.sim.snakes[0].alive, phase: SD.app.match.phase, dur: SD.app.match.sim.dur }));
+  check(fu.alive && fu.phase === "play" && fu.dur === 45, "Futterjagd: Wand kostet Länge, aber man bleibt im Spiel");
+  await page.click("#quitBtn"); await page.waitForTimeout(200);
+
+  // ---------- Zwei Spieler an einem Handy ----------
+  await page.click("#modeBtn"); await page.click('[data-mode="duo"]');
+  await page.waitForFunction(() => SD.app.match.phase === "play", null, { timeout: 8000 });
+  const duo = await page.evaluate(async () => {
+    const cv = document.getElementById("cv"), r = cv.getBoundingClientRect(), wait = ms => new Promise(f => setTimeout(f, ms));
+    const ev = (type, id, x, y) => cv.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, bubbles: true, cancelable: true, pointerType: "touch" }));
+    const tx = r.left + r.width * 0.5, ty = r.top + r.height * 0.2, bx = r.left + r.width * 0.5, by = r.top + r.height * 0.85;
+    ev("pointerdown", 41, tx, ty); ev("pointermove", 41, tx + 40, ty);          // oben nach rechts
+    ev("pointerdown", 42, bx, by); ev("pointermove", 42, bx, by - 40);          // unten nach oben (gleichzeitig)
+    await wait(120);
+    const out = { a1: SD.input.a, a2: SD.input2.a, m0: SD.app.match.inputs[0].a, m1: SD.app.match.inputs[1].a, btn2: !document.getElementById("sprintBtn2").classList.contains("hidden") };
+    ev("pointerup", 41, tx + 40, ty); ev("pointerup", 42, bx, by - 40);
+    ev("pointerdown", 43, tx, ty); ev("pointerup", 43, tx, ty); await wait(15); ev("pointerdown", 44, tx, ty);   // Doppeltipp oben
+    out.s2 = SD.input2.s; out.s1 = SD.input.s; ev("pointerup", 44, tx, ty); out.s2off = !SD.input2.s;
+    return out;
+  });
+  check(Math.abs(duo.a2) < 0.05 && Math.abs(duo.a1 + Math.PI / 2) < 0.05 && duo.m0 === duo.a1 && duo.m1 === duo.a2, `Zwei Spieler: obere Hälfte lenkt Wurm 2 (${duo.a2.toFixed(2)}), untere Wurm 1 (${duo.a1.toFixed(2)}), gleichzeitig`);
+  check(duo.s2 && !duo.s1 && duo.s2off && duo.btn2, "Zwei Spieler: Doppeltipp oben lässt nur Spieler 2 sprinten, eigener Sprint-Knopf sichtbar");
+  await page.screenshot({ path: path.join(shots, "15-zwei-spieler.png") });
+  const st0 = await page.evaluate(() => ({ ...SD.goals.stats }));
+  await page.evaluate(() => { const m = SD.app.match; m.bots = [new SD.Bot(9, 1), new SD.Bot(2, 2)]; let g = 0; while (!m.over && g++ < 60 * 70 * 9) m.tick(); });
+  await page.waitForSelector("#endPanel:not(.hidden)", { timeout: 8000 });
+  const de = await page.evaluate(() => ({ title: document.getElementById("endTitle").textContent, duel: SD.goals.stats.duel, again: document.getElementById("againBtn").textContent }));
+  check(/Spieler [12] gewinnt|Unentschieden/.test(de.title) && de.duel === st0.duel, `Zwei Spieler: „${de.title}“, zählt nicht für Aufgaben`);
+  await page.click("#menuBtn");
+  await page.evaluate(() => { SD.state.arena = "klassisch"; });
   check(errors.length === 0, `Keine Konsolenfehler${errors.length ? ": " + errors.join("; ") : ""}`);
 
   // Fehlt ein Bild, fällt das Design auf die eingebaute Darstellung zurück und das Spiel läuft trotzdem

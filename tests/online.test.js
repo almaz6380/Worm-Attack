@@ -26,6 +26,7 @@ fs.mkdirSync(shots, { recursive: true });
 
   // Gastgeber erstellt das Spiel
   await host.goto(BASE);
+  await host.evaluate(() => { SD.state.arena = "portale"; });   // nur im Fenster des Gastgebers, wird nicht gespeichert
   await host.click("#hostBtn");
   await host.waitForFunction(() => document.getElementById("lobbyStatus").textContent.includes("Warte") || document.getElementById("lobbyStatus").classList.contains("err"), null, { timeout: wait });
   const lobby = await host.evaluate(() => ({ code: SD.app.code, status: document.getElementById("lobbyStatus").textContent }));
@@ -54,6 +55,8 @@ fs.mkdirSync(shots, { recursive: true });
   check(hsk.skins[0] === hsk.mine && hsk.skins[1] !== hsk.skins[0], `Gleiches Design gewählt (${gsk.mine}) ⇒ Gegner bekommt ein anderes (${hsk.skins.join(" / ")})`);
   check(JSON.stringify(hsk.skins) === JSON.stringify(gsk.skins), "Gast sieht dieselben Designs wie der Gastgeber");
 
+  // Arena des Gastgebers kommt beim Gast an
+  check((await guest.evaluate(() => SD.app.gv.arena)) === "portale" && (await host.evaluate(() => SD.app.match.sim.arena)) === "portale", "Gast spielt in der Arena des Gastgebers (Portale)");
   // Gast lenkt nach links ⇒ beim Gastgeber dreht Schlange 2 nach links (π)
   await guest.bringToFront();
   const box = await guest.locator("#cv").boundingBox();
@@ -74,6 +77,13 @@ fs.mkdirSync(shots, { recursive: true });
   check(gs.phase !== "wait" && gs.trail > 10, `Gast empfängt Spielstand (Phase ${gs.phase}, ${gs.trail} Spurpunkte, ${gs.foods} Futter)`);
   check(Math.abs(gs.len - hs.len) < 0.15, `Länge stimmt überein (Gastgeber ${hs.len.toFixed(2)}, Gast ${gs.len.toFixed(2)})`);
   await guest.screenshot({ path: path.join(shots, `online-${MODE}-2-gast.png`) });
+  // Emotes in beide Richtungen
+  await guest.bringToFront(); await guest.click("#emoBtn"); await guest.click('#emoBar button[data-e="1"]');
+  await pump(400);
+  await host.click("#emoBtn"); await host.click('#emoBar button[data-e="5"]');
+  await pump(400);
+  const he = await host.evaluate(() => SD.app.emotes.map(e => e.i + e.e).join(" ")), ge = await guest.evaluate(() => SD.app.emotes.map(e => e.i + e.e).join(" "));
+  check(he.includes("1😂") && ge.includes("0👍"), `Emotes kommen beim anderen an (Gastgeber sieht „${he}“, Gast sieht „${ge}“)`);
   await host.bringToFront(); await host.waitForTimeout(150);
   await host.screenshot({ path: path.join(shots, `online-${MODE}-3-gastgeber.png`) });
 
@@ -86,6 +96,7 @@ fs.mkdirSync(shots, { recursive: true });
                 await guest.evaluate(() => [document.getElementById("endTitle").textContent, document.getElementById("endSub").textContent])];
   check(/gewonnen|verloren|Unentschieden/.test(ends[0][0]) && /gewonnen|verloren|Unentschieden/.test(ends[1][0]), `Ergebnis Gastgeber: ${ends[0].join(" · ")} | Gast: ${ends[1].join(" · ")}`);
   check(ends[0][0] !== ends[1][0] || ends[0][0].includes("Unentschieden"), "Beide sehen das passende Gegenstück (Sieg/Niederlage)");
+  check(ends[0][1].includes("Bilanz gegen diesen Freund") && ends[1][1].includes("Bilanz gegen diesen Freund"), "Beide sehen die Bilanz gegen diesen Freund");
   await guest.screenshot({ path: path.join(shots, `online-${MODE}-4-ende-gast.png`) });
 
   // Revanche vom Gast aus

@@ -1,6 +1,6 @@
 # Worm Attack
 
-Schlangen-Duell 1 gegen 1 fürs Handy: **gegen den Computer** oder **online gegen Freunde**. Die Schlangen bewegen
+Schlangen-Duell fürs Handy: **gegen den Computer**, **online gegen Freunde** oder **zu zweit an einem Handy**. Die Schlangen bewegen
 sich frei und fließend, nicht im Raster. Kostenlos, ohne Anmeldung, ohne API-Keys und ohne eigenen Server.
 
 Repo: `almaz6380/Worm-Attack`. Arbeitsanweisung für Claude Code: siehe `CLAUDE.md`.
@@ -19,6 +19,20 @@ Repo: `almaz6380/Worm-Attack`. Arbeitsanweisung für Claude Code: siehe `CLAUDE.
 | 👻 Geist | 2 Sekunden durch Körper hindurchfahren (nicht durch die Wand) |
 | ✂️ Schere | kürzt den Gegner um ein Drittel |
 | 🧱 Mauer | die eigene Spur bleibt 4 Sekunden als Hindernis für den Gegner stehen |
+| 🧲 Magnet | 4 Sekunden lang fliegt Futter in der Nähe zum eigenen Kopf |
+| ❄️ Eis | der Gegner fährt 2,5 Sekunden langsam und lenkt träge |
+| 🛡️ Schild | fängt den nächsten Zusammenstoß mit einem Körper oder einer Mauer ab (hält bis zu 8 Sekunden, nicht gegen Wand und Hindernisse) |
+| 💣 Bombe | bleibt liegen und explodiert nach 1,5 Sekunden: Gegner im roten Kreis fliegen raus |
+
+## Arenen
+Im Menü über „Arena: …“ umschalten. Gilt für alle Spielarten, online wählt der Gastgeber.
+
+| Arena | Besonderheit |
+| --- | --- |
+| Klassisch | freie runde Arena |
+| Säulen | fünf feste Säulen, wie die Wand auch für Geister fest |
+| Karussell | sechs Blöcke kreisen um die Mitte |
+| Portale | zwei Portal-Paare: rein und beim gleichfarbigen wieder raus. In der schrumpfenden Arena schließen sie sich |
 
 ## Steuerung
 Im Menü gibt es zwei Lenkarten zur Auswahl:
@@ -29,7 +43,8 @@ Im Menü gibt es zwei Lenkarten zur Auswahl:
 Dazu:
 - **Sprint:** ⚡-Knopf halten, oder auf dem Spielfeld doppelt tippen und den Finger liegen lassen. Der liegende
   Finger lenkt dabei weiter.
-- **Am Computer:** Pfeiltasten oder WASD, Leertaste für Sprint.
+- **Am Computer:** Pfeiltasten oder WASD, Leertaste für Sprint. Zu zweit: Spieler 1 Pfeiltasten und Leertaste,
+  Spieler 2 WASD und Umschalttaste.
 
 ## Wurm-Designs
 Im Menü über den Knopf „Wurm: …“ wählbar. Die Designs ändern nur das Aussehen.
@@ -59,16 +74,22 @@ Fertige Prompts für alle Bild-Designs stehen in [`skins/PROMPTS.md`](skins/PROM
 ## Aufgaben, Erfolge und Sterne
 - **Tagesaufgaben:** Jeden Tag drei Aufgaben, zum Beispiel „Friss 25 Futter“ oder „Gewinne eine Runde ohne
   Sprint“. Jede gibt 1 ⭐, alle drei zusammen 2 ⭐ extra.
-- **Erfolge:** Zwölf dauerhafte Ziele mit 2 bis 5 ⭐, zum Beispiel „10 Duelle gewonnen“.
+- **Erfolge:** 15 dauerhafte Ziele mit 2 bis 5 ⭐, zum Beispiel „10 Duelle gewonnen“ oder „Den Bosswurm besiegt“.
 - **Tages-Serie:** Zählt die Tage in Folge, an denen du mindestens eine Aufgabe geschafft hast.
 - **Sterne-Designs:** Zebra (5 ⭐), Gold (12 ⭐) und Galaxie (25 ⭐) gibt es nur für Sterne. In der Wurm-Auswahl
   zweimal antippen zum Freischalten.
-- Gezählt wird in Partien gegen den Computer und online. Der Knopf „⭐ Aufgaben“ im Menü zeigt den Stand.
+- Gezählt wird in Partien gegen den Computer und online, nicht zu zweit an einem Handy. Der Knopf „⭐ Aufgaben“
+  im Menü zeigt den Stand.
 
 ## Effekte
 - Kurze Zeitlupe mit Zoom beim entscheidenden Crash, Sternenregen beim Rundensieg, Konfetti beim Duell-Sieg.
 - Vibration bei Joker, Crash und Sieg. Abschaltbar unter „Regeln“. iPhones unterstützen Vibration im Browser
   nicht.
+
+## Clips
+Das Spiel nimmt während jeder Runde die letzten Sekunden auf (8 bis 16 Sekunden, mit Ton). Nach dem Duell speichert
+oder teilt der Knopf „🎬 Clip speichern“ das Video der letzten Runde, zum Beispiel für TikTok. Unten im Bild steht
+„WORM ATTACK“. Die Aufnahme bleibt auf dem Gerät und lässt sich unter „Regeln“ abschalten.
 
 ## Modi
 - **Gegen Computer:** Jeder Sieg schaltet die nächste Stufe frei. Mit jeder Stufe schaut der Computer weiter voraus,
@@ -77,6 +98,16 @@ Fertige Prompts für alle Bild-Designs stehen in [`skins/PROMPTS.md`](skins/PROM
   1. „Freund einladen“ tippen. Du bekommst einen 4-stelligen Code und einen Einladungslink.
   2. Dein Freund öffnet den Link oder gibt den Code im Menü ein.
   3. Das Duell startet automatisch. Nach dem Ende kann jeder eine Revanche starten.
+  4. Mit 😀 oben links schickt man Emotes (👋 😂 😎 😱 😡 👍). Nach jedem Duell steht die Bilanz gegen diesen Freund
+     da, mit Sieges-Serie.
+- **Spielarten** (Knopf „🎮 Spielarten“):
+  - **Überleben:** du gegen drei Computer-Würmer, die sich auch gegenseitig jagen. Wer zuletzt übrig ist, gewinnt.
+  - **Futterjagd:** 45 Sekunden, doppelt so viel Futter, die Arena schrumpft nicht. Wer anstößt, verliert ein
+    Drittel seiner Länge und ist kurz ein Geist. Am Ende gewinnt der Längere.
+  - **Bosswurm:** ein dicker, langer, etwas trägerer Boss mit drei Leben. Du hast zwei. Jeder Crash kostet ein Leben
+    und ein Drittel der Länge.
+  - **Zwei Spieler, ein Handy:** Handy flach hinlegen. Die untere Hälfte lenkt Spieler 1, die obere Spieler 2,
+    jeder hat einen eigenen ⚡-Knopf.
 
 ## Grenzen im Online-Modus
 - Die Handys verbinden sich direkt miteinander (WebRTC). In manchen Netzen, z. B. Firmen-WLAN oder manchen
@@ -97,7 +128,8 @@ Fertige Prompts für alle Bild-Designs stehen in [`skins/PROMPTS.md`](skins/PROM
 ## Technik
 - Eine Datei `index.html`, Canvas 2D, reines JavaScript. Dazu Manifest, Service-Worker und Icons (installierbar,
   gegen den Computer auch offline spielbar).
-- **Simulation** (`Sim`): fester Zeitschritt 1/60 s und Seed-Zufall, dadurch wiederholbar. Schlange = Kopf, Richtung
+- **Simulation** (`Sim`): fester Zeitschritt 1/60 s und Seed-Zufall, dadurch wiederholbar. Beliebig viele Würmer
+  (Duell 2, Überleben 4), Arenen mit Hindernissen und Portalen. Schlange = Kopf, Richtung
   und Spur aus Punkten. Kollision = Kopf gegen Spurpunkte.
 - **Computer-Gegner** (`Bot`): probiert 7 Lenkrichtungen in einer kurzen Vorschau aus. Höhere Stufen prüfen
   zusätzlich, ob es danach noch einen Ausweg gibt, und rechnen den Weg des Gegners voraus.

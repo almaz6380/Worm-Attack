@@ -85,6 +85,16 @@
   .sprint span { font-size: 11px; font-weight: 800; color: var(--muted); }
   .sprint.on { background: var(--accent); }
   .sprint.on span { color: #1a1400; }
+  .sprint.p2 { right: 16px; bottom: auto; top: 13%; transform: rotate(180deg); border-color: var(--p1); }
+  .sprint.p2.on { background: var(--p1); }
+  .emo { position: absolute; left: 12px; top: calc(max(10px, env(safe-area-inset-top)) + 46px); width: 38px; height: 38px; border-radius: 50%;
+    border: 1px solid var(--line); background: rgba(10,12,20,0.7); font: inherit; font-size: 19px; line-height: 1; padding: 0; }
+  .emobar { position: absolute; left: 56px; top: calc(max(10px, env(safe-area-inset-top)) + 42px); display: flex; gap: 4px; padding: 4px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 999px; }
+  .emobar button { width: 40px; height: 38px; border: 0; background: transparent; font-size: 24px; line-height: 1; padding: 0; }
+  .modes { display: flex; flex-direction: column; gap: 7px; }
+  .modes .btn { text-align: left; font-size: 15.5px; padding: 11px 14px; }
+  .modes .btn small { display: block; font-size: 12px; font-weight: 600; opacity: .75; margin-top: 2px; }
   .quit { position: absolute; left: 12px; top: max(10px, env(safe-area-inset-top)); width: 38px; height: 38px; border-radius: 50%;
     border: 1px solid var(--line); background: rgba(10,12,20,0.7); color: var(--muted); font: inherit; font-size: 16px; }
 </style>
@@ -95,6 +105,9 @@
   <div class="toast" id="toast"></div>
   <button class="quit hidden" id="quitBtn" aria-label="Spiel verlassen">✕</button>
   <button class="sprint hidden" id="sprintBtn" aria-label="Sprint">⚡<span>SPRINT</span></button>
+  <button class="sprint p2 hidden" id="sprintBtn2" aria-label="Sprint Spieler 2">⚡<span>SPRINT</span></button>
+  <button class="emo hidden" id="emoBtn" aria-label="Emote senden">😀</button>
+  <div class="emobar hidden" id="emoBar"></div>
 
   <!-- Menü -->
   <div class="panel" id="menuPanel">
@@ -108,6 +121,10 @@
     <div class="row">
       <button class="btn ghost small2" id="skinBtn">🐛 Wurm: Minze</button>
       <button class="btn ghost small2" id="steerBtn">🕹️ Lenkung: Kreis</button>
+    </div>
+    <div class="row">
+      <button class="btn ghost small2" id="modeBtn">🎮 Spielarten</button>
+      <button class="btn ghost small2" id="arenaBtn">🏟️ Arena: Klassisch</button>
     </div>
     <div class="row">
       <button class="btn ghost small2" id="goalBtn">⭐ Aufgaben 0/3</button>
@@ -128,9 +145,22 @@
   <!-- Ergebnis -->
   <div class="panel hidden" id="endPanel">
     <div class="title" id="endTitle"></div>
-    <div class="note" id="endSub"></div>
+    <div class="note" id="endSub" style="white-space:pre-line"></div>
     <button class="btn" id="againBtn">Nochmal</button>
+    <button class="btn ghost hidden" id="clipBtn">🎬 Clip speichern</button>
     <button class="btn ghost" id="menuBtn">Menü</button>
+  </div>
+
+  <!-- Spielarten -->
+  <div class="panel hidden" id="modePanel">
+    <div class="title" style="font-size:18px">Spielarten</div>
+    <div class="modes">
+      <button class="btn" data-mode="ueberleben">🐍 Überleben<small>Du gegen drei Computer-Würmer. Wer zuletzt übrig ist, gewinnt.</small></button>
+      <button class="btn alt" data-mode="futter">🍎 Futterjagd<small>45 Sekunden, viel Futter, niemand fliegt raus. Am Ende gewinnt der Längere.</small></button>
+      <button class="btn" data-mode="boss">👑 Bosswurm<small>Ein riesiger Wurm mit drei Leben, du hast zwei. Bring ihn dreimal zum Crash!</small></button>
+      <button class="btn alt" data-mode="duo">👫 Zwei Spieler, ein Handy<small>Untere Hälfte lenkt Spieler 1, obere Hälfte Spieler 2.</small></button>
+    </div>
+    <button class="btn ghost" id="modeBack">Zurück</button>
   </div>
 
   <!-- Aufgaben und Erfolge -->
@@ -168,14 +198,40 @@
         <li>👻 <b>Geist:</b> 2 Sekunden durch Körper hindurchfahren (nicht durch die Wand).</li>
         <li>✂️ <b>Schere:</b> kürzt den Gegner um ein Drittel.</li>
         <li>🧱 <b>Mauer:</b> Deine Spur bleibt 4 Sekunden als Hindernis für den Gegner stehen.</li>
+        <li>🧲 <b>Magnet:</b> 4 Sekunden lang fliegt Futter in deiner Nähe zu dir.</li>
+        <li>❄️ <b>Eis:</b> Der Gegner wird 2,5 Sekunden langsam und lenkt träge.</li>
+        <li>🛡️ <b>Schild:</b> Fängt den nächsten Zusammenstoß mit einem Körper oder einer Mauer ab (hält bis zu 8 Sekunden). Gegen Wand und Hindernisse hilft er nicht.</li>
+        <li>💣 <b>Bombe:</b> Bleibt liegen und explodiert nach 1,5 Sekunden. Gegner im roten Kreis fliegen raus, dir passiert nichts.</li>
+      </ul>
+      <h3>Arenen</h3>
+      <ul>
+        <li><b>Klassisch:</b> freie runde Arena.</li>
+        <li><b>Säulen:</b> fünf feste Säulen. Säulen sind wie die Wand, auch für Geister.</li>
+        <li><b>Karussell:</b> Blöcke kreisen um die Mitte.</li>
+        <li><b>Portale:</b> Fahr in ein Portal und komm beim gleichfarbigen wieder heraus. In der schrumpfenden Arena schließen sie sich.</li>
+      </ul>
+      <h3>Spielarten</h3>
+      <ul>
+        <li><b>Überleben:</b> Du gegen drei Computer-Würmer, die sich auch gegenseitig jagen.</li>
+        <li><b>Futterjagd:</b> Wer irgendwo anstößt, verliert ein Drittel seiner Länge und ist kurz ein Geist. Nach 45 Sekunden gewinnt der Längere.</li>
+        <li><b>Bosswurm:</b> Der Boss ist dick, lang, etwas langsamer und hat drei Leben, du hast zwei. Jeder Crash kostet ein Leben und ein Drittel der Länge. Läuft die Zeit ab, gewinnt der Längere.</li>
+        <li><b>Zwei Spieler:</b> Handy flach zwischen euch legen. Jeder lenkt in seiner Hälfte, Sprint per Doppeltipp oder eigenem ⚡-Knopf.</li>
       </ul>
       <h3>Online</h3>
       <ul>
         <li>Die Handys verbinden sich direkt miteinander. In manchen Netzen (z. B. Firmen-WLAN) klappt das nicht – dann hilft meist ein anderes WLAN oder mobile Daten.</li>
         <li>Das Handy des Gastgebers berechnet das Spiel und muss die Seite offen lassen.</li>
+        <li>Mit 😀 oben links schickst du deinem Freund ein Emote. Am Ende siehst du eure Bilanz.</li>
+      </ul>
+      <h3>Clips</h3>
+      <ul>
+        <li>Das Spiel nimmt die letzten Sekunden jeder Runde auf. Nach dem Duell kannst du den Clip mit 🎬 speichern oder teilen. Die Aufnahme bleibt auf deinem Handy.</li>
       </ul>
     </div>
-    <button class="btn ghost" id="vibBtn">📳 Vibration: an</button>
+    <div class="row">
+      <button class="btn ghost small2" id="vibBtn">📳 Vibration: an</button>
+      <button class="btn ghost small2" id="clipToggle">🎬 Clips: an</button>
+    </div>
     <button class="btn ghost" id="helpClose">Verstanden</button>
   </div>
 </div>
@@ -191,13 +247,36 @@ const SPEED = 0.42, SPRINT = 0.68, TURN = 3.6;
 const HEAD_R = 0.028, BODY_R = 0.021, SEG = 0.012;
 const START_LEN = 0.55, MIN_LEN = 0.28, MAX_LEN = 3, SPRINT_COST = 0.11;
 const FOOD_N = 7, FOOD_R = 0.016, FOOD_V = 0.07;
-const POWER_R = 0.042, POWER_TYPES = ["turbo", "ghost", "scissors", "wall"];
+const POWER_R = 0.042, POWER_TYPES = ["turbo", "ghost", "scissors", "wall", "magnet", "ice", "shield", "bomb"];
 const TURBO_T = 3, GHOST_T = 2, WALL_T = 4;
+const MAGNET_T = 4, MAGNET_R = 0.5, MAGNET_V = 0.9;   // Magnet: Futter in diesem Umkreis fliegt zum Kopf
+const ICE_T = 2.5, ICE_SPEED = 0.55, ICE_TURN = 0.6;   // Eis: Gegner langsamer und träger
+const SHIELD_T = 8;                                     // Schild: hält bis zum ersten Treffer, höchstens so lange
+const BOMB_FUSE = 1.5, BOMB_R = 0.2;                    // Bombe: zündet nach dieser Zeit, trifft Gegner-Köpfe im Umkreis
+const PORTAL_R = 0.055;
+const HURT_T = 1.5;                                     // mit mehreren Leben: nach einem Treffer so lange Geist
 const SD_START = 40, DURATION = 60, R_MIN = 0.45;
 const SELF_SKIP = 20;                       // die neuesten Spurpunkte zählen nicht als Selbst-Treffer
 const HIT2 = (HEAD_R + BODY_R) ** 2;
 const WIN_ROUNDS = 3, MAX_ROUNDS = 9, COUNT_T = 3, END_T = 2.2;
 const PI2 = Math.PI * 2;
+
+/* Spielarten: Anzahl Würmer, Rundendauer, schrumpfende Arena, Futtermenge, Leben */
+const MODES = {
+  duell:      { n: 2, dur: 60, sd: true,  food: 7 },
+  ueberleben: { n: 4, dur: 60, sd: true,  food: 10 },
+  futter:     { n: 2, dur: 45, sd: false, food: 14, lives: 999 },   // niemand scheidet aus, Treffer kosten Länge
+  boss:       { n: 2, dur: 60, sd: true,  food: 7, boss: 1 },       // Wurm 1 ist der Boss
+};
+const BOSS = { scale: 1.5, len: 1.2, speed: 0.85, turn: 0.75, lives: 3, heroLives: 2 };   // der Spieler hat gegen den Boss zwei Leben
+/* Arenen: feste Säulen [x, y, r], kreisende Blöcke [Bahnradius, Winkeltempo, Startwinkel, r], Portal-Paare */
+const ARENAS = {
+  klassisch: {},
+  saeulen:   { blocks: [[0, 0, 0.11], [0.62, 0, 0.07], [0, 0.62, 0.07], [-0.62, 0, 0.07], [0, -0.62, 0.07]] },
+  karussell: { orbit: [[0.3, 0.5, 0, 0.07], [0.3, 0.5, Math.PI, 0.07],
+                       [0.74, -0.32, Math.PI / 4, 0.06], [0.74, -0.32, Math.PI * 3 / 4, 0.06], [0.74, -0.32, Math.PI * 5 / 4, 0.06], [0.74, -0.32, Math.PI * 7 / 4, 0.06]] },
+  portale:   { portals: [[[-0.62, -0.38], [0.62, 0.38]], [[0.62, -0.38], [-0.62, 0.38]]] },
+};
 
 function mulberry32(a) {
   return function () {
@@ -214,55 +293,117 @@ function angDiff(a, b) {
 }
 const arenaR = t => (t < SD_START ? 1 : 1 - (1 - R_MIN) * Math.min(1, (t - SD_START) / (DURATION - SD_START)));
 
-function hitTrail(x, y, tr, end) {
+function hitTrail(x, y, tr, end, hit2 = HIT2) {
   for (let k = 0; k < end; k += 2) {
     const dx = tr[k] - x, dy = tr[k + 1] - y;
-    if (dx * dx + dy * dy < HIT2) return true;
+    if (dx * dx + dy * dy < hit2) return true;
   }
   return false;
 }
+/** Abstand vom Punkt zum Rand des nächsten Hindernisses der Arena zur Zeit t (9 = keine Hindernisse) */
+function blockGap(A, x, y, t) {
+  let g = 9;
+  if (A.blocks) for (const b of A.blocks) { const d = Math.hypot(x - b[0], y - b[1]) - b[2]; if (d < g) g = d; }
+  if (A.orbit) for (const o of A.orbit) { const a = o[2] + o[1] * t, d = Math.hypot(x - Math.cos(a) * o[0], y - Math.sin(a) * o[0]) - o[3]; if (d < g) g = d; }
+  return g;
+}
+/** Alle Hindernisse zur Zeit t als [x, y, r] (für Zeichnen und Abprallen) */
+function blockList(A, t) {
+  const out = [];
+  if (A.blocks) for (const b of A.blocks) out.push(b);
+  if (A.orbit) for (const o of A.orbit) { const a = o[2] + o[1] * t; out.push([Math.cos(a) * o[0], Math.sin(a) * o[0], o[3]]); }
+  return out;
+}
+/** Portal ist nur offen, solange es samt Austritt sicher in der (schrumpfenden) Arena liegt */
+const portalOn = (p, R) => Math.hypot(p[0], p[1]) + PORTAL_R + 0.1 < R;
+/** Steckt der Kopf in einem offenen Portal? Dann Austrittspunkt hinter dem Partner-Portal, sonst null */
+function portalExit(A, R, x, y, dir, r) {
+  if (!A.portals) return null;
+  for (const [a, b] of A.portals) {
+    if (!portalOn(a, R) || !portalOn(b, R)) continue;
+    let q = null;
+    if ((x - a[0]) ** 2 + (y - a[1]) ** 2 < PORTAL_R * PORTAL_R) q = b;
+    else if ((x - b[0]) ** 2 + (y - b[1]) ** 2 < PORTAL_R * PORTAL_R) q = a;
+    if (q) { const o = PORTAL_R + r + 0.012; return [q[0] + Math.cos(dir) * o, q[1] + Math.sin(dir) * o]; }
+  }
+  return null;
+}
 
 class Sim {
-  constructor(seed, record = false) {
+  constructor(seed, record = false, opts = {}) {
     this.rng = mulberry32(seed >>> 0);
     this.record = record; this.events = [];
+    this.mode = MODES[opts.mode] ? opts.mode : "duell";
+    this.arena = ARENAS[opts.arena] ? opts.arena : "klassisch";
+    const M = MODES[this.mode];
+    this.A = ARENAS[this.arena]; this.dur = M.dur; this.sdOn = M.sd; this.foodN = M.food;
     this.t = 0; this.R = 1; this.done = false; this.winner = -2; this.reason = "";
-    this.snakes = [this.makeSnake(0, -0.5, 0.1, -Math.PI / 2), this.makeSnake(1, 0.5, -0.1, Math.PI / 2)];
-    this.foods = []; this.power = null; this.nextPower = 5 + this.rng() * 2; this.walls = [];
-    for (let i = 0; i < FOOD_N; i++) this.spawnFood();
+    if (M.n === 2) this.snakes = [this.makeSnake(0, -0.5, 0.1, -Math.PI / 2), this.makeSnake(1, 0.5, -0.1, Math.PI / 2)];
+    else {                                                  // im Kreis verteilt, alle fahren im selben Drehsinn los
+      this.snakes = [];
+      for (let i = 0; i < M.n; i++) { const th = Math.PI + (i * PI2) / M.n; this.snakes.push(this.makeSnake(i, Math.cos(th) * 0.52, Math.sin(th) * 0.52, th + Math.PI / 2)); }
+    }
+    for (const s of this.snakes) s.lives = M.lives || 1;
+    if (M.boss) {                                           // der Boss: dicker, länger, etwas langsamer, mit drei Leben
+      const b = this.snakes[M.boss], sc = BOSS.scale;
+      this.snakes[0].lives = BOSS.heroLives;
+      Object.assign(b, this.makeSnake(b.i, b.x, b.y, b.dir, BOSS.len, -SEG / 0.3), { sc, r: HEAD_R * sc, br: BODY_R * sc, spd: BOSS.speed, trn: BOSS.turn, lives: BOSS.lives });
+    }
+    this.foods = []; this.power = null; this.nextPower = 5 + this.rng() * 2; this.walls = []; this.bombs = [];
+    for (let i = 0; i < this.foodN; i++) this.spawnFood();
   }
 
-  makeSnake(i, x, y, dir) {
-    const trail = [], n = Math.floor(START_LEN / SEG);
-    for (let k = n; k >= 1; k--) trail.push(x - Math.cos(dir) * SEG * k, y - Math.sin(dir) * SEG * k);
-    return { i, x, y, dir, len: START_LEN, trail, acc: 0, drop: 0, alive: true, target: null, sprint: false, sprinting: false,
-      turboUntil: -1, ghostUntil: -1, inBody: false };
+  /** curl ≠ 0: die Spur ist gebogen statt gerade (für lange Würmer, damit sie in die Arena passen) */
+  makeSnake(i, x, y, dir, len = START_LEN, curl = 0) {
+    const trail = [], n = Math.floor(len / SEG);
+    if (!curl) for (let k = n; k >= 1; k--) trail.push(x - Math.cos(dir) * SEG * k, y - Math.sin(dir) * SEG * k);
+    else {
+      let px = x, py = y, d = dir + Math.PI; const back = [];
+      for (let k = 1; k <= n; k++) { d += curl; px += Math.cos(d) * SEG; py += Math.sin(d) * SEG; back.push(px, py); }
+      for (let k = back.length - 2; k >= 0; k -= 2) trail.push(back[k], back[k + 1]);
+    }
+    return { i, x, y, dir, len, trail, acc: 0, drop: 0, alive: true, target: null, sprint: false, sprinting: false,
+      turboUntil: -1, ghostUntil: -1, inBody: false, magnetUntil: -1, slowUntil: -1, shieldUntil: -1,
+      sc: 1, r: HEAD_R, br: BODY_R, spd: 1, trn: 1, lives: 1 };
   }
 
   ev(e) { if (this.record) this.events.push(e); }
+  radiusAt(t) { return this.sdOn ? arenaR(t) : 1; }
 
   randomSpot(maxR) {
     const a = this.rng() * PI2, d = Math.sqrt(this.rng()) * maxR * this.R;
     return [Math.cos(a) * d, Math.sin(a) * d];
   }
-  spawnFood() { const [x, y] = this.randomSpot(0.88); this.foods.push({ x, y, v: FOOD_V, n: 1 }); }
+  /** Zufallsplatz, der nicht in einem Hindernis oder Portal liegt (in der klassischen Arena = randomSpot) */
+  freeSpot(maxR) {
+    const A = this.A; let p = this.randomSpot(maxR);
+    if (!A.blocks && !A.orbit && !A.portals) return p;
+    for (let k = 0; k < 8; k++) {
+      const nearPortal = A.portals && A.portals.some(pr => pr.some(q => Math.hypot(p[0] - q[0], p[1] - q[1]) < PORTAL_R + 0.05));
+      if (blockGap(A, p[0], p[1], this.t) > 0.06 && !nearPortal) break;
+      p = this.randomSpot(maxR);
+    }
+    return p;
+  }
+  spawnFood() { const [x, y] = this.freeSpot(0.88); this.foods.push({ x, y, v: FOOD_V, n: 1 }); }
 
   step() {
     if (this.done) return;
     const t = (this.t += DT);
-    const R = (this.R = arenaR(t));
-    const S = this.snakes;
+    const R = (this.R = this.radiusAt(t));
+    const S = this.snakes, A = this.A;
 
     // Bewegung
     for (const s of S) {
       if (!s.alive) continue;
+      const slow = s.slowUntil > t;
       if (s.target != null) {
-        const d = angDiff(s.target, s.dir), mx = TURN * DT;
+        const d = angDiff(s.target, s.dir), mx = TURN * s.trn * (slow ? ICE_TURN : 1) * DT;
         s.dir += d > mx ? mx : d < -mx ? -mx : d;
       }
       const turbo = s.turboUntil > t;
       s.sprinting = turbo || (s.sprint && s.len > MIN_LEN + 0.02);
-      const v = s.sprinting ? SPRINT : SPEED;
+      const v = (s.sprinting ? SPRINT : SPEED) * s.spd * (slow ? ICE_SPEED : 1);
       s.x += Math.cos(s.dir) * v * DT; s.y += Math.sin(s.dir) * v * DT;
       s.acc += v * DT;
       if (s.acc >= SEG) { s.acc -= SEG; s.trail.push(s.x, s.y); }
@@ -270,19 +411,30 @@ class Sim {
         s.len -= SPRINT_COST * DT; s.drop += SPRINT_COST * DT;
         if (s.drop >= 0.055) { s.drop -= 0.055; this.foods.push({ x: s.trail[0], y: s.trail[1], v: 0.04, n: 0 }); }
       }
+      const ex = portalExit(A, R, s.x, s.y, s.dir, s.r);
+      if (ex) {                                              // Portal: Kopf springt hinter das Partner-Portal, die Spur hat dort eine Lücke
+        this.ev({ type: "warp", i: s.i, x: s.x, y: s.y, x2: ex[0], y2: ex[1] });
+        s.x = ex[0]; s.y = ex[1]; s.trail.push(s.x, s.y); s.acc = 0;
+      }
       this.trim(s);
     }
 
-    // Futter
-    const eat2 = (HEAD_R + FOOD_R) ** 2;
+    // Futter (Magnet zieht es vorher heran)
+    for (const s of S) {
+      if (!s.alive || s.magnetUntil <= t) continue;
+      for (const f of this.foods) {
+        const dx = s.x - f.x, dy = s.y - f.y, d = Math.hypot(dx, dy);
+        if (d < MAGNET_R && d > 1e-6) { const m = Math.min(d, MAGNET_V * DT); f.x += (dx / d) * m; f.y += (dy / d) * m; }
+      }
+    }
     for (let k = this.foods.length - 1; k >= 0; k--) {
       const f = this.foods[k];
       if (f.x * f.x + f.y * f.y > (R - 0.03) ** 2) { this.foods.splice(k, 1); continue; }
       for (const s of S) {
         if (!s.alive) continue;
         const dx = f.x - s.x, dy = f.y - s.y;
-        if (dx * dx + dy * dy < eat2) {
-          s.len = Math.min(MAX_LEN, s.len + f.v);
+        if (dx * dx + dy * dy < (s.r + FOOD_R) ** 2) {
+          s.len = Math.min(MAX_LEN * s.sc, s.len + f.v);
           this.foods.splice(k, 1);
           this.ev({ type: "eat", i: s.i, x: f.x, y: f.y });
           break;
@@ -291,74 +443,116 @@ class Sim {
     }
     let natural = 0;
     for (const f of this.foods) natural += f.n;
-    while (natural < FOOD_N) { this.spawnFood(); natural++; }
+    while (natural < this.foodN) { this.spawnFood(); natural++; }
 
     // Joker
     if (this.power && Math.hypot(this.power.x, this.power.y) > R - 0.06) this.power = null;
     if (!this.power && t >= this.nextPower) {
-      const [x, y] = this.randomSpot(0.6);
+      const [x, y] = this.freeSpot(0.6);
       this.power = { x, y, type: POWER_TYPES[Math.floor(this.rng() * POWER_TYPES.length)] };
       this.ev({ type: "spawn", x, y });
     }
     if (this.power) {
-      const p = this.power, r2 = (HEAD_R + POWER_R) ** 2;
+      const p = this.power;
       for (const s of S) {
         if (!s.alive) continue;
-        if ((p.x - s.x) ** 2 + (p.y - s.y) ** 2 < r2) { this.applyPower(s, p); break; }
+        if ((p.x - s.x) ** 2 + (p.y - s.y) ** 2 < (s.r + POWER_R) ** 2) { this.applyPower(s, p); break; }
       }
     }
     for (let k = this.walls.length - 1; k >= 0; k--) if (this.walls[k].until <= t) this.walls.splice(k, 1);
+    const boom = S.map(() => false);
+    for (let k = this.bombs.length - 1; k >= 0; k--) {
+      const b = this.bombs[k]; if (t < b.at) continue;
+      this.bombs.splice(k, 1);
+      this.ev({ type: "boom", i: b.owner, x: b.x, y: b.y });
+      for (const s of S) if (s.alive && s.i !== b.owner && Math.hypot(s.x - b.x, s.y - b.y) < BOMB_R + s.r) boom[s.i] = true;
+    }
 
     // Kollisionen
-    const dead = [false, false];
+    const dead = S.map(() => false);
     for (const s of S) {
       if (!s.alive) continue;
-      const o = S[1 - s.i];
-      if (Math.hypot(s.x, s.y) + HEAD_R > R) { dead[s.i] = "wall"; continue; }
-      let raw = hitTrail(s.x, s.y, o.trail, o.alive ? o.trail.length : 0) ? "body" :
-                hitTrail(s.x, s.y, s.trail, s.trail.length - SELF_SKIP * 2) ? "self" : false;
-      if (!raw) for (const w of this.walls) if (w.owner !== s.i && hitTrail(s.x, s.y, w.pts, w.pts.length)) { raw = "mauer"; break; }
+      if (Math.hypot(s.x, s.y) + s.r > R) { dead[s.i] = "wall"; continue; }
+      if (boom[s.i]) { dead[s.i] = "bomb"; continue; }
+      if (blockGap(A, s.x, s.y, t) < s.r) { dead[s.i] = "block"; continue; }   // Hindernisse sind wie die Wand: auch für Geister fest
+      let raw = false;
+      for (const o of S) if (o !== s && o.alive && hitTrail(s.x, s.y, o.trail, o.trail.length, (s.r + o.br) ** 2)) { raw = "body"; break; }
+      if (!raw && hitTrail(s.x, s.y, s.trail, s.trail.length - SELF_SKIP * 2, (s.r + s.br) ** 2)) raw = "self";
+      if (!raw) for (const w of this.walls) if (w.owner !== s.i && hitTrail(s.x, s.y, w.pts, w.pts.length, (s.r + w.br) ** 2)) { raw = "mauer"; break; }
       if (s.ghostUntil > t) s.inBody = !!raw;                             // Geist: nichts passiert
       else if (raw && s.inBody && t < s.ghostUntil + 0.8) { /* Schonfrist, bis der Kopf wieder frei ist */ }
+      else if (raw && s.shieldUntil > t) {                                 // Schild fängt den Treffer ab, danach Schonfrist
+        s.shieldUntil = -1; s.ghostUntil = t; s.inBody = true;
+        this.ev({ type: "shield", i: s.i, x: s.x, y: s.y });
+      }
       else { s.inBody = false; if (raw) dead[s.i] = raw; }
     }
-    const a = S[0], b = S[1];
-    if (a.alive && b.alive && !dead[0] && !dead[1] && a.ghostUntil <= t && b.ghostUntil <= t &&
-        (a.x - b.x) ** 2 + (a.y - b.y) ** 2 < (2 * HEAD_R) ** 2) {
-      const diff = a.len - b.len;
-      if (Math.abs(diff) < 0.05) { dead[0] = dead[1] = "head"; }
-      else dead[diff > 0 ? 1 : 0] = "head";
-      this.ev({ type: "clash", x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    for (let p = 0; p < S.length; p++) for (let q = p + 1; q < S.length; q++) {
+      const a = S[p], b = S[q];
+      if (!a.alive || !b.alive || dead[p] || dead[q] || a.ghostUntil > t || b.ghostUntil > t) continue;
+      if ((a.x - b.x) ** 2 + (a.y - b.y) ** 2 < (a.r + b.r) ** 2) {
+        const diff = a.len - b.len;
+        if (Math.abs(diff) < 0.05) { dead[p] = dead[q] = "head"; }
+        else dead[diff > 0 ? q : p] = "head";
+        this.ev({ type: "clash", x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+      }
     }
-    for (const s of S) if (dead[s.i]) { s.alive = false; this.ev({ type: "die", i: s.i, x: s.x, y: s.y, why: dead[s.i] }); }
+    for (const s of S) {
+      if (!dead[s.i]) continue;
+      if (s.lives > 1) this.hurt(s, dead[s.i]);
+      else { s.alive = false; s.lives = 0; this.ev({ type: "die", i: s.i, x: s.x, y: s.y, why: dead[s.i] }); }
+    }
 
-    if (!a.alive || !b.alive) {
+    const alive = S.filter(s => s.alive);
+    if (alive.length <= 1) {
       this.done = true; this.reason = "crash";
-      this.winner = a.alive ? 0 : b.alive ? 1 : -1;
-    } else if (t >= DURATION) {
-      const diff = a.len - b.len;
-      this.done = true; this.reason = "time";
-      this.winner = Math.abs(diff) < 0.02 ? -1 : diff > 0 ? 0 : 1;
-    }
+      this.winner = alive.length ? alive[0].i : -1;
+    } else if (t >= this.dur) this.finish("time");
+  }
+
+  /** Runde beenden: die längste noch lebende Schlange gewinnt (Unterschied unter 0,02 ⇒ unentschieden) */
+  finish(reason) {
+    const alive = this.snakes.filter(s => s.alive).sort((p, q) => q.len - p.len);
+    this.done = true; this.reason = reason;
+    this.winner = !alive.length ? -1 : alive.length > 1 && alive[0].len - alive[1].len < 0.02 ? -1 : alive[0].i;
   }
 
   trim(s) {
     const max = Math.max(2, Math.floor(s.len / SEG)), n = s.trail.length / 2;
     if (n > max) s.trail.splice(0, (n - max) * 2);
   }
+  /** Schwanzende abschneiden (1/div der Länge), das Stück wird Futter */
+  cutBody(o, div) {
+    const cut = Math.floor((o.trail.length / 2) / div);
+    for (let k = 0; k < cut; k += 5) this.foods.push({ x: o.trail[k * 2], y: o.trail[k * 2 + 1], v: 0.035, n: 0 });
+    o.len = Math.max(MIN_LEN, (o.len * (div - 1)) / div);
+    this.trim(o);
+  }
+  /** Treffer mit mehreren Leben: ein Leben weniger, ein Drittel kürzer, kurz Geist; an Wand oder Hindernis umdrehen */
+  hurt(s, why) {
+    const t = this.t;
+    s.lives--; this.cutBody(s, 3);
+    s.ghostUntil = t + HURT_T; s.inBody = false;
+    if (why === "wall" || why === "block") {
+      let cx = 0, cy = 0, far = this.R - s.r - 0.04;
+      if (why === "block") { let best = 9; for (const b of blockList(this.A, t)) { const d = Math.hypot(s.x - b[0], s.y - b[1]) - b[2]; if (d < best) { best = d; cx = b[0]; cy = b[1]; far = b[2] + s.r + 0.02; } } }
+      const d = Math.hypot(s.x - cx, s.y - cy) || 1;
+      if (why === "wall") { s.dir = Math.atan2(-s.y, -s.x); if (d > far) { s.x *= far / d; s.y *= far / d; } }
+      else { s.dir = Math.atan2(s.y - cy, s.x - cx); if (d < far) { s.x = cx + ((s.x - cx) / d) * far; s.y = cy + ((s.y - cy) / d) * far; } }
+    }
+    this.ev({ type: "hurt", i: s.i, x: s.x, y: s.y, why, lives: s.lives });
+  }
 
   applyPower(s, p) {
-    const o = this.snakes[1 - s.i], t = this.t;
+    const t = this.t, others = this.snakes.filter(o => o !== s && o.alive);
     if (p.type === "turbo") s.turboUntil = t + TURBO_T;
     else if (p.type === "ghost") { s.ghostUntil = t + GHOST_T; s.inBody = false; }
-    else if (p.type === "scissors") {
-      if (o.alive) {
-        const cut = Math.floor((o.trail.length / 2) / 3);
-        for (let k = 0; k < cut; k += 5) this.foods.push({ x: o.trail[k * 2], y: o.trail[k * 2 + 1], v: 0.035, n: 0 });
-        o.len = Math.max(MIN_LEN, o.len * 2 / 3);
-        this.trim(o);
-      }
-    } else if (p.type === "wall") this.walls.push({ owner: s.i, pts: s.trail.slice(), until: t + WALL_T });
+    else if (p.type === "scissors") for (const o of others) this.cutBody(o, 3);
+    else if (p.type === "wall") this.walls.push({ owner: s.i, pts: s.trail.slice(), until: t + WALL_T, br: s.br });
+    else if (p.type === "magnet") s.magnetUntil = t + MAGNET_T;
+    else if (p.type === "ice") for (const o of others) o.slowUntil = t + ICE_T;
+    else if (p.type === "shield") s.shieldUntil = t + SHIELD_T;
+    else if (p.type === "bomb") this.bombs.push({ owner: s.i, x: p.x, y: p.y, at: t + BOMB_FUSE });
     this.ev({ type: "power", i: s.i, p: p.type, x: p.x, y: p.y });
     this.power = null;
     this.nextPower = t + 6 + this.rng() * 3;
@@ -383,10 +577,13 @@ class Bot {
 
   think(sim, i) {
     if (this.tick++ % this.interval) return this.out;
-    const me = sim.snakes[i], op = sim.snakes[1 - i];
+    const me = sim.snakes[i];
     if (!me.alive) return this.out;
+    // Gegner = der nächste lebende Wurm (bei mehreren Würmern)
+    const others = sim.snakes.filter(o => o !== me && o.alive);
+    let op = others[0] || sim.snakes[(i + 1) % sim.snakes.length], dOp = Math.hypot(op.x - me.x, op.y - me.y);
+    for (const o of others) { const d = Math.hypot(o.x - me.x, o.y - me.y); if (d < dOp) { dOp = d; op = o; } }
     const k = this.k, t = sim.t, R = sim.R;
-    const dOp = Math.hypot(op.x - me.x, op.y - me.y);
     const longer = me.len > op.len + 0.06;
 
     // Ziel wählen: Joker > Gegner abschneiden > Futter > Mitte
@@ -408,15 +605,14 @@ class Bot {
     }
     const want = angDiff(Math.atan2(ty - me.y, tx - me.x), me.dir);
     const wantSprint = k >= 0.25 && me.len > 0.6 && ((mode === "cut" && dOp < 0.5) || (mode === "power" && racing));
-    const v = wantSprint || me.turboUntil > t ? SPRINT : SPEED;
-    const fearHead = !longer && op.alive;
-    const ghostLeft = Math.max(0, me.ghostUntil - t);
+    const c = { sim, me, op, others, predict: this.predict && op.alive, v: (wantSprint || me.turboUntil > t ? SPRINT : SPEED) * me.spd,
+      slowLeft: Math.max(0, me.slowUntil - t), fearHead: !longer && op.alive, ghostLeft: Math.max(0, me.ghostUntil - t) };
 
     let pick = 0, pickScore = -1e9, pickClear = 0;
     const ok = [];
     const n1 = Math.ceil(this.horizon / (DT * 2)), n2 = Math.ceil(n1 * 0.6);
     for (const d of BOT_DELTAS) {
-      const r = this.roll(sim, me, op, me.x, me.y, me.dir, 0, me.dir + d, n1, v, fearHead, ghostLeft);
+      const r = this.roll(c, me.x, me.y, me.dir, 0, me.dir + d, n1);
       let score;
       if (r.surv < 1) score = r.surv * 100 + r.clear * 10;
       else {
@@ -425,7 +621,7 @@ class Bot {
           // Sackgasse? Nur gut, wenn es vom Endpunkt aus in irgendeine Richtung weitergeht
           let out = 0;
           for (const d2 of [0, 1.4, -1.4]) {
-            const r2 = this.roll(sim, me, op, r.x, r.y, r.dir, n1 * DT * 2, r.dir + d2, n2, v, fearHead, ghostLeft);
+            const r2 = this.roll(c, r.x, r.y, r.dir, n1 * DT * 2, r.dir + d2, n2);
             if (r2.surv > out) out = r2.surv;
             if (out >= 1) break;
           }
@@ -440,59 +636,73 @@ class Bot {
     return this.out;
   }
 
-  roll(sim, me, op, x, y, dir, tau0, goal, n, v, fearHead, ghostLeft) {
-    const dt = DT * 2;
-    const ot = op.trail, oEnd = op.alive ? ot.length : 0, mt = me.trail, mEnd = mt.length - SELF_SKIP * 2;
-    const ocx = Math.cos(op.dir) * SPEED, ocy = Math.sin(op.dir) * SPEED, predict = this.predict && op.alive;
-    let clear = 0.2, min2 = 1;
+  /** Vorschau: fährt n Doppel-Ticks Richtung goal und meldet, wie weit das gut geht (surv) und wie knapp es war (clear) */
+  roll(c, x, y, dir, tau0, goal, n) {
+    const { sim, me, op, others, fearHead, ghostLeft, slowLeft, predict } = c, A = sim.A, dt = DT * 2;
+    const mt = me.trail, mEnd = mt.length - SELF_SKIP * 2;
+    const ocx = Math.cos(op.dir) * SPEED, ocy = Math.sin(op.dir) * SPEED;
+    // mr = kleinster Abstand² / Trefferabstand² (unter 1,2 ist zu knapp), mthr = Trefferabstand dazu
+    let clear = 0.2, mr = 1 / HIT2, mthr = HEAD_R + BODY_R;
     for (let s = 1; s <= n; s++) {
-      const tau = tau0 + s * dt, d = angDiff(goal, dir), mx = TURN * dt;
+      const tau = tau0 + s * dt, d = angDiff(goal, dir), slow = tau < slowLeft, mx = TURN * me.trn * (slow ? ICE_TURN : 1) * dt, v = c.v * (slow ? ICE_SPEED : 1);   // Eis endet unterwegs
       dir += d > mx ? mx : d < -mx ? -mx : d;
       x += Math.cos(dir) * v * dt; y += Math.sin(dir) * v * dt;
-      const wd = arenaR(sim.t + tau) - Math.hypot(x, y) - HEAD_R;
+      const R = sim.radiusAt(sim.t + tau), ex = portalExit(A, R, x, y, dir, me.r);
+      if (ex) { x = ex[0]; y = ex[1]; }
+      const wd = Math.min(R - Math.hypot(x, y) - me.r, blockGap(A, x, y, sim.t + tau) - me.r);
       if (wd < 0.012) return { surv: (s - 1) / n, clear: 0, x, y, dir };
       if (wd < clear) clear = wd;
+      for (const b of sim.bombs) {
+        const left = b.at - sim.t - tau;                     // in der letzten Zeit vor dem Knall nicht im Umkreis sein
+        if (b.owner === me.i || left > 0.7 || left < -0.1) continue;
+        if (Math.hypot(x - b.x, y - b.y) < BOMB_R + me.r + 0.04) return { surv: (s - 1) / n, clear: 0, x, y, dir };
+      }
       if (tau <= ghostLeft) continue;
-      for (let q = 0; q < oEnd; q += 4) { const dx = ot[q] - x, dy = ot[q + 1] - y, d2 = dx * dx + dy * dy; if (d2 < min2) min2 = d2; }
-      for (let q = 0; q < mEnd; q += 4) { const dx = mt[q] - x, dy = mt[q + 1] - y, d2 = dx * dx + dy * dy; if (d2 < min2) min2 = d2; }
+      for (const o of others) {
+        const ot = o.trail, thr = me.r + o.br, inv = 1 / (thr * thr);
+        for (let q = 0; q < ot.length; q += 4) { const dx = ot[q] - x, dy = ot[q + 1] - y, r2 = (dx * dx + dy * dy) * inv; if (r2 < mr) { mr = r2; mthr = thr; } }
+      }
+      { const thr = me.r + me.br, inv = 1 / (thr * thr);
+        for (let q = 0; q < mEnd; q += 4) { const dx = mt[q] - x, dy = mt[q + 1] - y, r2 = (dx * dx + dy * dy) * inv; if (r2 < mr) { mr = r2; mthr = thr; } } }
       for (const w of sim.walls) {
         if (w.owner === me.i || w.until < sim.t + tau) continue;
-        const p = w.pts;
-        for (let q = 0; q < p.length; q += 4) { const dx = p[q] - x, dy = p[q + 1] - y, d2 = dx * dx + dy * dy; if (d2 < min2) min2 = d2; }
+        const p = w.pts, thr = me.r + w.br, inv = 1 / (thr * thr);
+        for (let q = 0; q < p.length; q += 4) { const dx = p[q] - x, dy = p[q + 1] - y, r2 = (dx * dx + dy * dy) * inv; if (r2 < mr) { mr = r2; mthr = thr; } }
       }
       if (predict) {
         // der Gegner fährt vermutlich geradeaus weiter: sein künftiger Körper ist ein Hindernis
-        const steps = Math.min(12, Math.ceil(tau / 0.06));
+        const steps = Math.min(12, Math.ceil(tau / 0.06)), thr = me.r + op.br, inv = 1 / (thr * thr);
         for (let q = 1; q <= steps; q++) {
-          const f = (tau * q) / steps, dx = op.x + ocx * f - x, dy = op.y + ocy * f - y, d2 = dx * dx + dy * dy;
-          if (d2 < min2) min2 = d2;
+          const f = (tau * q) / steps, dx = op.x + ocx * f - x, dy = op.y + ocy * f - y, r2 = (dx * dx + dy * dy) * inv;
+          if (r2 < mr) { mr = r2; mthr = thr; }
         }
       }
-      if (min2 < HIT2 * 1.2) return { surv: (s - 1) / n, clear: 0, x, y, dir };
+      if (mr < 1.2) return { surv: (s - 1) / n, clear: 0, x, y, dir };
       if (fearHead) {
         const ox = op.x + ocx * tau, oy = op.y + ocy * tau;
-        const rr = Math.min(0.16, 2 * HEAD_R + tau * 0.22);
+        const rr = Math.min(0.16, me.r + op.r + tau * 0.22);
         if ((ox - x) ** 2 + (oy - y) ** 2 < rr * rr) return { surv: (s - 1) / n, clear: 0, x, y, dir };
       }
     }
-    return { surv: 1, clear: Math.min(clear, Math.sqrt(min2) - HEAD_R - BODY_R), x, y, dir };
+    return { surv: 1, clear: Math.min(clear, mthr * (Math.sqrt(mr) - 1)), x, y, dir };
   }
 }
 
 /* ---------- Match: mehrere Runden, wer zuerst WIN_ROUNDS hat, gewinnt ---------- */
 class Match {
-  constructor(seed, bots) {
+  constructor(seed, bots, opts = {}) {
     this.rng = mulberry32(seed >>> 0);
-    this.bots = bots;                              // [Bot|null, Bot|null]; null = Mensch
-    this.scores = [0, 0]; this.round = 0;
-    this.inputs = [{ a: null, s: false }, { a: null, s: false }];
+    this.bots = bots;                              // pro Wurm ein Bot oder null (= Mensch)
+    this.opts = opts;                              // { mode, arena }
+    this.scores = bots.map(() => 0); this.round = 0;
+    this.inputs = bots.map(() => ({ a: null, s: false }));
     this.over = false; this.matchWinner = -2;
     this.events = []; this.netEvents = []; this.full = true; this.ticks = 0;
     this.nextRound();
   }
   nextRound() {
     this.round++;
-    this.sim = new Sim((this.rng() * 4294967296) >>> 0, true);
+    this.sim = new Sim((this.rng() * 4294967296) >>> 0, true, this.opts);
     this.phase = "count"; this.phaseT = 0; this.full = true;
     for (const inp of this.inputs) { inp.a = null; inp.s = false; }
     for (const b of this.bots) if (b) b.out = { a: null, s: false };
@@ -504,11 +714,13 @@ class Match {
       if (this.phaseT >= COUNT_T) { this.phase = "play"; this.phaseT = 0; }
     } else if (this.phase === "play") {
       const sim = this.sim;
-      for (let i = 0; i < 2; i++) {
+      for (let i = 0; i < sim.snakes.length; i++) {
         const inp = this.bots[i] ? this.bots[i].think(sim, i) : this.inputs[i];
         sim.snakes[i].target = inp.a; sim.snakes[i].sprint = !!inp.s;
       }
       sim.step();
+      // mehr als zwei Würmer: ist kein Mensch mehr dabei, entscheidet sofort die Länge
+      if (!sim.done && sim.snakes.length > 2 && this.bots.some(b => !b) && sim.snakes.every((s, i) => this.bots[i] || !s.alive)) sim.finish("out");
       for (const e of sim.events) {
         this.events.push(e); this.netEvents.push(e);
         if (e.type === "power" && (e.p === "scissors" || e.p === "wall")) this.full = true;
@@ -517,8 +729,11 @@ class Match {
       if (sim.done) {
         this.phase = "end"; this.phaseT = 0;
         if (sim.winner >= 0) this.scores[sim.winner]++;
-        const [a, b] = this.scores;
-        if (a >= WIN_ROUNDS || b >= WIN_ROUNDS || this.round >= MAX_ROUNDS) this.matchWinner = a === b ? -1 : a > b ? 0 : 1;
+        const top = Math.max(...this.scores);
+        if (top >= WIN_ROUNDS || this.round >= MAX_ROUNDS) {
+          const leaders = this.scores.filter(v => v === top).length;
+          this.matchWinner = leaders > 1 ? -1 : this.scores.indexOf(top);
+        }
       }
     } else if (this.phase === "end") {
       if (this.phaseT >= END_T) {
@@ -538,8 +753,11 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem("sd_" + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem("sd_" + k, JSON.stringify(v)); } catch {} },
 };
-const state = { level: store.get("level", 1), wins: store.get("wins", 0), steer: store.get("steer", "kreis") === "finger" ? "finger" : "kreis", skin: store.get("skin", "minze"), vib: store.get("vib", true) !== false };
-const save = () => { store.set("level", state.level); store.set("wins", state.wins); store.set("steer", state.steer); store.set("skin", state.skin); store.set("vib", state.vib); };
+const state = { level: store.get("level", 1), wins: store.get("wins", 0), steer: store.get("steer", "kreis") === "finger" ? "finger" : "kreis", skin: store.get("skin", "minze"), vib: store.get("vib", true) !== false,
+  arena: store.get("arena", "klassisch"), clip: store.get("clip", true) !== false };
+if (!Object.prototype.hasOwnProperty.call(ARENAS, state.arena)) state.arena = "klassisch";
+const save = () => { store.set("level", state.level); store.set("wins", state.wins); store.set("steer", state.steer); store.set("skin", state.skin); store.set("vib", state.vib); store.set("arena", state.arena); store.set("clip", state.clip); };
+const ARENA_NAME = { klassisch: "Klassisch", saeulen: "Säulen", karussell: "Karussell", portale: "Portale" };
 
 const audio = { ctx: null, master: null };
 function initAudio() {
@@ -629,7 +847,7 @@ if (!skinFree(skinById(state.skin)) || skinById(state.skin).id !== state.skin) s
 /** Gegner-Design: bei gleichem Design automatisch ein anderes, damit man die Würmer unterscheiden kann */
 const otherSkin = (mine, theirs) => (theirs && skinById(theirs).id === theirs && theirs !== mine ? theirs : SKINS.find(k => k.id !== mine && k.id !== theirs).id);
 const skinOf = i => skinById(app.skins[i]);
-const COLORS = { get 0() { return skinOf(0).main; }, get 1() { return skinOf(1).main; } };
+const colorOf = i => skinOf(i).main;
 
 const discCache = new Map();
 /** Ein Körperglied als kleines Bild: Grundfarbe, Glanzlicht oben links, dunkler Rand. Wird einmal gezeichnet und dann gestempelt. */
@@ -650,10 +868,12 @@ function disc(color) {
   discCache.set(color, c);
   return c;
 }
-const POWER_ICON = { turbo: "⚡", ghost: "👻", scissors: "✂️", wall: "🧱" };
-const POWER_NAME = { turbo: "Turbo", ghost: "Geist", scissors: "Schere", wall: "Mauer" };
-const WHY = { wall: "in die Wand gefahren", body: "in den Gegner gefahren", self: "in sich selbst gefahren", mauer: "in die Mauer gefahren", head: "Kopf an Kopf verloren" };
-const NET_PREFIX = "snakeduell-v1-";
+const POWER_ICON = { turbo: "⚡", ghost: "👻", scissors: "✂️", wall: "🧱", magnet: "🧲", ice: "❄️", shield: "🛡️", bomb: "💣" };
+const POWER_NAME = { turbo: "Turbo", ghost: "Geist", scissors: "Schere", wall: "Mauer", magnet: "Magnet", ice: "Eis", shield: "Schild", bomb: "Bombe" };
+const WHY = { wall: "in die Wand gefahren", body: "in einen Gegner gefahren", self: "in sich selbst gefahren", mauer: "in die Mauer gefahren", head: "Kopf an Kopf verloren",
+  bomb: "von der Bombe erwischt worden", block: "gegen ein Hindernis gefahren" };
+const EMOTES = ["👋", "😂", "😎", "😱", "😡", "👍"];
+const NET_PREFIX = "snakeduell-v2-";                   // v2: neue Joker, Arenen, Emotes (v1-Spiele passen nicht mehr zusammen)
 const PEER_URL = "https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js";
 const params = new URLSearchParams(location.search);
 const LOCAL_NET = params.get("net") === "local";      // Test-Verbindung zwischen zwei Tabs, ohne Internet
@@ -665,15 +885,16 @@ const app = {
   oppName: "Computer", why: [null, null], particles: [],
   slow: { t0: -9, until: -9, x: 0, y: 0 }, shakeUntil: -9, lastPhase: null, lastCount: 0, roundSprint: false, surviveAcc: 0, goalTick: 0,
   skins: ["minze", "bonbon"], guestSkin: null, preview: null, bulges: [[], []], look: [0, 0], lastDir: [0, 0], deadAt: [0, 0],
+  kind: "duell", emotes: [], lastEmo: 0, rival: null,
 };
-const input = { a: null, s: false };
-const inGame = () => app.mode === "solo" || app.mode === "host" || app.mode === "guest";
+const input = { a: null, s: false }, input2 = { a: null, s: false };   // input2: Spieler 2 im Modus „Zwei Spieler“
+const inGame = () => app.mode === "solo" || app.mode === "host" || app.mode === "guest" || app.mode === "duo";
 
 /* ================================================================
    Darstellung
    ================================================================ */
 const stars = (() => { const r = mulberry32(4711), s = []; for (let i = 0; i < 130; i++) s.push([r() * W, r() * H, r() * 1.4 + 0.3, r()]); return s; })();
-const PANELS = ["menuPanel", "lobbyPanel", "endPanel", "helpPanel", "skinPanel", "goalPanel"];
+const PANELS = ["menuPanel", "lobbyPanel", "endPanel", "helpPanel", "skinPanel", "goalPanel", "modePanel"];
 
 function targetLayout() {
   if (inGame() && !app.endShown) return [600, 335];
@@ -707,6 +928,49 @@ function drawArena(R, hot) {
   ctx.shadowColor = hot ? "#ff4d5e" : "#b9a6ff"; ctx.shadowBlur = 22;
   ctx.beginPath(); ctx.arc(CX, CY, R * SC + 3.5, 0, PI2); ctx.stroke();
   ctx.restore();
+}
+
+const PORTAL_COL = ["#36e7ff", "#ff5ac8"];
+/** Hindernisse (fest oder kreisend) und Portale der gewählten Arena */
+function drawArenaFeatures(view, now) {
+  const A = ARENAS[view.arena] || ARENAS.klassisch;
+  ctx.save();
+  if (A.orbit) {                                          // Bahnen der kreisenden Blöcke andeuten
+    ctx.strokeStyle = "rgba(190,170,255,0.13)"; ctx.lineWidth = 2; ctx.setLineDash([5, 11]);
+    for (const rr of new Set(A.orbit.map(o => o[0]))) { ctx.beginPath(); ctx.arc(CX, CY, rr * SC, 0, PI2); ctx.stroke(); }
+    ctx.setLineDash([]);
+  }
+  for (const [x, y, r] of blockList(A, view.t)) {
+    const X = CX + x * SC, Y = CY + y * SC, rr = r * SC, g = ctx.createRadialGradient(X - rr * 0.35, Y - rr * 0.4, rr * 0.1, X, Y, rr);
+    g.addColorStop(0, A.orbit ? "#8a6cff" : "#7d87b3"); g.addColorStop(1, A.orbit ? "#2a1a5e" : "#222739");
+    ctx.shadowColor = A.orbit ? "#a68bff" : "#9aa6d8"; ctx.shadowBlur = 14;
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(X, Y, rr, 0, PI2); ctx.fill();
+    ctx.shadowBlur = 0; ctx.lineWidth = 3; ctx.strokeStyle = "rgba(220,225,255,0.7)"; ctx.stroke();
+  }
+  if (A.portals) A.portals.forEach((pair, k) => {
+    const on = portalOn(pair[0], view.R) && portalOn(pair[1], view.R), col = PORTAL_COL[k % 2];
+    for (const p of pair) {
+      const X = CX + p[0] * SC, Y = CY + p[1] * SC, r = PORTAL_R * SC;
+      ctx.globalAlpha = on ? 1 : 0.22; ctx.shadowColor = col; ctx.shadowBlur = on ? 20 : 0;
+      const g = ctx.createRadialGradient(X, Y, 0, X, Y, r); g.addColorStop(0, "#05060a"); g.addColorStop(0.6, "#05060a"); g.addColorStop(1, col);
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(X, Y, r, 0, PI2); ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 3;
+      for (let j = 0; j < 3; j++) { const a = (on ? now * (k ? -3 : 3) : 0) + j * 2.09; ctx.beginPath(); ctx.arc(X, Y, r * (0.45 + 0.17 * j), a, a + 1.3); ctx.stroke(); }
+      ctx.beginPath(); ctx.arc(X, Y, r, 0, PI2); ctx.stroke();
+    }
+  });
+  ctx.restore();
+}
+function drawBombs(view, now) {
+  for (const b of view.bombs || []) {
+    const left = b.at - view.t; if (left < -0.05) continue;
+    const X = CX + b.x * SC, Y = CY + b.y * SC, k = Math.max(0, Math.min(1, left / BOMB_FUSE));
+    ctx.save();
+    ctx.strokeStyle = `rgba(255,80,80,${0.4 + 0.45 * (0.5 + 0.5 * Math.sin(now * (9 + (1 - k) * 22)))})`; ctx.lineWidth = 3; ctx.setLineDash([10, 8]);
+    ctx.fillStyle = "rgba(255,60,60,0.09)"; ctx.beginPath(); ctx.arc(X, Y, BOMB_R * SC, 0, PI2); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    text("💣", X, Y, 34 * (1 + 0.15 * Math.sin(now * 14)));
+  }
 }
 
 function drawFoods(view, now) {
@@ -746,15 +1010,17 @@ function drawWalls(view) {
 const SEG_GAP = 0.021;                      // Abstand der Glieder entlang des Körpers (Arena-Einheiten)
 const segBuf = [];
 /** Positionen der Glieder vom Kopf zum Schwanz, gleichmäßig entlang der Spur (in Bildschirm-Pixeln, flach x,y). */
-function segPositions(sn) {
+const JUMP = 0.12;                          // größerer Abstand zwischen zwei Spurpunkten = Portal-Sprung, dort nicht verbinden
+function segPositions(sn, gap = SEG_GAP * (sn.sc || 1)) {
   const tr = sn.trail, out = segBuf; out.length = 0;
-  let px = sn.hx, py = sn.hy, need = SEG_GAP * 0.9;
+  let px = sn.hx, py = sn.hy, need = gap * 0.9;
   for (let k = tr.length - 2; k >= 0; k -= 2) {
     let dx = tr[k] - px, dy = tr[k + 1] - py, d = Math.hypot(dx, dy);
+    if (d > JUMP) { px = tr[k]; py = tr[k + 1]; out.push(CX + px * SC, CY + py * SC); need = gap; continue; }
     while (d >= need && d > 0) {
       px += (dx / d) * need; py += (dy / d) * need;
       out.push(CX + px * SC, CY + py * SC);
-      dx = tr[k] - px; dy = tr[k + 1] - py; d = Math.hypot(dx, dy); need = SEG_GAP;
+      dx = tr[k] - px; dy = tr[k + 1] - py; d = Math.hypot(dx, dy); need = gap;
     }
     need -= d; px = tr[k]; py = tr[k + 1];
   }
@@ -763,9 +1029,10 @@ function segPositions(sn) {
 
 const IMG_HEAD_SCALE = 1.8;                 // Bild-Köpfe: sichtbare Größe gegenüber der Trefferfläche (auf Wunsch etwas größer als 1,6)
 function drawHead(sn, i, skin, now, hx, hy) {
-  const r = HEAD_R * SC * 1.32, d = sn.hdir, cos = Math.cos(d), sin = Math.sin(d);
+  const sc = sn.sc || 1, r = HEAD_R * SC * 1.32 * sc, d = sn.hdir, cos = Math.cos(d), sin = Math.sin(d);
+  if (sc > 1 && sn.alive) text("👑", hx, hy - r * 1.75, r * 1.25);   // der Boss trägt eine Krone
   if (skin.img) {                                         // Bild-Kopf: bringt sein Gesicht mit, wird in Fahrtrichtung gedreht
-    const R = HEAD_R * SC * IMG_HEAD_SCALE;
+    const R = HEAD_R * SC * IMG_HEAD_SCALE * sc;
     ctx.save(); ctx.translate(hx, hy); ctx.rotate(d);
     if (skin.side && cos < 0) ctx.scale(1, -1);           // Seitenansicht: beim Linksfahren spiegeln, damit der Kopf nie auf dem Kopf steht
     ctx.drawImage(skin.img.head, -R, -R, R * 2, R * 2); ctx.restore();
@@ -813,17 +1080,25 @@ function drawSnake(sn, i, now) {
     if (ctx.globalAlpha > 0) drawHead(sn, i, skin, now, hx, hy);
     ctx.restore(); return;
   }
-  const tr = sn.trail, segR = BODY_R * SC * 1.13;
-  // weiches Leuchten unter dem Körper
+  const sc = sn.sc || 1, tr = sn.trail, segR = BODY_R * SC * 1.13 * sc;
+  // weiches Leuchten unter dem Körper (an Portal-Sprüngen unterbrochen)
   if (tr.length >= 2) {
     ctx.lineCap = ctx.lineJoin = "round";
     const g0 = Math.min(tr.length - 2, 16);                // Leuchten erst hinter der Schwanzspitze beginnen
     ctx.beginPath(); ctx.moveTo(CX + tr[g0] * SC, CY + tr[g0 + 1] * SC);
-    for (let k = g0 + 2; k < tr.length; k += 2) ctx.lineTo(CX + tr[k] * SC, CY + tr[k + 1] * SC);
-    ctx.lineTo(hx, hy);
-    ctx.globalAlpha = sn.ghost ? 0.12 : sn.sprint || sn.turbo ? 0.42 : 0.24;
-    ctx.strokeStyle = sn.turbo ? "#ffd34d" : skin.main; ctx.lineWidth = segR * 3.4; ctx.stroke();
+    for (let k = g0 + 2; k < tr.length; k += 2) {
+      const far = Math.abs(tr[k] - tr[k - 2]) + Math.abs(tr[k + 1] - tr[k - 1]) > JUMP;
+      if (far) ctx.moveTo(CX + tr[k] * SC, CY + tr[k + 1] * SC); else ctx.lineTo(CX + tr[k] * SC, CY + tr[k + 1] * SC);
+    }
+    if (Math.abs(tr[tr.length - 2] - sn.hx) + Math.abs(tr[tr.length - 1] - sn.hy) < JUMP) ctx.lineTo(hx, hy);
+    ctx.globalAlpha = sn.ghost ? 0.12 : sn.sprint || sn.turbo || sn.slow ? 0.42 : 0.24;
+    ctx.strokeStyle = sn.turbo ? "#ffd34d" : sn.slow ? "#bfeaff" : skin.main; ctx.lineWidth = segR * 3.4; ctx.stroke();
     if (sn.ghost) { ctx.globalAlpha = 0.7; ctx.strokeStyle = "#fff"; ctx.lineWidth = segR * 2 + 3; ctx.stroke(); }
+    if (sn.slow) { ctx.globalAlpha = 0.55; ctx.strokeStyle = "#dff6ff"; ctx.lineWidth = segR * 2.3; ctx.setLineDash([3, 9]); ctx.stroke(); ctx.setLineDash([]); }
+  }
+  if (sn.magnet) {                                         // Magnet: Wirkungskreis um den Kopf
+    ctx.globalAlpha = 0.22; ctx.strokeStyle = "#ff6b6b"; ctx.lineWidth = 2; ctx.setLineDash([6, 10]); ctx.lineDashOffset = -now * 40;
+    ctx.beginPath(); ctx.arc(hx, hy, MAGNET_R * SC, 0, PI2); ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0;
   }
   ctx.globalAlpha = sn.ghost ? 0.4 : 1;
   const P = segPositions(sn), n = P.length / 2, pal = skin.pal, B = app.bulges[i];
@@ -833,7 +1108,7 @@ function drawSnake(sn, i, now) {
   let last = n - 1;
   const tail = skin.img && skin.img.tail;
   if (tail && n > 4) {
-    const th = segR * 2, cut = Math.min(n - 3, Math.max(2, Math.round((th * Math.min(tail.aspect, 4)) / (SEG_GAP * SC))));
+    const th = segR * 2, cut = Math.min(n - 3, Math.max(2, Math.round((th * Math.min(tail.aspect, 4)) / (SEG_GAP * sc * SC))));
     const tx = P[(n - 1) * 2], ty = P[(n - 1) * 2 + 1], ax = P[(n - 1 - cut) * 2], ay = P[(n - 1 - cut) * 2 + 1];
     ctx.save(); ctx.translate(tx, ty); ctx.rotate(Math.atan2(ay - ty, ax - tx));
     ctx.drawImage(tail, 0, -th / 2, Math.hypot(ax - tx, ay - ty) + segR * 0.6, th); ctx.restore();
@@ -848,6 +1123,11 @@ function drawSnake(sn, i, now) {
     if (skin.dot && k % 3 === 1) ctx.drawImage(disc(skin.dot), x - r * 0.42, y - r * 0.42, r * 0.84, r * 0.84);
   }
   drawHead(sn, i, skin, now, hx, hy);
+  if (sn.shield) {                                         // Schild: schimmernde Blase um den Kopf
+    const br = HEAD_R * SC * 2.3 * sc;
+    ctx.globalAlpha = 0.18; ctx.fillStyle = "#8fd3ff"; ctx.beginPath(); ctx.arc(hx, hy, br, 0, PI2); ctx.fill();
+    ctx.globalAlpha = 0.6 + 0.3 * Math.sin(now * 8); ctx.strokeStyle = "#cdeeff"; ctx.lineWidth = 3; ctx.stroke();
+  }
   ctx.restore();
   // Sprint-Funken und Turbo-Flammen hinter dem Kopf
   if (sn.sprint || sn.turbo) {
@@ -878,30 +1158,54 @@ function drawParticles(dt) {
   ctx.globalAlpha = 1;
 }
 
+const icons = sn => (sn.turbo ? " ⚡" : "") + (sn.ghost ? " 👻" : "") + (sn.shield ? " 🛡️" : "") + (sn.slow ? " ❄️" : "") + (sn.magnet ? " 🧲" : "");
+const playerName = i => (app.mode === "duo" ? `Spieler ${i + 1}` : i === app.me ? "DU" : app.oppName);
 function drawHud(view) {
-  const me = app.me, op = 1 - me, sd = view.t >= SD_START && view.phase === "play";
+  const me = app.me, N = view.snakes.length, sd = view.sdOn && view.t >= SD_START && view.phase === "play";
+  const hearts = sn => (view.mode === "boss" ? " " + "❤️".repeat(Math.max(0, sn.lives)) : "");
   const side = (i, x, align, label) => {
     const sn = view.snakes[i], dir = align === "left" ? 1 : -1;
-    ctx.fillStyle = COLORS[i]; ctx.beginPath(); ctx.arc(x + dir * 12, 62, 12, 0, 7); ctx.fill();
-    text(label + (sn.turbo ? " ⚡" : "") + (sn.ghost ? " 👻" : ""), x + dir * 34, 63, 26, "#fff", align);
+    ctx.fillStyle = colorOf(i); ctx.beginPath(); ctx.arc(x + dir * 12, 62, 12, 0, 7); ctx.fill();
+    text(label + hearts(sn) + icons(sn), x + dir * 34, 63, 26, "#fff", align);
     for (let k = 0; k < WIN_ROUNDS; k++) {
       ctx.beginPath(); ctx.arc(x + dir * (14 + k * 34), 108, 11, 0, 7);
-      if (k < view.scores[i]) { ctx.fillStyle = COLORS[i]; ctx.fill(); } else { ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 3; ctx.stroke(); }
+      if (k < view.scores[i]) { ctx.fillStyle = colorOf(i); ctx.fill(); } else { ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 3; ctx.stroke(); }
     }
   };
-  side(me, 120, "left", "DU");
-  side(op, W - 30, "right", app.oppName);
-  const left = Math.max(0, DURATION - view.t);
+  side(me, 120, "left", app.mode === "duo" ? "SPIELER 1" : "DU");
+  if (N === 2) side(1 - me, W - 30, "right", app.mode === "duo" ? "SPIELER 2" : app.oppName);
+  else {                                                  // mehrere Gegner: je eine kleine Zeile mit Farbe, Punkten und Zustand
+    let row = 0;
+    for (let i = 0; i < N; i++) {
+      if (i === me) continue;
+      const y = 48 + row++ * 34, sn = view.snakes[i];
+      ctx.globalAlpha = sn.alive || view.phase !== "play" ? 1 : 0.35;
+      ctx.fillStyle = colorOf(i); ctx.beginPath(); ctx.arc(W - 38, y, 11, 0, 7); ctx.fill();
+      for (let k = 0; k < WIN_ROUNDS; k++) {
+        ctx.beginPath(); ctx.arc(W - 70 - k * 24, y, 8, 0, 7);
+        if (k < view.scores[i]) { ctx.fillStyle = colorOf(i); ctx.fill(); } else { ctx.strokeStyle = "rgba(255,255,255,0.35)"; ctx.lineWidth = 2.5; ctx.stroke(); }
+      }
+      if (!sn.alive && view.phase === "play") text("✕", W - 38, y + 1, 18, "#fff");
+      ctx.globalAlpha = 1;
+    }
+  }
+  const left = Math.max(0, view.dur - view.t);
   text(sd ? left.toFixed(1) : `${Math.ceil(left)}`, CX, 100, 40, sd ? "#ff6b6b" : "rgba(255,255,255,0.9)");
   if (sd) text("SUDDEN DEATH", CX, 140, 20, "#ff6b6b");
   if (app.endShown) return;
   // Längen-Balken
-  const y = CY + SC + 48, maxLen = Math.max(1.2, view.snakes[0].len, view.snakes[1].len), bw = 250;
+  const y = CY + SC + 48, maxLen = Math.max(1.2, ...view.snakes.map(n => n.len)), bw = 250;
   text("LÄNGE", CX, y, 18, "rgba(255,255,255,0.55)", "center", 700);
-  for (const [i, dir] of [[me, -1], [op, 1]]) {
-    const x0 = CX + dir * 50, wv = bw * (view.snakes[i].len / maxLen);
-    ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(dir > 0 ? x0 : x0 - bw, y - 8, bw, 16);
-    ctx.fillStyle = COLORS[i]; ctx.fillRect(dir > 0 ? x0 : x0 - wv, y - 8, wv, 16);
+  if (N === 2) {
+    for (const [i, dir] of [[me, -1], [1 - me, 1]]) {
+      const x0 = CX + dir * 50, wv = bw * (view.snakes[i].len / maxLen);
+      ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(dir > 0 ? x0 : x0 - bw, y - 8, bw, 16);
+      ctx.fillStyle = colorOf(i); ctx.fillRect(dir > 0 ? x0 : x0 - wv, y - 8, wv, 16);
+    }
+  } else for (let i = 0; i < N; i++) {                    // ein schmaler Balken pro Wurm, der eigene zuerst
+    const k = i === me ? 0 : i < me ? i + 1 : i, yy = y + 22 + k * 16, wv = 2 * bw * (view.snakes[i].len / maxLen);
+    ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fillRect(CX - bw, yy - 5, 2 * bw, 10);
+    ctx.globalAlpha = view.snakes[i].alive ? 1 : 0.35; ctx.fillStyle = colorOf(i); ctx.fillRect(CX - bw, yy - 5, wv, 10); ctx.globalAlpha = 1;
   }
 }
 
@@ -911,46 +1215,69 @@ function drawBanner(view, now) {
     const n = Math.ceil(COUNT_T - view.phaseT);
     text(`Runde ${view.round}`, CX, CY - 70, 34, "rgba(255,255,255,0.8)");
     text(String(Math.max(1, n)), CX, CY + 10, 130);
-    const sn = view.snakes[me];
-    text("DU ▼", CX + sn.hx * SC, CY + sn.hy * SC - 44 - 6 * Math.sin(now * 6), 26, COLORS[me]);
+    const bob = 6 * Math.sin(now * 6);
+    if (app.mode === "duo") view.snakes.forEach((sn, i) => text(`${i + 1} ▼`, CX + sn.hx * SC, CY + sn.hy * SC - 44 - bob, 26, colorOf(i)));
+    else { const sn = view.snakes[me]; text("DU ▼", CX + sn.hx * SC, CY + sn.hy * SC - 44 * (sn.sc || 1) - bob, 26, colorOf(me)); }
   } else if (view.phase === "end" || view.phase === "over") {
-    const w = view.winner;
-    const title = w === -1 ? "Unentschieden" : w === me ? "Runde für DICH!" : "Runde verloren";
-    const loser = w === -1 ? null : 1 - w;
-    let sub = view.t >= DURATION ? "Zeit um – die längere Schlange gewinnt" : "";
-    if (!sub && loser != null && app.why[loser]) sub = (loser === me ? "Du bist " : "Gegner ist ") + WHY[app.why[loser]];
-    if (!sub && w === -1) sub = "Beide gleichzeitig raus";
+    const w = view.winner, N = view.snakes.length, duo = app.mode === "duo";
+    const title = w === -1 ? "Unentschieden" : duo ? `Runde für Spieler ${w + 1}!` : w === me ? "Runde für DICH!" : "Runde verloren";
+    const opName = view.mode === "boss" ? "Der Boss ist " : "Gegner ist ";
+    let sub = view.t >= view.dur - 0.001 ? (view.sdOn ? "Zeit um – die längere Schlange gewinnt" : "Zeit um – der Längere gewinnt") : "";
+    if (!sub && duo && w >= 0 && app.why[1 - w]) sub = `Spieler ${2 - w} ist ${WHY[app.why[1 - w]]}`;
+    if (!sub && !duo && w !== me && app.why[me]) sub = "Du bist " + WHY[app.why[me]];
+    if (!sub && !duo && N === 2 && w === me && app.why[1 - me]) sub = view.mode === "boss" ? "Der Boss ist besiegt!" : opName + WHY[app.why[1 - me]];
+    if (!sub && N > 2 && w === me) sub = "Du bist als Letzter übrig!";
+    if (!sub && w === -1) sub = N > 2 ? "Gleich lang – niemand gewinnt" : "Beide gleichzeitig raus";
     ctx.fillStyle = "rgba(5,6,10,0.72)"; ctx.beginPath(); ctx.roundRect(CX - 300, CY - 80, 600, 150, 24); ctx.fill();
-    text(title, CX, CY - 28, 50, w === -1 ? "#fff" : w === me ? "#3ddc84" : "#ff6b6b");
+    text(title, CX, CY - 28, 50, w === -1 ? "#fff" : duo ? colorOf(w) : w === me ? "#3ddc84" : "#ff6b6b");
     text(sub, CX, CY + 32, 24, "rgba(255,255,255,0.8)", "center", 600);
   } else if (view.phase === "wait") {
     text("Verbinde …", CX, CY, 40, "rgba(255,255,255,0.8)");
   }
 }
 
-let joy = null, sprintHeld = false;          // joy = der Finger, der gerade lenkt (immer der zuletzt aufgesetzte)
+// joy = der Finger, der gerade lenkt (immer der zuletzt aufgesetzte); joy2 = dasselbe für Spieler 2 (obere Hälfte, Modus „Zwei Spieler“)
+let joy = null, joy2 = null, sprintHeld = false, sprintHeld2 = false;
 const JOY_R = 45, JOY_DEAD = 8;              // in Bildschirm-Pixeln: ab hier wandert der Kreis mit / reagiert die Lenkung
+const padJoy = p => (p ? joy2 : joy), setJoy = (p, v) => { if (p) joy2 = v; else joy = v; }, padInput = p => (p ? input2 : input);
+const padSnake = p => (app.mode === "duo" ? p : app.me);
 function drawJoystick() {
-  if (!joy) return;
   const r = cv.getBoundingClientRect(), k = W / r.width;
-  const ox = (joy.ox - r.left) * k, oy = (joy.oy - r.top) * k, x = (joy.x - r.left) * k, y = (joy.y - r.top) * k;
-  ctx.save();
-  if (state.steer === "finger") {
-    ctx.strokeStyle = COLORS[app.me]; ctx.globalAlpha = 0.8; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(x, y, 34, 0, 7); ctx.stroke();
-    ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fillStyle = COLORS[app.me]; ctx.fill();
-  } else {
-    ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(ox, oy, JOY_R * k, 0, 7); ctx.stroke();
-    ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.beginPath(); ctx.arc(x, y, 26, 0, 7); ctx.fill();
+  for (const p of [0, 1]) {
+    const j = padJoy(p); if (!j) continue;
+    const ox = (j.ox - r.left) * k, oy = (j.oy - r.top) * k, x = (j.x - r.left) * k, y = (j.y - r.top) * k, col = colorOf(padSnake(p));
+    ctx.save();
+    if (state.steer === "finger") {
+      ctx.strokeStyle = col; ctx.globalAlpha = 0.8; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(x, y, 34, 0, 7); ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, 6, 0, 7); ctx.fillStyle = col; ctx.fill();
+    } else {
+      ctx.strokeStyle = app.mode === "duo" ? col : "rgba(255,255,255,0.3)"; ctx.globalAlpha = app.mode === "duo" ? 0.6 : 1;
+      ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(ox, oy, JOY_R * k, 0, 7); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.35)"; ctx.beginPath(); ctx.arc(x, y, 26, 0, 7); ctx.fill();
+    }
+    ctx.restore();
   }
-  ctx.restore();
 }
 /* Lenkart „Zum Finger“: Richtung vom eigenen Kopf zur berührten Stelle */
-function aimAtFinger() {
-  const v = app.view; if (!joy || !v || state.steer !== "finger") return;
-  const r = cv.getBoundingClientRect(), k = W / r.width, sn = v.snakes[app.me];
-  const dx = ((joy.x - r.left) * k - CX) / SC - sn.hx, dy = ((joy.y - r.top) * k - CY) / SC - sn.hy;
-  if (dx * dx + dy * dy > 0.04 * 0.04) input.a = Math.atan2(dy, dx);
+function aimAtFinger(p = 0) {
+  const v = app.view, j = padJoy(p); if (!j || !v || state.steer !== "finger") return;
+  const r = cv.getBoundingClientRect(), k = W / r.width, sn = v.snakes[padSnake(p)];
+  const dx = ((j.x - r.left) * k - CX) / SC - sn.hx, dy = ((j.y - r.top) * k - CY) / SC - sn.hy;
+  if (dx * dx + dy * dy > 0.04 * 0.04) padInput(p).a = Math.atan2(dy, dx);
+}
+/* Emotes: schweben kurz über dem Kopf des Absenders */
+function showEmote(i, e) { app.emotes.push({ i, e: EMOTES[e] || EMOTES[0], t0: app.lastTs }); tone(880, 0.08, "sine", 0.18, 1.3); }
+function drawEmotes(view, now) {
+  const E = app.emotes;
+  for (let k = E.length - 1; k >= 0; k--) {
+    const m = E[k], age = now - m.t0, sn = view.snakes[m.i];
+    if (age > 1.8 || !sn) { E.splice(k, 1); continue; }
+    ctx.globalAlpha = Math.min(1, (1.8 - age) * 2.5);
+    const pop = age < 0.15 ? 0.6 + (age / 0.15) * 0.6 : 1.2 - Math.min(0.2, (age - 0.15) * 0.8);
+    text(m.e, CX + sn.hx * SC, CY + sn.hy * SC - 62 * (sn.sc || 1) - age * 28, 50 * pop);
+  }
+  ctx.globalAlpha = 1;
 }
 
 function render(view, now, dt) {
@@ -965,14 +1292,21 @@ function render(view, now, dt) {
   ctx.save();
   if (now < app.shakeUntil) ctx.translate((Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9);
   if (zoom !== 1) { const zx = CX + sl.x * SC, zy = CY + sl.y * SC; ctx.translate(zx, zy); ctx.scale(zoom, zoom); ctx.translate(-zx, -zy); }
-  drawArena(view.R, view.t >= SD_START && view.phase === "play");
+  drawArena(view.R, view.sdOn && view.t >= SD_START && view.phase === "play");
   ctx.save(); ctx.beginPath(); ctx.arc(CX, CY, view.R * SC + 8, 0, PI2); ctx.clip();
-  drawWalls(view); drawFoods(view, now); drawPower(view.power, now);
-  if (view.snakes[0].trail.length || view.phase !== "wait") { drawSnake(view.snakes[1 - app.me], 1 - app.me, now); drawSnake(view.snakes[app.me], app.me, now); }
+  drawArenaFeatures(view, now); drawWalls(view); drawFoods(view, now); drawPower(view.power, now); drawBombs(view, now);
+  if (view.snakes[0].trail.length || view.phase !== "wait") {
+    view.snakes.forEach((sn, i) => { if (i !== app.me) drawSnake(sn, i, now); });
+    drawSnake(view.snakes[app.me], app.me, now);
+  }
   ctx.restore();
   drawParticles(slowing ? dt * 0.3 : dt);
+  if (inGame()) drawEmotes(view, now);
   ctx.restore();
-  if (inGame()) { drawHud(view); if (!slowing || view.phase === "count") drawBanner(view, now); drawJoystick(); }   // Banner erst nach der Zeitlupe
+  if (inGame()) {
+    drawHud(view); if (!slowing || view.phase === "count") drawBanner(view, now); drawJoystick();   // Banner erst nach der Zeitlupe
+    text("WORM ATTACK", CX, H - 26, 20, "rgba(255,255,255,0.28)");                                   // Wasserzeichen, auch im Clip zu sehen
+  }
 }
 
 /* ================================================================
@@ -981,20 +1315,24 @@ function render(view, now, dt) {
 function hostView(m) {
   const s = m.sim, t = s.t;
   return { phase: m.phase, phaseT: m.phaseT, scores: m.scores, round: m.round, t, R: s.R, winner: s.winner, matchWinner: m.matchWinner,
-    snakes: s.snakes.map(n => ({ trail: n.trail, hx: n.x, hy: n.y, hdir: n.dir, len: n.len, alive: n.alive, ghost: n.ghostUntil > t, turbo: n.turboUntil > t, sprint: n.sprinting })),
+    mode: s.mode, arena: s.arena, dur: s.dur, sdOn: s.sdOn, bombs: s.bombs,
+    snakes: s.snakes.map(n => ({ trail: n.trail, hx: n.x, hy: n.y, hdir: n.dir, len: n.len, alive: n.alive, ghost: n.ghostUntil > t, turbo: n.turboUntil > t, sprint: n.sprinting,
+      shield: n.shieldUntil > t, slow: n.slowUntil > t, magnet: n.magnetUntil > t, lives: n.lives, sc: n.sc })),
     foods: s.foods, power: s.power, walls: s.walls };
 }
 const q = v => Math.round(v * 1000);
 function buildSnap(m) {
   const s = m.sim, full = m.full || app.snaps % 15 === 0;
   const o = { k: "s", ph: m.phase, pt: +m.phaseT.toFixed(2), sc: m.scores, rd: m.round, t: +s.t.toFixed(3), R: q(s.R), w: s.winner, mw: m.matchWinner,
-    sn: s.snakes.map(n => [q(n.x), q(n.y), q(n.dir), q(n.len), (n.alive ? 1 : 0) | (n.ghostUntil > s.t ? 2 : 0) | (n.turboUntil > s.t ? 4 : 0) | (n.sprinting ? 8 : 0)]),
-    f: [], p: s.power ? [q(s.power.x), q(s.power.y), POWER_TYPES.indexOf(s.power.type)] : 0, ev: m.netEvents };
+    sn: s.snakes.map(n => [q(n.x), q(n.y), q(n.dir), q(n.len), (n.alive ? 1 : 0) | (n.ghostUntil > s.t ? 2 : 0) | (n.turboUntil > s.t ? 4 : 0) | (n.sprinting ? 8 : 0) |
+      (n.shieldUntil > s.t ? 16 : 0) | (n.slowUntil > s.t ? 32 : 0) | (n.magnetUntil > s.t ? 64 : 0)]),
+    f: [], p: s.power ? [q(s.power.x), q(s.power.y), POWER_TYPES.indexOf(s.power.type)] : 0, ev: m.netEvents,
+    b: s.bombs.map(b => [q(b.x), q(b.y), +(b.at - s.t).toFixed(2), b.owner]) };
   for (const f of s.foods) o.f.push(q(f.x), q(f.y), q(f.v));
   if (full) {
     o.tr = s.snakes.map(n => n.trail.map(q));
     o.wl = s.walls.map(w => [w.owner, +(w.until - s.t).toFixed(2)].concat(w.pts.map(q)));
-    o.sk = app.skins;
+    o.sk = app.skins; o.ar = s.arena;
   }
   m.netEvents = []; m.full = false; app.snaps++;
   return o;
@@ -1002,19 +1340,21 @@ function buildSnap(m) {
 
 function newGuestView() {
   return { phase: "wait", phaseT: 0, scores: [0, 0], round: 0, t: 0, R: 1, winner: -2, matchWinner: -2, stamp: 0,
-    snakes: [0, 1].map(() => ({ trail: [], x: 0, y: 0, dir: 0, px: 0, py: 0, pdir: 0, hx: 0, hy: 0, hdir: 0, len: 0, alive: true, ghost: false, turbo: false, sprint: false })),
+    mode: "duell", arena: "klassisch", dur: DURATION, sdOn: true, bombs: [],
+    snakes: [0, 1].map(() => ({ trail: [], x: 0, y: 0, dir: 0, px: 0, py: 0, pdir: 0, hx: 0, hy: 0, hdir: 0, len: 0, alive: true, ghost: false, turbo: false, sprint: false,
+      shield: false, slow: false, magnet: false, lives: 1, sc: 1 })),
     foods: [], power: null, walls: [] };
 }
 function trimByLength(tr, hx, hy, len) {
   let acc = 0, px = hx, py = hy, k = tr.length - 2;
-  for (; k >= 0; k -= 2) { acc += Math.hypot(tr[k] - px, tr[k + 1] - py); if (acc > len) break; px = tr[k]; py = tr[k + 1]; }
+  for (; k >= 0; k -= 2) { const d = Math.hypot(tr[k] - px, tr[k + 1] - py); if (d < JUMP) acc += d; if (acc > len) break; px = tr[k]; py = tr[k + 1]; }
   if (k >= 0) tr.splice(0, k + 2);
 }
 function applySnap(o) {
   const v = app.gv; if (!v || !o || !Array.isArray(o.sn)) return;
   const newRound = o.rd !== v.round;
   v.phase = o.ph; v.phaseT = o.pt; v.scores = o.sc; v.round = o.rd; v.t = o.t; v.R = o.R / 1000; v.winner = o.w; v.matchWinner = o.mw;
-  if (newRound) { app.why = [null, null]; resetLooks(); input.a = null; if (joy) { joy.ox = joy.x; joy.oy = joy.y; } }
+  if (newRound) { resetLooks(); input.a = null; if (joy) { joy.ox = joy.x; joy.oy = joy.y; } }
   for (let i = 0; i < 2; i++) {
     const sn = v.snakes[i], a = o.sn[i];
     if (o.tr) sn.trail = o.tr[i].map(u => u / 1000);
@@ -1025,12 +1365,15 @@ function applySnap(o) {
     sn.px = sn.x; sn.py = sn.y; sn.pdir = sn.dir;
     sn.x = a[0] / 1000; sn.y = a[1] / 1000; sn.dir = a[2] / 1000; sn.len = a[3] / 1000;
     sn.alive = !!(a[4] & 1); sn.ghost = !!(a[4] & 2); sn.turbo = !!(a[4] & 4); sn.sprint = !!(a[4] & 8);
+    sn.shield = !!(a[4] & 16); sn.slow = !!(a[4] & 32); sn.magnet = !!(a[4] & 64);
     if (o.tr || newRound) { sn.px = sn.x; sn.py = sn.y; sn.pdir = sn.dir; }
     else trimByLength(sn.trail, sn.x, sn.y, sn.len);
   }
   v.foods = []; for (let k = 0; k < o.f.length; k += 3) v.foods.push({ x: o.f[k] / 1000, y: o.f[k + 1] / 1000, v: o.f[k + 2] / 1000 });
   v.power = o.p ? { x: o.p[0] / 1000, y: o.p[1] / 1000, type: POWER_TYPES[o.p[2]] } : null;
   if (Array.isArray(o.sk) && o.sk.length === 2) app.skins = [skinById(o.sk[0]).id, skinById(o.sk[1]).id];
+  if (typeof o.ar === "string" && Object.prototype.hasOwnProperty.call(ARENAS, o.ar)) v.arena = o.ar;
+  v.bombs = Array.isArray(o.b) ? o.b.map(b => ({ x: b[0] / 1000, y: b[1] / 1000, at: o.t + b[2], owner: b[3] })) : [];
   if (o.wl) v.walls = o.wl.map(w => ({ owner: w[0], until: o.t + w[1], pts: w.slice(2).map(u => u / 1000) }));
   else v.walls = v.walls.filter(w => w.until > o.t);
   v.stamp = performance.now();
@@ -1039,27 +1382,45 @@ function applySnap(o) {
 function guestView(nowMs) {
   const v = app.gv, a = Math.min(1, Math.max(0, (nowMs - v.stamp) / (1000 / 30)));
   for (const sn of v.snakes) {
-    sn.hx = sn.px + (sn.x - sn.px) * a; sn.hy = sn.py + (sn.y - sn.py) * a; sn.hdir = sn.pdir + angDiff(sn.dir, sn.pdir) * a;
+    const jump = Math.abs(sn.x - sn.px) + Math.abs(sn.y - sn.py) > JUMP;      // Portal: nicht quer über das Feld gleiten
+    sn.hx = jump ? sn.x : sn.px + (sn.x - sn.px) * a; sn.hy = jump ? sn.y : sn.py + (sn.y - sn.py) * a; sn.hdir = sn.pdir + angDiff(sn.dir, sn.pdir) * a;
   }
   return v;
 }
 
 /* Ereignisse → Töne, Funken, Hinweise */
+const view0 = () => app.view || { mode: "duell", snakes: [] };
 /** Vibration (nur Android; iPhones unterstützen das im Browser nicht) */
 function vib(pattern) { if (!state.vib || !inGame() || !navigator.vibrate) return; try { navigator.vibrate(pattern); } catch {} }
 function fx(e) {
   const mine = inGame() && e.i === app.me;
-  if (e.type === "eat") { burst(e.x, e.y, COLORS[e.i], 5, 120); app.bulges[e.i].push(app.lastTs); if (e.i === app.me) tone(660, 0.07, "triangle", 0.25, 1.4); if (mine) bump("food"); }
+  if (e.type === "eat") { burst(e.x, e.y, colorOf(e.i), 5, 120); app.bulges[e.i].push(app.lastTs); if (e.i === app.me) tone(660, 0.07, "triangle", 0.25, 1.4); if (mine) bump("food"); }
   else if (e.type === "spawn") { burst(e.x, e.y, "#ffd34d", 10, 160); tone(520, 0.25, "sine", 0.2, 1.5); }
   else if (e.type === "power") {
     burst(e.x, e.y, "#ffd34d", 22, 300); tone(440, 0.35, "square", 0.18, 2);
-    if (inGame()) showToast(`${POWER_ICON[e.p]} ${POWER_NAME[e.p]} für ${e.i === app.me ? "dich" : "den Gegner"}!`);
-    if (mine) { vib(30); bump("joker"); stats.kinds[e.p] = 1; }
+    const who = app.mode === "duo" ? `Spieler ${e.i + 1}` : e.i === app.me ? "dich" : app.match && app.match.sim.snakes.length > 2 ? "einen Gegner" : view0().mode === "boss" ? "den Boss" : "den Gegner";
+    if (inGame()) showToast(`${POWER_ICON[e.p]} ${POWER_NAME[e.p]} für ${who}!`);
+    if (mine) { vib(30); bump("joker"); if (app.mode !== "duo") stats.kinds[e.p] = 1; }
   }
   else if (e.type === "clash") { burst(e.x, e.y, "#fff", 26, 380); tone(140, 0.3, "sawtooth", 0.3, 0.5); }
+  else if (e.type === "warp") { burst(e.x, e.y, "#36e7ff", 10, 200); burst(e.x2, e.y2, "#ff5ac8", 14, 240); tone(300, 0.2, "sine", 0.22, 2.6); }
+  else if (e.type === "boom") {
+    burst(e.x, e.y, "#ff7a2b", 34, 520); burst(e.x, e.y, "#ffd34d", 20, 300); tone(90, 0.55, "sawtooth", 0.35, 0.4);
+    if (inGame()) { app.shakeUntil = app.lastTs + 0.3; vib(60); }
+  }
+  else if (e.type === "shield") {
+    burst(e.x, e.y, "#8fd3ff", 18, 260); tone(1200, 0.16, "triangle", 0.25, 0.6);
+    if (mine) showToast("🛡️ Dein Schild hat dich gerettet!");
+  }
+  else if (e.type === "hurt") {
+    burst(e.x, e.y, colorOf(e.i), 18, 300); tone(260, 0.25, "square", 0.2, 0.5);
+    if (inGame()) { app.shakeUntil = app.lastTs + 0.15; if (mine) vib(50); }
+    if (inGame() && view0().mode === "boss") showToast(e.i === 1 ? `👑 Boss getroffen! Noch ${e.lives} Leben` : `💥 Getroffen! Du hast noch ${e.lives} Leben`);
+  }
   else if (e.type === "die") {
-    app.why[e.i] = e.why; app.deadAt[e.i] = app.lastTs; burst(e.x, e.y, COLORS[e.i], 30, 420); tone(380, 0.5, "sawtooth", 0.3, 0.25);
-    if (inGame()) {
+    app.why[e.i] = e.why; app.deadAt[e.i] = app.lastTs; burst(e.x, e.y, colorOf(e.i), 30, 420); tone(380, 0.5, "sawtooth", 0.3, 0.25);
+    const many = app.view && app.view.snakes.length > 2;
+    if (inGame() && (!many || mine)) {                     // bei vielen Würmern nur beim eigenen Crash Zeitlupe
       app.slow = { t0: app.lastTs, until: app.lastTs + 0.8, x: e.x, y: e.y }; app.shakeUntil = app.lastTs + 0.22;
       vib(mine ? [70, 40, 130] : 40);
       if (!mine && e.why === "body") bump("trap");            // Gegner ist in meinen Körper gefahren
@@ -1067,7 +1428,7 @@ function fx(e) {
     // Der Körper zerfällt in seine Glieder
     const sn = app.view && app.view.snakes[e.i], skin = skinOf(e.i);
     if (sn && sn.trail.length) {
-      const P = segPositions(sn), r = BODY_R * SC * 1.13;
+      const P = segPositions(sn), r = BODY_R * SC * 1.13 * (sn.sc || 1);
       for (let k = 0; k < P.length / 2; k++) {
         const a = Math.random() * PI2, v = 40 + Math.random() * 170;
         app.particles.push({ x: P[k * 2], y: P[k * 2 + 1], vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.7 + Math.random() * 0.6, max: 1.3, s: r, img: skin.img ? skin.img.seg : disc(skin.pal[k % skin.pal.length]) });
@@ -1152,7 +1513,8 @@ const TASKS = [
   { id: "survive",  n: 120, text: "Überlebe insgesamt 120 Sekunden" },
   { id: "trap",     n: 1,   text: "Lass den Gegner in deinen Körper fahren" },
 ];
-const stats = Object.assign({ food: 0, joker: 0, rounds: 0, duel: 0, nosprint: 0, len: 0, survive: 0, trap: 0, online: 0, winStreak: 0, bestStreak: 0, kinds: {} }, store.get("stats", {}) || {});
+const stats = Object.assign({ food: 0, joker: 0, rounds: 0, duel: 0, nosprint: 0, len: 0, survive: 0, trap: 0, online: 0, winStreak: 0, bestStreak: 0, kinds: {},
+  boss: 0, ueberleben: 0, futter: 0 }, store.get("stats", {}) || {});
 if (!stats.kinds || typeof stats.kinds !== "object") stats.kinds = {};
 const streak = Object.assign({ n: 0, best: 0, last: "" }, store.get("streak", {}) || {});
 const achDone = store.get("ach", {}) || {};
@@ -1165,12 +1527,15 @@ const ACHS = [
   { id: "futter500", text: "500 Futter gefressen",           stars: 5, n: 500, val: () => stats.food },
   { id: "stufe5",    text: "Stufe 5 erreicht",               stars: 3, n: 5,   val: () => state.level },
   { id: "stufe10",   text: "Stufe 10 erreicht",              stars: 5, n: 10,  val: () => state.level },
-  { id: "joker4",    text: "Jeden Joker einmal benutzt",     stars: 3, n: 4,   val: () => Object.keys(stats.kinds).length },
+  { id: "joker4",    text: "Jeden der 8 Joker einmal benutzt", stars: 3, n: 8, val: () => Object.keys(stats.kinds).filter(k => POWER_TYPES.includes(k)).length },
   { id: "lang",      text: "Länge 2,0 erreicht",             stars: 3, n: 200, val: () => stats.len, show: v => (v / 100).toFixed(1).replace(".", ",") },
   { id: "online",    text: "Online-Duell gewonnen",          stars: 3, n: 1,   val: () => stats.online },
   { id: "serie3",    text: "3 Duelle in Folge gewonnen",     stars: 4, n: 3,   val: () => stats.bestStreak },
   { id: "tage7",     text: "7 Tage in Folge eine Aufgabe geschafft", stars: 5, n: 7, val: () => streak.best },
   { id: "sauber",    text: "10 Runden ohne Sprint gewonnen", stars: 3, n: 10,  val: () => stats.nosprint },
+  { id: "boss",      text: "Den Bosswurm besiegt",           stars: 3, n: 1,   val: () => stats.boss },
+  { id: "ueberleben", text: "Überleben gewonnen",            stars: 3, n: 1,   val: () => stats.ueberleben },
+  { id: "futter",    text: "Futterjagd gewonnen",            stars: 2, n: 1,   val: () => stats.futter },
 ];
 const TEST_DAY = /^\d{4}-\d\d-\d\d$/.test(params.get("tag") || "") ? params.get("tag") : null;   // Test-Schalter: ?tag=2026-01-05
 const dayStr = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -1189,6 +1554,7 @@ function ensureDaily() {
 }
 /** Zähler erhöhen (oder bei max: Höchstwert merken) – für die Statistik und die heutige Aufgabe */
 function bump(key, n = 1, isMax = false) {
+  if (app.mode === "duo") return;                          // zwei Spieler an einem Handy: zählt nicht für Aufgaben und Erfolge
   stats[key] = isMax ? Math.max(stats[key] || 0, n) : (stats[key] || 0) + n;
   const d = ensureDaily();
   if (d.ids.includes(key) && !d.done[key]) d.prog[key] = isMax ? Math.max(d.prog[key] || 0, n) : (d.prog[key] || 0) + n;
@@ -1241,6 +1607,11 @@ function trackFrame(view, dt) {
         app.particles.push({ x: CX + me.hx * SC, y: CY + me.hy * SC, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0.9 + Math.random() * 0.5, max: 1.4, s: 3 + Math.random() * 2.5, c: "#ffd34d", star: true }); }
       tone(660, 0.14, "triangle", 0.3); setTimeout(() => tone(990, 0.22, "triangle", 0.3), 130);
     }
+    if (view.phase === "end" && prev === "play") {
+      if (clip.recs.length) clip.finalizeAt = app.lastTs + 1.4;            // Clip: noch Zeitlupe und Banner mitnehmen, dann abschließen
+      if (app.mode === "solo" && view.winner > 0 && Math.random() < 0.45)   // der Computer freut sich manchmal
+        setTimeout(() => { if (app.mode === "solo") showEmote(view.winner, [1, 2, 5][Math.floor(Math.random() * 3)]); }, 500);
+    }
   }
   if (view.phase === "count") { const n = Math.ceil(COUNT_T - view.phaseT); if (n !== app.lastCount && n >= 1) { app.lastCount = n; tone(440, 0.09, "triangle", 0.25); } }
   if (view.phase === "play" && me.alive) {
@@ -1250,6 +1621,72 @@ function trackFrame(view, dt) {
   }
   if (app.goalTick) { app.goalTick = 0; checkGoals(); }
 }
+/* ================================================================
+   Clip: die letzten Sekunden jeder Runde als Video (bleibt auf dem Gerät)
+   Zwei Aufnahmen laufen versetzt (alle 8 s eine neue, jede höchstens 16,5 s). Endet die Runde,
+   wird die älteste behalten: Der Clip ist also 8 bis 16 Sekunden lang.
+   ================================================================ */
+const clip = { recs: [], blob: null, type: "", stream: null, finalizeAt: 0, fail: false };
+const clipOk = () => !!(window.MediaRecorder && cv.captureStream);
+function clipMime() {
+  for (const t of ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"]) try { if (MediaRecorder.isTypeSupported(t)) return t; } catch {}
+  return "";
+}
+function clipStream() {
+  if (clip.stream) return clip.stream;
+  const tracks = [...cv.captureStream(30).getVideoTracks()];
+  try {                                                    // Spiel-Töne mit aufnehmen
+    if (audio.ctx && !audio.dest) { audio.dest = audio.ctx.createMediaStreamDestination(); audio.master.connect(audio.dest); }
+    if (audio.dest) tracks.push(...audio.dest.stream.getAudioTracks());
+  } catch {}
+  return (clip.stream = new MediaStream(tracks));
+}
+function clipNew(now) {
+  try {
+    if (clip.type === "") clip.type = clipMime();
+    const opt = { videoBitsPerSecond: 2500000 }; if (clip.type) opt.mimeType = clip.type;
+    const rec = new MediaRecorder(clipStream(), opt), r = { rec, t0: now, chunks: [], keep: false };
+    rec.ondataavailable = e => { if (e.data && e.data.size) r.chunks.push(e.data); };
+    rec.onstop = () => { if (r.keep && r.chunks.length) { clip.blob = new Blob(r.chunks, { type: rec.mimeType || clip.type || "video/webm" }); refreshClipBtn(); } };
+    rec.start(); clip.recs.push(r);
+  } catch { clip.fail = true; }
+}
+function clipStopAll(keepOldest) {
+  const recs = clip.recs; clip.recs = []; clip.finalizeAt = 0;
+  recs.forEach((r, k) => { r.keep = keepOldest && k === 0; try { if (r.rec.state !== "inactive") r.rec.stop(); } catch {} });
+}
+function clipTick(view, now) {
+  if (!state.clip || clip.fail || !clipOk() || !inGame() || !view) { if (clip.recs.length) clipStopAll(false); return; }
+  if (clip.finalizeAt) { if (now >= clip.finalizeAt) clipStopAll(true); return; }
+  if (view.phase !== "play") return;
+  const Q = clip.recs;
+  if (!Q.length || now - Q[Q.length - 1].t0 >= 8) clipNew(now);
+  if (Q.length > 1 && now - Q[0].t0 >= 16.5) { const r = Q.shift(); try { r.rec.stop(); } catch {} }
+}
+function refreshClipBtn() {
+  const b = $("clipBtn"), show = inGame() && app.endShown && (!!clip.blob || clip.finalizeAt > 0);
+  b.classList.toggle("hidden", !show); b.disabled = !clip.blob;
+  b.textContent = clip.blob ? "🎬 Clip speichern" : "🎬 Clip wird erstellt …";
+}
+async function saveClip() {
+  if (!clip.blob) return;
+  const type = clip.blob.type.split(";")[0] || "video/webm", file = new File([clip.blob], `worm-attack-clip.${type.includes("mp4") ? "mp4" : "webm"}`, { type });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "Worm Attack" }); return; } }
+  catch (e) { if (e && e.name === "AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = file.name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 20000);
+  showToast("Clip gespeichert");
+}
+
+/* Bilanz gegen Freunde: jedes Gerät hat eine zufällige Kennung, die beim Verbinden ausgetauscht wird */
+const myId = (() => { let id = store.get("id", ""); if (typeof id !== "string" || !/^[a-z0-9]{6,16}$/.test(id)) { id = (Math.random().toString(36).slice(2) + "000000").slice(0, 10); store.set("id", id); } return id; })();
+const rivals = store.get("rivals", {}) || {};
+const validId = id => (typeof id === "string" && /^[a-z0-9]{6,16}$/.test(id) && id !== "__proto__" ? id : null);
+function rivalGreeting() {
+  const r = app.rival && rivals[app.rival];
+  if (r && r.w + r.l + r.d > 0) showToast(`Bilanz gegen diesen Freund: ${r.w} : ${r.l}`);
+}
+
 function confetti() {
   const cols = ["#ffd34d", "#2ee6d6", "#ff5a8a", "#9dff8a", "#b06bff", "#ffffff"];
   for (let k = 0; k < 110; k++) app.particles.push({ x: Math.random() * W, y: -20 - Math.random() * 260, vx: (Math.random() - 0.5) * 160, vy: 120 + Math.random() * 220,
@@ -1259,15 +1696,25 @@ function refreshSkinBtn() { $("skinBtn").textContent = `🐛 Wurm: ${skinById(st
 function showPanel(id) { for (const p of PANELS) $(p).classList.toggle("hidden", p !== id); }
 const rndSeed = () => (Math.random() * 4294967296) >>> 0;
 
-function resetLooks() { app.bulges = [[], []]; app.deadAt = [0, 0]; }
+function resetLooks() {
+  const n = app.match ? app.match.sim.snakes.length : 2;
+  app.bulges = Array.from({ length: n }, () => []); app.deadAt = Array(n).fill(0); app.look = Array(n).fill(0); app.lastDir = Array(n).fill(0); app.why = Array(n).fill(null);
+}
 function demoSkins() { const mine = app.preview || state.skin; app.skins = [mine, otherSkin(mine, mine === "bonbon" ? "minze" : "bonbon")]; }
-function startDemo() { const s = rndSeed(); app.match = new Match(s, [new Bot(7, s + 1), new Bot(7, s + 2)]); app.me = 0; demoSkins(); resetLooks(); }
+function startDemo() { const s = rndSeed(); app.match = new Match(s, [new Bot(7, s + 1), new Bot(7, s + 2)], { arena: state.arena }); app.me = 0; demoSkins(); resetLooks(); }
+/** Designs für alle Würmer: eigenes zuerst, die Gegner bekommen jeweils ein anderes */
+function pickSkins(n, wish) {
+  const out = [state.skin, otherSkin(state.skin, wish)];
+  for (const id of ["tiger", "eis", "bonbon", "minze", "lava", "regenbogen"]) if (out.length < n && !out.includes(id)) out.push(id);
+  return out.slice(0, n);
+}
 function toMenu(msg) {
   if (app.net) { try { app.net.send({ k: "bye" }); app.net.close(); } catch {} app.net = null; }
-  app.mode = "menu"; app.gv = null; app.endShown = false; app.particles = []; app.lastPhase = null; app.slow.until = -9; app.shakeUntil = -9;
+  app.mode = "menu"; app.kind = "duell"; app.gv = null; app.endShown = false; app.particles = []; app.lastPhase = null; app.slow.until = -9; app.shakeUntil = -9;
   saveGoals(); refreshGoalBtn();
   startDemo();
-  $("sprintBtn").classList.add("hidden"); $("quitBtn").classList.add("hidden");
+  $("sprintBtn").classList.add("hidden"); $("sprintBtn2").classList.add("hidden"); $("quitBtn").classList.add("hidden"); $("emoBtn").classList.add("hidden"); $("emoBar").classList.add("hidden");
+  clipStopAll(false); app.emotes = [];
   $("soloBtn").textContent = `🤖 Gegen Computer · Stufe ${state.level}`;
   app.preview = null; refreshSkinBtn();
   const st = $("menuStatus"); st.textContent = msg || ""; st.className = "status" + (msg ? " err" : "");
@@ -1277,20 +1724,35 @@ function begin() {
   initAudio();
   app.endShown = false; app.sentOver = false; app.why = [null, null]; app.particles = []; app.acc = 0; app.snaps = 0; app.preview = null; resetLooks();
   app.lastPhase = null; app.lastCount = 0; app.roundSprint = false; app.slow.until = -9; app.shakeUntil = -9;
-  input.a = null; input.s = false; joy = null; sprintHeld = false;
+  input.a = null; input.s = false; input2.a = null; input2.s = false; joy = null; joy2 = null; sprintHeld = false; sprintHeld2 = false;
+  app.emotes = []; clipStopAll(false); clip.blob = null; resetLooks();
   showPanel(null);
   $("sprintBtn").classList.remove("hidden"); $("quitBtn").classList.remove("hidden");
+  $("sprintBtn2").classList.toggle("hidden", app.mode !== "duo"); $("emoBtn").classList.toggle("hidden", app.mode === "duo"); $("emoBar").classList.add("hidden");
 }
-function startSolo() {
-  const s = rndSeed();
-  app.mode = "solo"; app.me = 0; app.oppName = `Computer · St. ${state.level}`;
-  app.match = new Match(s, [null, new Bot(state.level, s)]);
-  app.skins = [state.skin, otherSkin(state.skin, SKINS[state.level % SKINS.length].id)];
+/** Gegen den Computer: kind = duell | ueberleben | futter | boss */
+function startSolo(kind = "duell") {
+  const s = rndSeed(), L = state.level;
+  if (!MODES[kind]) kind = "duell";
+  app.mode = "solo"; app.kind = kind; app.me = 0;
+  let bots;
+  if (kind === "ueberleben") { const bl = Math.max(1, L - 1); bots = [null, new Bot(bl, s), new Bot(bl, s + 1), new Bot(bl, s + 2)]; app.oppName = "3 Computer"; }
+  else if (kind === "boss") { bots = [null, new Bot(Math.min(10, L + 1), s)]; app.oppName = "BOSS"; }
+  else { bots = [null, new Bot(L, s)]; app.oppName = `Computer · St. ${L}`; }
+  app.match = new Match(s, bots, { mode: kind, arena: state.arena });
+  app.skins = pickSkins(bots.length, kind === "boss" ? "lava" : SKINS[L % SKINS.length].id);
+  begin();
+}
+/** Zwei Spieler an einem Handy: untere Hälfte = Spieler 1 (Wurm 0), obere Hälfte = Spieler 2 (Wurm 1) */
+function startDuo() {
+  app.mode = "duo"; app.kind = "duell"; app.me = 0; app.oppName = "SPIELER 2";
+  app.match = new Match(rndSeed(), [null, null], { arena: state.arena });
+  app.skins = [state.skin, otherSkin(state.skin, "bonbon")];
   begin();
 }
 function startNetMatch() {
-  app.mode = "host"; app.me = 0; app.oppName = "Freund";
-  app.match = new Match(rndSeed(), [null, null]);
+  app.mode = "host"; app.kind = "duell"; app.me = 0; app.oppName = "Freund";
+  app.match = new Match(rndSeed(), [null, null], { arena: state.arena });
   app.skins = [state.skin, otherSkin(state.skin, app.guestSkin)];
   begin();
 }
@@ -1303,11 +1765,15 @@ function hostGame() {
   showPanel("lobbyPanel");
   const net = (app.net = makeTransport(app.code, "host"));
   net.onready = () => { if (app.net === net) $("lobbyStatus").textContent = "Warte auf deinen Freund …"; };
-  net.onopen = () => { if (app.net === net) startNetMatch(); };
+  net.onopen = () => { if (app.net === net) { app.rival = null; startNetMatch(); net.send({ k: "hi", id: myId }); } };
   net.onmessage = m => {
     if (app.net !== net || !m || app.mode !== "host") return;
     if (m.k === "i") { const inp = app.match.inputs[1]; inp.a = typeof m.a === "number" && isFinite(m.a) ? m.a : null; inp.s = !!m.s; }
-    else if (m.k === "hello") { app.guestSkin = typeof m.sk === "string" ? skinById(m.sk).id : null; app.skins = [state.skin, otherSkin(state.skin, app.guestSkin)]; app.match.full = true; }
+    else if (m.k === "hello") {
+      app.guestSkin = typeof m.sk === "string" ? skinById(m.sk).id : null; app.skins = [state.skin, otherSkin(state.skin, app.guestSkin)]; app.match.full = true;
+      app.rival = validId(m.id); rivalGreeting();
+    }
+    else if (m.k === "emo" && Number.isInteger(m.e) && m.e >= 0 && m.e < EMOTES.length) showEmote(1, m.e);
     else if (m.k === "again" && app.match.over) startNetMatch();
     else if (m.k === "bye") toMenu("Dein Freund hat das Spiel verlassen.");
   };
@@ -1331,14 +1797,16 @@ function joinGame(code) {
   net.onopen = () => {
     if (app.net !== net) return;
     clearTimeout(timeout);
-    app.mode = "guest"; app.me = 1; app.oppName = "Freund"; app.match = null; app.gv = newGuestView();
+    app.mode = "guest"; app.kind = "duell"; app.me = 1; app.oppName = "Freund"; app.match = null; app.gv = newGuestView(); app.rival = null;
     begin();
     app.skins = [otherSkin(state.skin, null), state.skin];
-    net.send({ k: "hello", sk: state.skin });
+    net.send({ k: "hello", sk: state.skin, id: myId });
   };
   net.onmessage = m => {
     if (app.net !== net || !m) return;
     if (m.k === "s") applySnap(m);
+    else if (m.k === "hi") { app.rival = validId(m.id); rivalGreeting(); }
+    else if (m.k === "emo" && Number.isInteger(m.e) && m.e >= 0 && m.e < EMOTES.length) showEmote(0, m.e);
     else if (m.k === "bye") toMenu("Dein Freund hat das Spiel verlassen.");
   };
   net.onclose = () => { if (app.net === net) { clearTimeout(timeout); toMenu("Verbindung getrennt."); } };
@@ -1350,24 +1818,38 @@ function joinGame(code) {
 }
 
 function showEnd(view) {
-  app.endShown = true; joy = null; sprintHeld = false; refreshSprint();
-  $("sprintBtn").classList.add("hidden");
-  const w = view.matchWinner, won = w === app.me, draw = w === -1;
-  const score = `${view.scores[app.me]} : ${view.scores[1 - app.me]}`;
-  let sub = `Endstand ${score}`;
+  app.endShown = true; joy = null; joy2 = null; sprintHeld = false; sprintHeld2 = false; refreshSprint();
+  $("sprintBtn").classList.add("hidden"); $("sprintBtn2").classList.add("hidden"); $("emoBar").classList.add("hidden");
+  const w = view.matchWinner, won = w === app.me, draw = w === -1, duo = app.mode === "duo";
+  const others = view.scores.filter((_, i) => i !== app.me);
+  const score = others.length === 1 ? `${view.scores[app.me]} : ${others[0]}` : `${view.scores[app.me]} : ${Math.max(...others)} (bester Gegner)`;
+  let sub = `Endstand ${duo ? `${view.scores[0]} : ${view.scores[1]}` : score}`;
   if (app.mode === "solo") {
-    if (won) {
-      state.wins++; state.level++; save(); sub += ` · Stufe ${state.level} freigeschaltet`;
-      const neu = SKINS.find(k => k.unlock === state.level);
-      if (neu) sub += ` · Neues Wurm-Design: ${neu.name}`;
-    }
-    $("againBtn").textContent = won ? `Weiter: Stufe ${state.level}` : "Nochmal versuchen";
+    if (app.kind === "duell") {
+      if (won) {
+        state.wins++; state.level++; save(); sub += ` · Stufe ${state.level} freigeschaltet`;
+        const neu = SKINS.find(k => k.unlock === state.level);
+        if (neu) sub += ` · Neues Wurm-Design: ${neu.name}`;
+      }
+      $("againBtn").textContent = won ? `Weiter: Stufe ${state.level}` : "Nochmal versuchen";
+    } else $("againBtn").textContent = "Nochmal";
   } else $("againBtn").textContent = "Revanche";
-  $("endTitle").innerHTML = draw ? "Unentschieden" : won ? '<span class="win">Duell gewonnen! 🏆</span>' : '<span class="lose">Duell verloren</span>';
+  if ((app.mode === "host" || app.mode === "guest") && app.rival) {           // Bilanz gegen diesen Freund
+    const r = rivals[app.rival] || (rivals[app.rival] = { w: 0, l: 0, d: 0, s: 0 });
+    if (won) { r.w++; r.s = r.s > 0 ? r.s + 1 : 1; } else if (draw) r.d++; else { r.l++; r.s = r.s < 0 ? r.s - 1 : -1; }
+    store.set("rivals", rivals);
+    sub += `\nBilanz gegen diesen Freund: ${r.w} : ${r.l}` + (r.d ? ` (${r.d}× unentschieden)` : "") +
+      (r.s >= 2 ? ` · 🔥 ${r.s} Siege in Folge` : r.s <= -2 ? ` · ${-r.s} Niederlagen in Folge` : "");
+  }
+  const title = view.mode === "boss" && won ? "Boss besiegt! 👑" : "Duell gewonnen! 🏆";
+  $("endTitle").innerHTML = draw ? "Unentschieden" : duo ? `<span class="win">Spieler ${w + 1} gewinnt! 🏆</span>` :
+    won ? `<span class="win">${title}</span>` : `<span class="lose">${app.kind === "boss" ? "Der Boss war stärker" : "Duell verloren"}</span>`;
   $("endSub").textContent = sub;
-  showPanel("endPanel");
+  showPanel("endPanel"); refreshClipBtn();
+  if (duo) { if (!draw) { confetti(); [523, 659, 784, 1047].forEach((f, k) => setTimeout(() => tone(f, k === 3 ? 0.5 : 0.16, "triangle", 0.3), k * 140)); } return; }
   if (won) {
-    bump("duel"); if (app.mode !== "solo") bump("online");
+    bump("duel"); if (app.mode === "host" || app.mode === "guest") bump("online");
+    if (app.mode === "solo" && app.kind !== "duell") bump(app.kind);
     stats.winStreak = (stats.winStreak || 0) + 1; stats.bestStreak = Math.max(stats.bestStreak || 0, stats.winStreak);
     confetti(); vib([40, 60, 40, 60, 160]);
     [523, 659, 784, 1047].forEach((f, k) => setTimeout(() => tone(f, k === 3 ? 0.5 : 0.16, "triangle", 0.3), k * 140));   // Fanfare
@@ -1394,10 +1876,16 @@ function frame(ts) {
     while (app.acc >= DT) {
       app.acc -= DT;
       if (m.over) break;
-      if (inGame()) { const inp = m.inputs[app.me]; if (!m.bots[app.me]) { inp.a = input.a; inp.s = input.s; } }
+      if (inGame()) {
+        const inp = m.inputs[app.me]; if (!m.bots[app.me]) { inp.a = input.a; inp.s = input.s; }
+        if (app.mode === "duo") { m.inputs[1].a = input2.a; m.inputs[1].s = input2.s; }
+      }
       const round = m.round;
       m.tick();
-      if (m.round !== round) { app.why = [null, null]; resetLooks(); input.a = null; if (joy) { joy.ox = joy.x; joy.oy = joy.y; } }
+      if (m.round !== round) {
+        resetLooks(); input.a = null; input2.a = null;
+        for (const j of [joy, joy2]) if (j) { j.ox = j.x; j.oy = j.y; }
+      }
       if (app.mode === "host" && app.net && m.ticks % 2 === 0) app.net.send(buildSnap(m));
     }
     if (inGame()) for (const e of m.events) fx(e); else for (const e of m.events) if (e.type === "die") app.why[e.i] = e.why;
@@ -1413,7 +1901,8 @@ function frame(ts) {
   }
   app.view = view;
   if (view && inGame()) trackFrame(view, dt);
-  if (joy && inGame() && !app.endShown) aimAtFinger();
+  clipTick(view, now);
+  if (inGame() && !app.endShown) { if (joy) aimAtFinger(0); if (joy2) aimAtFinger(1); }
   render(view, now, dt);
   requestAnimationFrame(frame);
 }
@@ -1422,54 +1911,104 @@ function frame(ts) {
    Steuerung: schwebender Joystick, Sprint, Tastatur
    ================================================================ */
 const DTAP_MS = 300, DTAP_PX = 50;           // Doppeltipp: höchstens so viel Zeit und Abstand zwischen den zwei Tipps
-let lastTap = null;                          // letzter losgelassener Tipp auf dem Spielfeld {t, x, y}
-// Sprint: ⚡-Knopf, Leertaste oder Doppeltipp-und-halten (hängt am lenkenden Finger und endet mit ihm)
-const refreshSprint = () => { input.s = sprintHeld || keys.has(" ") || !!(joy && joy.sprint); $("sprintBtn").classList.toggle("on", input.s); };
+const lastTaps = [null, null];               // letzter losgelassener Tipp auf dem Spielfeld {t, x, y}, pro Spieler
+// Sprint: ⚡-Knopf, Leertaste (Spieler 2: Umschalttaste) oder Doppeltipp-und-halten (hängt am lenkenden Finger und endet mit ihm)
+const refreshSprint = () => {
+  input.s = sprintHeld || keys.has(" ") || !!(joy && joy.sprint);
+  input2.s = sprintHeld2 || keys.has("Shift") || !!(joy2 && joy2.sprint);
+  $("sprintBtn").classList.toggle("on", input.s); $("sprintBtn2").classList.toggle("on", input2.s);
+};
 const keys = new Set();
 cv.addEventListener("pointerdown", e => {
   if (!inGame() || app.endShown) return;
   e.preventDefault();
+  $("emoBar").classList.add("hidden");
   // Der zuletzt aufgesetzte Finger lenkt – der Kreis sitzt immer dort, wo man gerade hingreift.
-  const now = performance.now();
-  const dbl = !!lastTap && now - lastTap.t <= DTAP_MS && Math.hypot(e.clientX - lastTap.x, e.clientY - lastTap.y) <= DTAP_PX;
-  lastTap = null;
-  joy = { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY, sprint: dbl };
+  // Zwei Spieler: die obere Bildschirmhälfte gehört Spieler 2.
+  const r = cv.getBoundingClientRect(), p = app.mode === "duo" && e.clientY < r.top + r.height / 2 ? 1 : 0;
+  const now = performance.now(), lt = lastTaps[p];
+  const dbl = !!lt && now - lt.t <= DTAP_MS && Math.hypot(e.clientX - lt.x, e.clientY - lt.y) <= DTAP_PX;
+  lastTaps[p] = null;
+  setJoy(p, { id: e.pointerId, ox: e.clientX, oy: e.clientY, x: e.clientX, y: e.clientY, sprint: dbl });
   try { cv.setPointerCapture(e.pointerId); } catch {}
-  aimAtFinger(); refreshSprint();
+  aimAtFinger(p); refreshSprint();
 });
 cv.addEventListener("pointermove", e => {
-  if (!joy || e.pointerId !== joy.id) return;
-  joy.x = e.clientX; joy.y = e.clientY;
-  if (state.steer === "finger") { aimAtFinger(); return; }
-  const dx = joy.x - joy.ox, dy = joy.y - joy.oy, d = Math.hypot(dx, dy);
-  if (d > JOY_DEAD) input.a = Math.atan2(dy, dx);
-  if (d > JOY_R) { joy.ox = joy.x - (dx / d) * JOY_R; joy.oy = joy.y - (dy / d) * JOY_R; }
+  for (const p of [0, 1]) {
+    const j = padJoy(p); if (!j || e.pointerId !== j.id) continue;
+    j.x = e.clientX; j.y = e.clientY;
+    if (state.steer === "finger") { aimAtFinger(p); return; }
+    const dx = j.x - j.ox, dy = j.y - j.oy, d = Math.hypot(dx, dy);
+    if (d > JOY_DEAD) padInput(p).a = Math.atan2(dy, dx);
+    if (d > JOY_R) { j.ox = j.x - (dx / d) * JOY_R; j.oy = j.y - (dy / d) * JOY_R; }
+    return;
+  }
 });
 const pointerEnd = e => {
-  if (!joy || e.pointerId !== joy.id) return;
-  if (e.type === "pointerup") lastTap = { t: performance.now(), x: e.clientX, y: e.clientY };   // möglicher erster Tipp eines Doppeltipps
-  joy = null; refreshSprint();
+  for (const p of [0, 1]) {
+    const j = padJoy(p); if (!j || e.pointerId !== j.id) continue;
+    if (e.type === "pointerup") lastTaps[p] = { t: performance.now(), x: e.clientX, y: e.clientY };   // möglicher erster Tipp eines Doppeltipps
+    setJoy(p, null); refreshSprint();
+  }
 };
 for (const ev of ["pointerup", "pointercancel", "lostpointercapture"]) cv.addEventListener(ev, pointerEnd);
 for (const ev of ["pointerup", "pointercancel"]) addEventListener(ev, pointerEnd);
-const dropTouches = () => { joy = null; lastTap = null; sprintHeld = false; keys.clear(); refreshSprint(); };
+const dropTouches = () => { joy = null; joy2 = null; lastTaps[0] = lastTaps[1] = null; sprintHeld = false; sprintHeld2 = false; keys.clear(); refreshSprint(); };
 addEventListener("blur", dropTouches);
 document.addEventListener("visibilitychange", () => { if (document.hidden) dropTouches(); });
-const sb = $("sprintBtn");
-sb.addEventListener("pointerdown", e => { e.preventDefault(); sprintHeld = true; refreshSprint(); });
-for (const ev of ["pointerup", "pointercancel", "pointerleave"]) sb.addEventListener(ev, () => { sprintHeld = false; refreshSprint(); });
+for (const [id, p] of [["sprintBtn", 0], ["sprintBtn2", 1]]) {
+  const set = v => { if (p) sprintHeld2 = v; else sprintHeld = v; refreshSprint(); };
+  $(id).addEventListener("pointerdown", e => { e.preventDefault(); set(true); });
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) $(id).addEventListener(ev, () => set(false));
+}
 const KEY_DIR = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], a: [-1, 0], d: [1, 0], w: [0, -1], s: [0, 1] };
+const keyName = e => (e.key.length === 1 ? e.key.toLowerCase() : e.key);
 addEventListener("keydown", e => {
   if (!inGame() || e.target.tagName === "INPUT") return;
-  if (KEY_DIR[e.key] || e.key === " ") { e.preventDefault(); keys.add(e.key); }
-  let x = 0, y = 0; for (const k of keys) if (KEY_DIR[k]) { x += KEY_DIR[k][0]; y += KEY_DIR[k][1]; }
-  if (x || y) input.a = Math.atan2(y, x);
+  const k = keyName(e);
+  if (KEY_DIR[k] || k === " " || k === "Shift") { e.preventDefault(); keys.add(k); }
+  // Zwei Spieler: Pfeiltasten = Spieler 1, WASD = Spieler 2; sonst lenken beide Tastengruppen
+  const duo = app.mode === "duo";
+  for (const p of duo ? [0, 1] : [0]) {
+    let x = 0, y = 0;
+    for (const key of keys) if (KEY_DIR[key] && (!duo || (p === 0) === key.startsWith("Arrow"))) { x += KEY_DIR[key][0]; y += KEY_DIR[key][1]; }
+    if (x || y) padInput(p).a = Math.atan2(y, x);
+  }
   refreshSprint();
 });
-addEventListener("keyup", e => { keys.delete(e.key); refreshSprint(); });
+addEventListener("keyup", e => { keys.delete(keyName(e)); refreshSprint(); });
 
 /* Knöpfe */
-$("soloBtn").onclick = startSolo;
+$("soloBtn").onclick = () => startSolo("duell");
+$("modeBtn").onclick = () => showPanel("modePanel");
+$("modeBack").onclick = () => showPanel("menuPanel");
+for (const b of document.querySelectorAll("#modePanel [data-mode]")) b.onclick = () => (b.dataset.mode === "duo" ? startDuo() : startSolo(b.dataset.mode));
+const refreshArenaBtn = () => ($("arenaBtn").textContent = `🏟️ Arena: ${ARENA_NAME[state.arena]}`);
+$("arenaBtn").onclick = () => {
+  const ids = Object.keys(ARENAS); state.arena = ids[(ids.indexOf(state.arena) + 1) % ids.length]; save(); refreshArenaBtn();
+  startDemo();                                              // das Demo-Duell zeigt die gewählte Arena sofort
+};
+refreshArenaBtn();
+// Emotes: Knopf öffnet eine Leiste, ein Tipp schickt das Emote (online an den Freund, sonst antwortet manchmal der Computer)
+EMOTES.forEach((em, k) => {
+  const b = document.createElement("button"); b.textContent = em; b.dataset.e = k;
+  b.onclick = () => {
+    $("emoBar").classList.add("hidden");
+    const now = performance.now(); if (now - app.lastEmo < 700) return; app.lastEmo = now;
+    showEmote(app.me, k);
+    if (app.net && (app.mode === "host" || app.mode === "guest")) app.net.send({ k: "emo", e: k });
+    else if (app.mode === "solo" && Math.random() < 0.6) {
+      const bot = 1 + Math.floor(Math.random() * (app.match.sim.snakes.length - 1));
+      setTimeout(() => { if (app.mode === "solo" && app.view && app.view.snakes[bot]) showEmote(bot, Math.floor(Math.random() * EMOTES.length)); }, 700 + Math.random() * 600);
+    }
+  };
+  $("emoBar").appendChild(b);
+});
+$("emoBtn").onclick = () => $("emoBar").classList.toggle("hidden");
+$("clipBtn").onclick = saveClip;
+const refreshClipToggle = () => ($("clipToggle").textContent = `🎬 Clips: ${state.clip ? "an" : "aus"}`);
+$("clipToggle").onclick = () => { state.clip = !state.clip; save(); refreshClipToggle(); };
+refreshClipToggle();
 $("hostBtn").onclick = hostGame;
 $("joinBtn").onclick = () => joinGame($("codeInput").value);
 $("codeInput").addEventListener("keydown", e => { if (e.key === "Enter") joinGame($("codeInput").value); });
@@ -1541,7 +2080,8 @@ $("goalDone").onclick = () => showPanel("menuPanel");
 $("menuBtn").onclick = () => toMenu();
 $("quitBtn").onclick = () => { if (confirm("Spiel wirklich verlassen?")) toMenu(); };
 $("againBtn").onclick = () => {
-  if (app.mode === "solo") startSolo();
+  if (app.mode === "solo") startSolo(app.kind);
+  else if (app.mode === "duo") startDuo();
   else if (app.mode === "host") startNetMatch();
   else if (app.mode === "guest" && app.net) { app.net.send({ k: "again" }); showToast("Revanche angefragt …"); }
 };
@@ -1555,7 +2095,7 @@ $("shareBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
-window.SD = { app, state, input, Sim, Bot, Match, SKINS, skinsReady: false,
+window.SD = { app, state, input, input2, Sim, Bot, Match, SKINS, ARENAS, clip, rivals, startSolo, startDuo, skinsReady: false,
   goals: { stats, streak, achDone, owned, TASKS, ACHS, today, daily: () => ensureDaily(), stars: () => starCount, setStars: n => { starCount = n; saveGoals(); }, bump, check: checkGoals } };
 loadImageSkins().finally(() => { window.SD.skinsReady = true; if (!inGame()) { demoSkins(); refreshSkinBtn(); if (!$("skinPanel").classList.contains("hidden")) buildSkinGrid(); } });
 
