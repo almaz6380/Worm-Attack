@@ -14,7 +14,9 @@ fs.mkdirSync(shots, { recursive: true });
 (async () => {
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ ...devices["iPhone 13"] });
-  await ctx.addInitScript(() => { try { if (!localStorage.getItem("sd_name")) localStorage.setItem("sd_name", '"Anna"'); } catch {} });   // beide Fenster teilen sich den Speicher
+  await ctx.addInitScript(() => { try { if (!localStorage.getItem("sd_name")) localStorage.setItem("sd_name", '"Anna"'); } catch {} });
+  // Tägliches Geschenk als schon abgeholt markieren, damit das Menü direkt erscheint
+  await ctx.addInitScript(() => { try { const d = new Date(), s = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; localStorage.setItem("sd_gift", JSON.stringify({ last: s, n: 1 })); } catch {} });   // beide Fenster teilen sich den Speicher
   const host = await ctx.newPage(), guest = await ctx.newPage();
   const errors = [];
   for (const [n, p] of [["Gastgeber", host], ["Gast", guest]]) {

@@ -34,6 +34,15 @@ Im Menü über „Arena: …“ umschalten. Gilt für alle Spielarten, online w�
 | Karussell | sechs Blöcke kreisen um die Mitte |
 | Portale | zwei Portal-Paare: rein und beim gleichfarbigen wieder raus. In der schrumpfenden Arena schließen sie sich |
 
+## Erster Start
+- **Tägliches Geschenk:** Beim ersten Öffnen am Tag gibt es Sterne, an 7 Tagen am Stück mehr.
+- **Übungsrunde:** Beim allerersten „Spielen“ lernst du in drei Schritten lenken, fressen und Joker sammeln. Danach
+  kommt das erste Duell gegen einen Anfänger-Computer. Die Übungsrunde lässt sich überspringen und unter „Regeln“
+  wiederholen.
+- **Pause:** ⏸ links oben (gegen den Computer und zu zweit). Verlässt du die App, pausiert das Spiel von selbst.
+- **Ton und Musik:** Das Spiel hat eigene Hintergrundmusik. Töne und Musik lassen sich unter „Regeln“ und in der
+  Pause abschalten.
+
 ## Startbildschirm
 Oben der Schriftzug, in der Mitte ein Demo-Duell in der gewählten Arena. Darunter: deine Stufe, Sterne und Siege,
 der große Knopf „▶ SPIELEN“ (Duell gegen den Computer), „🎮 Spielarten“, „👥 Online“ und vier Kacheln: Wurm, Arena,
@@ -57,6 +66,7 @@ Im Menü über den Knopf „Wurm: …“ wählbar. Die Designs ändern nur das A
 | Design | Frei ab |
 | --- | --- |
 | Minze, Bonbon, Tiger, Vorlage, Smaragddrache, Raupe, Donut, Roboter | sofort |
+| Zebra, Gold, Feuerwerk, Ozean, Galaxie, Diamant | für 5, 12, 15, 20, 25, 35 ⭐ |
 | Biene | Stufe 2 |
 | Eis | Stufe 3 |
 | Eiskristall | Stufe 4 |

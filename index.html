@@ -117,6 +117,20 @@
   .tab.on { background: rgba(255,211,77,0.16); border-color: var(--accent); color: var(--accent); }
   .goal input.rn { width: 100%; border: 0; background: transparent; color: var(--text); font: inherit; font-weight: 800; font-size: 14.5px; padding: 0; user-select: text; -webkit-user-select: text; }
   .goal .sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .quit.pausebtn { top: calc(max(10px, env(safe-area-inset-top)) + 92px); }      /* unter ✕ und 😀 */
+  .quit.pausebtn.up { top: calc(max(10px, env(safe-area-inset-top)) + 46px); }   /* ohne 😀-Knopf: direkt unter ✕ */
+  .tutbox { position: absolute; left: 60px; right: 12px; top: max(10px, env(safe-area-inset-top)); background: var(--panel); border: 2px solid var(--accent);
+    border-radius: 16px; padding: 9px 12px 8px; display: flex; flex-direction: column; gap: 5px; box-shadow: 0 6px 24px rgba(0,0,0,0.4); }
+  .tuttext { font-size: 15px; font-weight: 800; line-height: 1.3; }
+  .tutdots { display: flex; gap: 5px; }
+  .tutdots i { width: 22px; height: 5px; border-radius: 9px; background: rgba(255,255,255,0.18); }
+  .tutdots i.on { background: var(--accent); }
+  .tutskip { align-self: flex-end; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: 12.5px; font-weight: 700; padding: 0; }
+  .giftdays { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .giftdays div { border: 1px solid var(--line); border-radius: 10px; padding: 6px 0 5px; text-align: center; font-size: 11px; font-weight: 700; color: var(--muted); background: rgba(255,255,255,0.04); }
+  .giftdays div b { display: block; font-size: 15px; color: var(--text); }
+  .giftdays div.past { border-color: rgba(61,220,132,0.5); color: var(--good); }
+  .giftdays div.now { border: 2px solid var(--accent); background: rgba(255,211,77,0.16); color: var(--accent); animation: pulse 1.6s ease-in-out infinite; }
   .quit { position: absolute; left: 12px; top: max(10px, env(safe-area-inset-top)); width: 38px; height: 38px; border-radius: 50%;
     border: 1px solid var(--line); background: rgba(10,12,20,0.7); color: var(--muted); font: inherit; font-size: 16px; }
 </style>
@@ -126,6 +140,12 @@
   <canvas id="cv"></canvas>
   <div class="toast" id="toast"></div>
   <button class="quit hidden" id="quitBtn" aria-label="Spiel verlassen">✕</button>
+  <button class="quit pausebtn hidden" id="pauseBtn" aria-label="Pause">⏸</button>
+  <div class="tutbox hidden" id="tutBox">
+    <div class="tutdots" id="tutDots"></div>
+    <div class="tuttext" id="tutText"></div>
+    <button class="tutskip" id="tutSkip">Überspringen ›</button>
+  </div>
   <button class="sprint hidden" id="sprintBtn" aria-label="Sprint">⚡<span>SPRINT</span></button>
   <button class="sprint p2 hidden" id="sprintBtn2" aria-label="Sprint Spieler 2">⚡<span>SPRINT</span></button>
   <button class="emo hidden" id="emoBtn" aria-label="Emote senden">😀</button>
@@ -196,6 +216,25 @@
     <button class="btn" id="againBtn">Nochmal</button>
     <button class="btn ghost hidden" id="clipBtn">🎬 Clip speichern</button>
     <button class="btn ghost" id="menuBtn">Menü</button>
+  </div>
+
+  <!-- Pause -->
+  <div class="panel hidden" id="pausePanel">
+    <div class="title">⏸ Pause</div>
+    <button class="btn" id="resumeBtn">▶ Weiter</button>
+    <div class="row">
+      <button class="btn ghost small2 fxBtn">🔊 Töne: an</button>
+      <button class="btn ghost small2 musicBtn">🎵 Musik: an</button>
+    </div>
+    <button class="btn ghost" id="pauseQuit">Spiel verlassen</button>
+  </div>
+
+  <!-- Tägliches Geschenk -->
+  <div class="panel hidden" id="giftPanel">
+    <div class="title">🎁 Dein tägliches Geschenk</div>
+    <div class="giftdays" id="giftDays"></div>
+    <div class="note" id="giftNote"></div>
+    <button class="btn" id="giftTake">Abholen</button>
   </div>
 
   <!-- Spielarten -->
@@ -291,9 +330,14 @@
     </div>
     <button class="btn ghost" id="steerBtn">🕹️ Lenkung: Kreis</button>
     <div class="row">
+      <button class="btn ghost small2 fxBtn">🔊 Töne: an</button>
+      <button class="btn ghost small2 musicBtn">🎵 Musik: an</button>
+    </div>
+    <div class="row">
       <button class="btn ghost small2" id="vibBtn">📳 Vibration: an</button>
       <button class="btn ghost small2" id="clipToggle">🎬 Clips: an</button>
     </div>
+    <button class="btn ghost" id="tutAgain">🎓 Übungsrunde starten</button>
     <button class="btn ghost" id="helpClose">Verstanden</button>
   </div>
 </div>
@@ -328,6 +372,7 @@ const MODES = {
   duell:      { n: 2, dur: 60, sd: true,  food: 7 },
   ueberleben: { n: 4, dur: 60, sd: true,  food: 10 },
   futter:     { n: 2, dur: 45, sd: false, food: 14, lives: 999 },   // niemand scheidet aus, Treffer kosten Länge
+  uebung:     { n: 1, dur: 600, sd: false, food: 7, lives: 999, solo: true },   // Übungsrunde beim ersten Start: nur der eigene Wurm
   boss:       { n: 2, dur: 60, sd: true,  food: 7, boss: 1 },       // Wurm 1 ist der Boss
 };
 /* Bosse: Größe, Startlänge, Tempo und Drehrate (relativ), Leben; n = wie viele Boss-Würmer; plus = Bot-Stufe darüber;
@@ -593,7 +638,7 @@ class Sim {
     }
 
     const alive = S.filter(s => s.alive), teams = new Set(alive.map(s => s.team));
-    if (teams.size <= 1) {                                    // höchstens ein Team übrig (ohne Bosse ist jeder Wurm sein eigenes Team)
+    if (teams.size <= 1 && !MODES[this.mode].solo) {                                    // höchstens ein Team übrig (ohne Bosse ist jeder Wurm sein eigenes Team)
       this.done = true; this.reason = "crash";
       this.winner = alive.length ? alive[0].team : -1;
     } else if (t >= this.dur) this.finish("time");
@@ -662,6 +707,9 @@ class Bot {
     this.err = 0.11 * Math.pow(1 - k, 1.5);       // Fehlerquote pro Entscheidung
     this.deep = k >= 0.45;                        // zweite Vorschau-Stufe: gibt es danach noch einen Ausweg?
     this.predict = k >= 0.3;                      // rechnet den Weg des Gegners als Hindernis voraus
+    if (level < 1) {                              // Stufe 0: Anfänger für das allererste Duell – kurzsichtig, träge, macht mehr Fehler
+      this.horizon = 0.45; this.interval = 13; this.err = 0.22;
+    }
     this.tick = 0; this.out = { a: null, s: false };
   }
 
@@ -852,21 +900,57 @@ if (!Object.prototype.hasOwnProperty.call(ARENAS, state.arena)) state.arena = "k
 const save = () => { store.set("name", state.name); store.set("level", state.level); store.set("wins", state.wins); store.set("steer", state.steer); store.set("skin", state.skin); store.set("vib", state.vib); store.set("arena", state.arena); store.set("clip", state.clip); store.set("netmode", state.netmode); };
 const ARENA_NAME = { klassisch: "Klassisch", saeulen: "Säulen", karussell: "Karussell", portale: "Portale" };
 
-const audio = { ctx: null, master: null };
+const audio = { ctx: null, master: null, music: null };
+const snd = Object.assign({ fx: true, music: true }, store.get("sound", {}) || {});   // Schalter für Töne und Musik (sd_sound)
 function initAudio() {
   if (audio.ctx) { audio.ctx.resume && audio.ctx.resume(); return; }
   try {
     audio.ctx = new (window.AudioContext || window.webkitAudioContext)();
     audio.master = audio.ctx.createGain(); audio.master.gain.value = 0.3; audio.master.connect(audio.ctx.destination);
+    audio.music = audio.ctx.createGain(); audio.music.gain.value = 0; audio.music.connect(audio.master);
   } catch { audio.ctx = null; }
 }
 function tone(freq, dur = 0.1, type = "sine", vol = 0.4, slide = 0) {
-  const ac = audio.ctx; if (!ac || !inGame()) return;
+  const ac = audio.ctx; if (!ac || !inGame() || !snd.fx) return;
   const now = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
   o.type = type; o.frequency.setValueAtTime(freq, now);
   if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq * slide), now + dur);
   g.gain.setValueAtTime(0.0001, now); g.gain.exponentialRampToValueAtTime(vol, now + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
   o.connect(g); g.connect(audio.master); o.start(now); o.stop(now + dur + 0.02);
+}
+
+/* Hintergrundmusik: im Spiel erzeugt (keine Musikdateien). Akkorde Am – F – C – G mit Bass, Flächen und Arpeggio,
+   in der Schlussphase einer Runde schneller. Wird kurz im Voraus geplant, damit sie nicht stockt. */
+const SONG = { chords: [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]], arp: [0, 1, 2, 1, 0, 2, 1, 2] };
+const music = { next: 0, step: 0 };
+const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+function musicNote(m, t, dur, type, vol) {
+  const ac = audio.ctx, o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.setValueAtTime(mtof(m), t);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(audio.music); o.start(t); o.stop(t + dur + 0.05);
+}
+function musicTick() {
+  const ac = audio.ctx; if (!ac || !audio.music) return;
+  const want = snd.music && !app.paused && !document.hidden && ac.state === "running";
+  audio.music.gain.setTargetAtTime(want ? (inGame() ? 0.5 : 0.35) : 0, ac.currentTime, 0.25);
+  if (!want) { music.next = 0; return; }
+  const v = app.view, hot = inGame() && v && v.sdOn && v.t >= SD_START && v.phase === "play";
+  const spb = 60 / (hot ? 128 : 104) / 2;                  // Achtelnoten
+  if (music.next < ac.currentTime) music.next = ac.currentTime + 0.05;
+  while (music.next < ac.currentTime + 0.3) {
+    const st = music.step++, ch = SONG.chords[Math.floor(st / 8) % 4], k = st % 8, t = music.next;
+    if (k === 0) { musicNote(ch[0] - 24, t, spb * 7.5, "triangle", 0.45); for (const n of ch) musicNote(n, t, spb * 8, "sine", 0.06); }
+    if (k === 4) musicNote(ch[0] - 12, t, spb * 3, "triangle", 0.22);
+    musicNote(ch[SONG.arp[k]] + 12, t, spb * 0.9, "triangle", k % 2 ? 0.05 : 0.08);
+    music.next += spb;
+  }
+}
+setInterval(musicTick, 90);
+addEventListener("pointerdown", () => initAudio(), { capture: true });     // Töne dürfen erst nach dem ersten Tippen starten
+function refreshSoundBtns() {
+  for (const b of document.querySelectorAll(".fxBtn")) b.textContent = `${snd.fx ? "🔊" : "🔇"} Töne: ${snd.fx ? "an" : "aus"}`;
+  for (const b of document.querySelectorAll(".musicBtn")) b.textContent = `🎵 Musik: ${snd.music ? "an" : "aus"}`;
 }
 
 /* ================================================================
@@ -891,6 +975,9 @@ const SKINS = [
   { id: "zebra",   name: "Zebra",   unlock: 1, stars: 5,  main: "#f1f1f4", pal: ["#f4f4f6", "#f4f4f6", "#23252e", "#23252e"] },
   { id: "gold",    name: "Gold",    unlock: 1, stars: 12, main: "#ffd34d", pal: ramp(["#fff3a8", "#ffd34d", "#c98a12", "#ffd34d"], 12) },
   { id: "galaxie", name: "Galaxie", unlock: 1, stars: 25, main: "#7a5cff", pal: ramp(["#241a7a", "#7a5cff", "#ff5ac8", "#36e7ff"], 20), dot: "#ffffff" },
+  { id: "feuerwerk", name: "Feuerwerk", unlock: 1, stars: 15, main: "#ff4d8d", pal: ramp(["#ff4d8d", "#ffd34d", "#4dd2ff", "#9dff8a"], 8), dot: "#ffffff" },
+  { id: "ozean",   name: "Ozean",   unlock: 1, stars: 20, main: "#1fa2ff", pal: ramp(["#0b3d91", "#1fa2ff", "#7ff0ff", "#1fa2ff"], 18) },
+  { id: "diamant", name: "Diamant", unlock: 1, stars: 35, main: "#d8f6ff", pal: ramp(["#ffffff", "#bdefff", "#8fd3ff", "#e9d8ff"], 10), dot: "#ffffff" },
 ];
 const skinById = id => SKINS.find(k => k.id === id) || SKINS[0];
 
@@ -988,7 +1075,7 @@ const app = {
   oppName: "Computer", why: [null, null], particles: [],
   slow: { t0: -9, until: -9, x: 0, y: 0 }, shakeUntil: -9, lastPhase: null, lastCount: 0, roundSprint: false, surviveAcc: 0, goalTick: 0,
   skins: ["minze", "bonbon"], guestSkin: null, preview: null, bulges: [[], []], look: [0, 0], lastDir: [0, 0], deadAt: [0, 0],
-  kind: "duell", emotes: [], lastEmo: 0, rival: null, boss: "riese", tour: null,
+  kind: "duell", emotes: [], lastEmo: 0, rival: null, boss: "riese", tour: null, paused: false, tut: null,
   friendAway: false, hostAway: false, waitingHost: false, pauseUntil: 0,
 };
 const input = { a: null, s: false }, input2 = { a: null, s: false };   // input2: Spieler 2 im Modus „Zwei Spieler“
@@ -998,7 +1085,7 @@ const inGame = () => app.mode === "solo" || app.mode === "host" || app.mode === 
    Darstellung
    ================================================================ */
 const stars = (() => { const r = mulberry32(4711), s = []; for (let i = 0; i < 130; i++) s.push([r() * W, r() * H, r() * 1.4 + 0.3, r()]); return s; })();
-const PANELS = ["menuPanel", "lobbyPanel", "endPanel", "helpPanel", "skinPanel", "goalPanel", "modePanel", "onlinePanel", "bossPanel", "rivalPanel"];
+const PANELS = ["menuPanel", "lobbyPanel", "endPanel", "helpPanel", "skinPanel", "goalPanel", "modePanel", "onlinePanel", "bossPanel", "rivalPanel", "pausePanel", "giftPanel"];
 
 function targetLayout() {
   if (inGame() && !app.endShown) return [600, 335];
@@ -1307,6 +1394,7 @@ const myTeam = view => teamOf(view, app.me);
 const icons = sn => (sn.turbo ? " ⚡" : "") + (sn.ghost ? " 👻" : "") + (sn.shield ? " 🛡️" : "") + (sn.slow ? " ❄️" : "") + (sn.magnet ? " 🧲" : "");
 const playerName = i => (app.mode === "duo" ? `Spieler ${i + 1}` : i === app.me ? "DU" : app.oppName);
 function drawHud(view) {
+  if (app.kind === "uebung") { drawTutorial(view); return; }
   const me = app.me, N = view.snakes.length, sd = view.sdOn && view.t >= SD_START && view.phase === "play";
   const bossMode = view.mode === "boss";
   const hearts = sn => {                                   // ein Wurm: Herzen einzeln, ein Team aus mehreren: Summe (passt sonst nicht in die Zeile)
@@ -1572,6 +1660,7 @@ function vib(pattern) { if (!state.vib || !inGame() || !navigator.vibrate) retur
 function fx(e) {
   const mine = inGame() && e.i === app.me;
   if (e.type === "eat" && mine) app.roundFood = (app.roundFood || 0) + 1;
+  if (app.tut && mine && (e.type === "eat" || e.type === "power")) { if (e.type === "eat") app.tut.food++; else app.tut.joker = true; refreshTut(); }
   if (e.type === "eat") { burst(e.x, e.y, colorOf(e.i), 5, 120); app.bulges[e.i].push(app.lastTs); if (e.i === app.me) tone(660, 0.07, "triangle", 0.25, 1.4); if (mine) bump("food"); }
   else if (e.type === "spawn") { burst(e.x, e.y, "#ffd34d", 10, 160); tone(520, 0.25, "sine", 0.2, 1.5); }
   else if (e.type === "power") {
@@ -1736,7 +1825,7 @@ function ensureDaily() {
 }
 /** Zähler erhöhen (oder bei max: Höchstwert merken) – für die Statistik und die heutige Aufgabe */
 function bump(key, n = 1, isMax = false) {
-  if (app.mode === "duo") return;                          // zwei Spieler an einem Handy: zählt nicht für Aufgaben und Erfolge
+  if (app.mode === "duo" || app.kind === "uebung") return; // zwei Spieler an einem Handy und Übungsrunde: zählt nicht für Aufgaben und Erfolge
   stats[key] = isMax ? Math.max(stats[key] || 0, n) : (stats[key] || 0) + n;
   const d = ensureDaily();
   if (d.ids.includes(key) && !d.done[key]) d.prog[key] = isMax ? Math.max(d.prog[key] || 0, n) : (d.prog[key] || 0) + n;
@@ -1777,7 +1866,7 @@ const RECS = [
 ].concat(BOSS_ORDER.map(b => ({ id: "boss_" + b, text: `Schnellster Sieg gegen ${BOSS_INFO[b].name}`, fmt: fmtTime, low: true })));
 /** Neuen Wert eintragen, wenn er besser ist. Meldung nur, wenn es vorher schon einen Rekord gab */
 function setRecord(id, v) {
-  const def = RECS.find(r => r.id === id); if (!def || app.mode === "duo" || !(v > 0)) return false;
+  const def = RECS.find(r => r.id === id); if (!def || app.mode === "duo" || app.kind === "uebung" || !(v > 0)) return false;
   const old = records[id];
   if (old && !(def.low ? v < old.v - 1e-6 : v > old.v + 1e-6)) return false;
   records[id] = { v: Math.round(v * 100) / 100, d: today() }; store.set("records", records);
@@ -1886,6 +1975,7 @@ function clipStopAll(keepOldest) {
   recs.forEach((r, k) => { r.keep = keepOldest && k === 0; try { if (r.rec.state !== "inactive") r.rec.stop(); } catch {} });
 }
 function clipTick(view, now) {
+  if (app.kind === "uebung") return;
   if (!state.clip || clip.fail || !clipOk() || !inGame() || !view) { if (clip.recs.length) clipStopAll(false); return; }
   if (clip.finalizeAt) { if (now >= clip.finalizeAt) clipStopAll(true); return; }
   if (view.phase !== "play") return;
@@ -1906,6 +1996,107 @@ async function saveClip() {
   const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = file.name;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 20000);
   showToast("Clip gespeichert");
+}
+
+/* ================================================================
+   Übungsrunde beim ersten Start: lenken, Futter fressen, Joker sammeln – dann direkt ins erste Duell
+   ================================================================ */
+const TUT = [
+  "👆 Finger aufs Spielfeld legen und in eine Richtung ziehen – so lenkst du deinen Wurm.",
+  "✨ Friss 3 leuchtende Punkte. Jeder macht dich länger.",
+  "🎁 Fahr durch den Joker! Joker geben dir besondere Kräfte.",
+  "🎉 Super! Jetzt dein erstes Duell: Fahr nicht gegen die Wand oder den Gegner!",
+];
+const tutDone = () => store.get("tut", false) === true || state.level > 1 || stats.duel > 0;
+function startTutorial() {
+  app.mode = "solo"; app.kind = "uebung"; app.me = 0; app.oppName = "";
+  app.match = new Match(rndSeed(), [null], { mode: "uebung", arena: "klassisch" });
+  app.match.phase = "play"; app.match.sim.nextPower = 1e9;                 // kein Countdown, Joker erst in Schritt 3
+  app.skins = [state.skin];
+  app.tut = { step: 0, turn: 0, food: 0, joker: false, lastDir: null, doneAt: 0 };
+  begin();
+  $("tutBox").classList.remove("hidden"); refreshTut();
+}
+function refreshTut() {
+  const T = app.tut; if (!T) return;
+  $("tutText").textContent = TUT[T.step] + (T.step === 1 ? ` (${Math.min(3, T.food)}/3)` : "");
+  $("tutDots").innerHTML = TUT.map((_, k) => `<i class="${k <= T.step ? "on" : ""}"></i>`).join("");
+}
+function tutTick(view) {
+  const T = app.tut, sn = view.snakes[0];
+  if (T.step === 0) { if (T.lastDir != null && input.a != null) T.turn += Math.abs(angDiff(sn.hdir, T.lastDir)); T.lastDir = sn.hdir; if (T.turn > 2.6) tutNext(); }
+  else if (T.step === 1 && T.food >= 3) tutNext();
+  else if (T.step === 2 && T.joker) tutNext();
+  else if (T.step === 3 && app.lastTs > T.doneAt) finishTutorial(true);
+}
+function tutNext() {
+  const T = app.tut; T.step++;
+  tone(880, 0.12, "triangle", 0.3); setTimeout(() => tone(1320, 0.18, "triangle", 0.3), 110);
+  const sim = app.match.sim, sn = sim.snakes[0];
+  if (T.step === 2) {                                                       // Joker ein Stück vor den Kopf legen
+    let x = sn.x + Math.cos(sn.dir) * 0.35, y = sn.y + Math.sin(sn.dir) * 0.35;
+    if (Math.hypot(x, y) > 0.6) { x = sn.x * 0.25; y = sn.y * 0.25; }     // zu nah an der Wand: Richtung Mitte, mit Abstand zum Kopf
+    sim.power = { x, y, type: "turbo" }; fx({ type: "spawn", x, y });
+  }
+  if (T.step === 3) { T.doneAt = app.lastTs + 2.8; confetti(); }
+  refreshTut();
+}
+function finishTutorial(go) {
+  store.set("tut", true); app.tut = null; $("tutBox").classList.add("hidden");
+  if (go) startSolo("duell"); else toMenu();
+}
+/** Hinweise im Spielfeld: wischender Finger, Pfeil zum nächsten Futter oder zum Joker */
+function drawTutorial(view) {
+  const T = app.tut; if (!T) return;
+  const now = app.lastTs, sn = view.snakes[0], hx = CX + sn.hx * SC, hy = CY + sn.hy * SC;
+  if (T.step === 0) {
+    const ph = (now % 1.6) / 1.6, x = CX - 90 + ph * 180, y = CY + SC + 70;
+    ctx.globalAlpha = Math.sin(ph * Math.PI); text("👆", x, y, 64); ctx.globalAlpha = 1;
+    return;
+  }
+  let tx = null, ty = null;
+  if (T.step === 1) { let best = 9; for (const f of view.foods) { const d = Math.hypot(f.x - sn.hx, f.y - sn.hy); if (d < best) { best = d; tx = f.x; ty = f.y; } } }
+  else if (T.step === 2 && view.power) { tx = view.power.x; ty = view.power.y; }
+  if (tx == null) return;
+  const a = Math.atan2(ty - sn.hy, tx - sn.hx), r = 58 + 8 * Math.sin(now * 8), ax = hx + Math.cos(a) * r, ay = hy + Math.sin(a) * r;
+  ctx.save(); ctx.translate(ax, ay); ctx.rotate(a);
+  ctx.fillStyle = "#ffd34d"; ctx.shadowColor = "#ffd34d"; ctx.shadowBlur = 14;
+  ctx.beginPath(); ctx.moveTo(18, 0); ctx.lineTo(-10, -13); ctx.lineTo(-4, 0); ctx.lineTo(-10, 13); ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+/* Pause (gegen den Computer und zu zweit): Spiel steht, Panel mit Weiter, Ton-Schaltern und Verlassen */
+function pauseGame() {
+  if ((app.mode !== "solo" && app.mode !== "duo") || app.endShown || app.paused || !app.match || app.match.over) return;
+  app.paused = true; dropTouches();
+  $("sprintBtn").classList.add("hidden"); $("sprintBtn2").classList.add("hidden"); $("emoBar").classList.add("hidden");
+  refreshSoundBtns(); showPanel("pausePanel");
+}
+function resumeGame() {
+  app.paused = false; showPanel(null);
+  $("sprintBtn").classList.remove("hidden"); $("sprintBtn2").classList.toggle("hidden", app.mode !== "duo");
+}
+
+/* Tägliches Geschenk: beim ersten Öffnen am Tag Sterne, eine Woche am Stück gibt mehr (sd_gift) */
+const GIFT_STARS = [1, 1, 1, 2, 1, 1, 3];
+const gift = Object.assign({ last: "", n: 0 }, store.get("gift", {}) || {});
+const giftDue = () => gift.last !== today();
+const giftNextDay = () => (gift.last === dayBefore(today()) ? (gift.n % 7) + 1 : 1);
+function buildGift() {
+  const nd = giftNextDay(), box = $("giftDays"); box.innerHTML = "";
+  GIFT_STARS.forEach((st, k) => {
+    const d = document.createElement("div"); d.className = k + 1 < nd ? "past" : k + 1 === nd ? "now" : "";
+    d.innerHTML = `<b>${k + 1 < nd ? "✓" : "⭐" + (st > 1 ? st : "")}</b>Tag ${k + 1}`; box.appendChild(d);
+  });
+  const st = GIFT_STARS[nd - 1];
+  $("giftNote").textContent = `Heute: ${st} ${st === 1 ? "Stern" : "Sterne"}. Komm jeden Tag wieder – am 7. Tag gibt es 3 ⭐.`;
+}
+function takeGift() {
+  const nd = giftNextDay(), st = GIFT_STARS[nd - 1];
+  gift.last = today(); gift.n = nd; store.set("gift", gift);
+  starCount += st; saveGoals(); refreshProfile(); confetti();
+  initAudio(); showToast(`🎁 +${st} ⭐ – du hast jetzt ${starCount} ${starCount === 1 ? "Stern" : "Sterne"}`);
+  showPanel("menuPanel");
 }
 
 /* Bilanz gegen Freunde: jedes Gerät hat eine zufällige Kennung, die beim Verbinden ausgetauscht wird */
@@ -1970,11 +2161,12 @@ function toMenu(msg) {
   saveGoals(); refreshGoalBtn();
   startDemo();
   $("sprintBtn").classList.add("hidden"); $("sprintBtn2").classList.add("hidden"); $("quitBtn").classList.add("hidden"); $("emoBtn").classList.add("hidden"); $("emoBar").classList.add("hidden");
-  clipStopAll(false); app.emotes = [];
+  clipStopAll(false); app.emotes = []; app.paused = false; app.tut = null;
+  $("pauseBtn").classList.add("hidden"); $("tutBox").classList.add("hidden");
   $("soloBtn").innerHTML = `▶ SPIELEN<small>gegen Computer · Stufe ${state.level}</small>`;
   app.preview = null; refreshSkinBtn();
   const st = $("menuStatus"); st.textContent = msg || ""; st.className = "status" + (msg ? " err" : "");
-  showPanel("menuPanel");
+  showPanel(giftDue() && !params.get("join") ? (buildGift(), "giftPanel") : "menuPanel");
 }
 function begin() {
   initAudio();
@@ -1982,10 +2174,13 @@ function begin() {
   app.lastPhase = null; app.lastCount = 0; app.roundSprint = false; app.slow.until = -9; app.shakeUntil = -9;
   input.a = null; input.s = false; input2.a = null; input2.s = false; joy = null; joy2 = null; sprintHeld = false; sprintHeld2 = false;
   app.emotes = []; clipStopAll(false); clip.blob = null; resetLooks();
-  app.friendAway = app.hostAway = app.waitingHost = false; app.pauseUntil = 0;
+  app.friendAway = app.hostAway = app.waitingHost = false; app.pauseUntil = 0; app.paused = false;
+  if (app.kind !== "uebung") { app.tut = null; $("tutBox").classList.add("hidden"); }
+  $("pauseBtn").classList.toggle("hidden", app.mode !== "solo" && app.mode !== "duo");
   showPanel(null);
   $("sprintBtn").classList.remove("hidden"); $("quitBtn").classList.remove("hidden");
-  $("sprintBtn2").classList.toggle("hidden", app.mode !== "duo"); $("emoBtn").classList.toggle("hidden", app.mode === "duo"); $("emoBar").classList.add("hidden");
+  $("sprintBtn2").classList.toggle("hidden", app.mode !== "duo"); $("emoBtn").classList.toggle("hidden", app.mode === "duo" || app.kind === "uebung"); $("emoBar").classList.add("hidden");
+  $("pauseBtn").classList.toggle("up", $("emoBtn").classList.contains("hidden"));
 }
 /** Gegen den Computer: kind = duell | ueberleben | futter | boss */
 function startSolo(kind = "duell") {
@@ -1999,6 +2194,7 @@ function startSolo(kind = "duell") {
     bots = [null]; for (let k = 0; k < B.n; k++) bots.push(new Bot(bl, s + k));
     app.oppName = BOSS_INFO[app.boss].name.toUpperCase();
   }
+  else if (kind === "duell" && L === 1 && !store.get("first", false)) { bots = [null, new Bot(0, s)]; app.oppName = "Computer · Anfänger"; }   // allererstes Duell: Stufe 0
   else { bots = [null, new Bot(L, s)]; app.oppName = `Computer · St. ${L}`; }
   app.match = new Match(s, bots, { mode: kind, arena: state.arena, boss: app.boss });
   app.skins = pickSkins(bots.length, kind === "boss" ? BOSS_INFO[app.boss].skin : SKINS[L % SKINS.length].id);
@@ -2095,6 +2291,7 @@ function joinGame(code) {
 
 function showEnd(view) {
   app.endShown = true; joy = null; joy2 = null; sprintHeld = false; sprintHeld2 = false; refreshSprint();
+  $("pauseBtn").classList.add("hidden"); app.paused = false;
   $("sprintBtn").classList.add("hidden"); $("sprintBtn2").classList.add("hidden"); $("emoBar").classList.add("hidden");
   const w = view.matchWinner, won = w === myTeam(view), draw = w === -1, duo = app.mode === "duo";
   const coop = view.mode === "boss" && view.snakes.filter(b => !b.boss).length > 1;
@@ -2104,6 +2301,7 @@ function showEnd(view) {
   let sub = `Endstand ${duo ? `${view.scores[0]} : ${view.scores[1]}` : score}`;
   if (app.mode === "solo") {
     if (app.kind === "duell") {
+      store.set("first", true);                                                // ab jetzt kein Anfänger-Computer mehr
       if (won) {
         state.wins++; state.level++; save(); sub += ` · Stufe ${state.level} freigeschaltet`;
         const neu = SKINS.find(k => k.unlock === state.level);
@@ -2179,7 +2377,7 @@ function frame(ts) {
   } else if (app.match) {
     const m = app.match;
     // Online-Pause: Der Freund hat die App kurz verlassen ⇒ anhalten; nach seiner Rückkehr noch 1,5 s warten
-    const held = app.mode === "host" && !m.over && (app.friendAway || nowMs < app.pauseUntil);
+    const held = (app.mode === "host" && !m.over && (app.friendAway || nowMs < app.pauseUntil)) || (app.paused && !m.over);
     app.acc = held ? 0 : Math.min(0.25, app.acc + dt);
     while (app.acc >= DT) {
       app.acc -= DT;
@@ -2209,6 +2407,7 @@ function frame(ts) {
   }
   app.view = view;
   if (view && inGame()) trackFrame(view, dt);
+  if (app.tut && view) tutTick(view);
   clipTick(view, now);
   if (inGame() && !app.endShown) { if (joy) aimAtFinger(0); if (joy2) aimAtFinger(1); }
   render(view, now, dt);
@@ -2265,6 +2464,8 @@ const dropTouches = () => { joy = null; joy2 = null; lastTaps[0] = lastTaps[1] =
 addEventListener("blur", dropTouches);
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) dropTouches();
+  if (document.hidden && (app.mode === "solo" || app.mode === "duo")) pauseGame();     // App verlassen ⇒ automatisch Pause
+  try { if (audio.ctx) { if (document.hidden) audio.ctx.suspend(); else audio.ctx.resume(); } } catch {}
   // online: dem Freund Bescheid geben, dass man kurz weg ist (der Gastgeber hält das Spiel dann an)
   if (app.net && (app.mode === "host" || app.mode === "guest")) try { app.net.send({ k: document.hidden ? "pause" : "resume" }); } catch {}
 });
@@ -2291,7 +2492,16 @@ addEventListener("keydown", e => {
 addEventListener("keyup", e => { keys.delete(keyName(e)); refreshSprint(); });
 
 /* Knöpfe */
-$("soloBtn").onclick = () => startSolo("duell");
+$("soloBtn").onclick = () => (tutDone() ? startSolo("duell") : startTutorial());   // beim allerersten Mal: Übungsrunde
+$("tutAgain").onclick = startTutorial;
+$("tutSkip").onclick = () => finishTutorial(true);
+$("pauseBtn").onclick = pauseGame;
+$("resumeBtn").onclick = resumeGame;
+$("pauseQuit").onclick = () => toMenu();
+for (const b of document.querySelectorAll(".fxBtn")) b.onclick = () => { snd.fx = !snd.fx; store.set("sound", snd); refreshSoundBtns(); };
+for (const b of document.querySelectorAll(".musicBtn")) b.onclick = () => { initAudio(); snd.music = !snd.music; store.set("sound", snd); refreshSoundBtns(); };
+refreshSoundBtns();
+$("giftTake").onclick = takeGift;
 $("modeBtn").onclick = () => showPanel("modePanel");
 $("modeBack").onclick = () => showPanel("menuPanel");
 for (const b of document.querySelectorAll("#modePanel [data-mode]")) b.onclick = () => { app.tour = null; if (b.dataset.mode === "duo") startDuo(); else startSolo(b.dataset.mode); };
@@ -2437,7 +2647,7 @@ $("shareBtn").onclick = async () => {
 };
 
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
-window.SD = { startTour, app, state, records, setRecord, rivalsList: () => rivals, input, input2, Sim, Bot, Match, SKINS, ARENAS, BOSSES, bossesBeaten, clip, rivals, startSolo, startDuo, skinsReady: false,
+window.SD = { startTour, startTutorial, snd, gift, app, state, records, setRecord, rivalsList: () => rivals, input, input2, Sim, Bot, Match, SKINS, ARENAS, BOSSES, bossesBeaten, clip, rivals, startSolo, startDuo, skinsReady: false,
   goals: { stats, streak, achDone, owned, TASKS, ACHS, today, daily: () => ensureDaily(), stars: () => starCount, setStars: n => { starCount = n; saveGoals(); }, bump, check: checkGoals } };
 loadImageSkins().finally(() => { window.SD.skinsReady = true; if (!inGame()) { demoSkins(); refreshSkinBtn(); if (!$("skinPanel").classList.contains("hidden")) buildSkinGrid(); } });
 

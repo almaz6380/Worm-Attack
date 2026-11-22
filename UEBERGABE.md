@@ -60,6 +60,8 @@ Bilder für neue Wurm-Designs kannst du einfach in den Chat schicken.
 7. **Acht weitere Designs** (von Claude gezeichnet), Auswahl-Übersicht, Prompts für alle Designs.
 8. **Sprint per Doppeltipp.**
 9. **Effekte, Tagesaufgaben, Erfolge, Sterne-Designs.**
+15. **Store-Plan, Schritt 1 (Spielspaß):** Übungsrunde beim ersten Start, erstes Duell gegen einen Anfänger-Computer,
+    Pause-Knopf, Musik mit Schaltern für Töne und Musik, tägliches Geschenk, drei neue Sterne-Designs.
 14. **Alles fertig gemacht:** Turnier zu zweit an einem Handy (drei Arenen), Online-Pause mit Hinweis („… ist kurz
     weg“, „Warte auf Gastgeber …“), Boss zu zweit online (ihr beide gegen einen Boss).
 13. **Namen und Rekorde:** Eigener Name unter „Online“, der Freund sieht ihn. Liste „Meine Gegner“ mit Bilanz
@@ -85,6 +87,7 @@ Bilder für neue Wurm-Designs kannst du einfach in den Chat schicken.
 | „mach 12“ | Vier Bosse mit Freischalten |
 | „mach 10 und 11“ | Namen, Liste „Meine Gegner“, Rekorde |
 | „mach einfach alles ganz fertig!!!!“ | Turnier zu zweit, Online-Pause, Boss zu zweit online |
+| App beliebter machen und in die Stores bringen: Google Play und Apple, Englisch als Hauptsprache plus Deutsch (später alle Sprachen), später Käufe und Werbung | Plan in 6 Schritten (siehe unten), Schritt 1 umgesetzt |
 
 ## Was noch niemand auf einem echten Handy geprüft hat
 
@@ -104,6 +107,8 @@ zurückmelden:
 - **Spielarten:** Ist der Boss zu schwer oder zu leicht? Ist Überleben gegen drei zu chaotisch?
 - **Zwei Spieler:** Kommt ihr euch mit den Fingern in die Quere? Stört, dass die Schrift für den oberen Spieler auf
   dem Kopf steht?
+- **Erster Start:** Ist die Übungsrunde verständlich? Ist das erste Duell gegen den Anfänger zu leicht oder zu schwer?
+- **Musik:** Gefällt sie dir, oder nervt sie nach einer Weile? (Abschaltbar unter „Regeln“ und in der Pause.)
 - **Startbildschirm:** Gefällt er dir? Findest du alles (Lenkart steht jetzt unter „Regeln“)?
 - **Online-Überleben:** Klappt es zu zweit gegen die Computer-Würmer?
 - **Namen und Rekorde:** Taucht dein Name beim Freund auf? Motivieren dich die Rekorde?
@@ -133,21 +138,25 @@ zurückmelden:
 - **Fortschritt liegt nur auf dem Gerät.** Stufe, Sterne und Designs sind im Browser gespeichert. Wer die
   Browserdaten löscht oder das Handy wechselt, fängt neu an.
 
-## Was als Nächstes möglich ist
+## Was als Nächstes möglich ist: der Weg in die App-Stores
 
-Alle Ideen aus den bisherigen Listen sind umgesetzt (1 bis 14 und Boss zu zweit). Was jetzt noch offen ist, braucht
-deine Rückmeldung oder deine Entscheidung:
+Deine Entscheidungen: **Google Play und Apple**, **Englisch als Hauptsprache plus Deutsch** (später alle Sprachen),
+**später Käufe und Werbung**.
 
-| Was | Warum es wartet |
-| --- | --- |
-| Schwierigkeit für Menschen einstellen (Computer, Bosse) | Dafür brauche ich deine Erfahrung vom echten Handy |
-| Lenkung des Gastes online direkter machen | Erst klären, ob die Verzögerung überhaupt stört |
-| Verbindung in schwierigen Netzen (TURN-Server) | Nur, wenn es dauerhaft kostenlos geht und du zustimmst |
-| Rangliste mit Fremden, Store-App | Kostet Geld (Server oder Store-Gebühr), nur auf deine ausdrückliche Anweisung |
-| Weitere Wurm-Designs | Schick mir Bilder, oder nutze die Prompts in `skins/PROMPTS.md` |
+| Schritt | Inhalt | Stand |
+| --- | --- | --- |
+| 1 | Spielspaß: Übungsrunde, Anfänger-Duell, Pause, Musik, tägliches Geschenk, neue Designs | ✅ erledigt, bitte auf dem Handy testen |
+| 2 | Englisch als Hauptsprache, Deutsch dazu: alle Texte in eine Übersetzungsliste, Sprache automatisch nach Handy, Umschalter | offen |
+| 3 | Store-Unterlagen: Name prüfen, App-Symbol 1024 px, Store-Bilder und -Texte (EN/DE), Datenschutzerklärung, Altersfreigabe | offen. **Du:** Kontakt-E-Mail, ob dein Name im Store stehen darf |
+| 4 | Echte App mit Capacitor (Android und iPhone aus demselben Spiel), Vibration auch am iPhone, Bauen auf GitHub ohne eigenen Mac | offen |
+| 5 | Veröffentlichen: Google (25 $ einmalig, 12 Tester 14 Tage geschlossener Test), Apple (99 $ pro Jahr, TestFlight, Prüfung) | offen. **Du:** Konten anlegen, Tester finden |
+| 6 | Später: Käufe (Design-Pakete, „ohne Werbung“) und freiwillige Belohnungs-Videos; dafür Impressum, Einwilligung, größere Datenschutzerklärung, Altersgruppe ab 13 | wenn die App im Store läuft |
 
-**Empfehlung von Claude:** Jetzt ausgiebig auf dem echten Handy spielen, allein, zu zweit und online, und mir die
-Fragen oben beantworten. Danach stelle ich Schwierigkeit und Feinheiten nach deiner Rückmeldung ein.
+Weiterhin offen, weil es deine Rückmeldung braucht: Schwierigkeit für Menschen, direktere Lenkung des Gastes online,
+TURN-Server für schwierige Netze (eigener Vermittlungsdienst kostet ein paar Euro im Monat).
+
+**Empfehlung von Claude:** Jetzt Schritt 1 auf dem Handy ausprobieren (am besten mit gelöschten Website-Daten, dann
+siehst du alles wie ein neuer Spieler), auch online mit einem Freund. Danach Schritt 2 (Englisch).
 
 ## Wo was liegt
 

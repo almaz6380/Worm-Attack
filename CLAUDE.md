@@ -119,6 +119,7 @@ Bomben treffen nur andere Teams, die Runde endet, wenn höchstens ein Team übri
   | `duell` | 2 | 60 s | wie oben, auch online und zu zweit |
   | `ueberleben` | 4 | 60 s | du gegen drei Bots (Stufe − 1), alle gegen alle, 10 Futter |
   | `futter` | 2 | 45 s | keine schrumpfende Arena, 14 Futter, 999 Leben: Treffer kosten nur Länge |
+  | `uebung` | 1 | 600 s | Übungsrunde beim ersten Start: nur der eigene Wurm, 999 Leben, endet nie von selbst (`solo`) |
   | `boss` | 2 bis 4 | 60 s | Helden zuerst (Team 0, je 2 Leben `HERO_LIVES`), dahinter die Bosse (`BOSSES`, Team = Nummer des ersten Bosses, Krone). `coop: true` = zwei Helden (online „zu zweit gegen den Boss“), dann hat jeder Boss `COOP_EXTRA` = 1 Leben mehr |
 
 - **Bosse** (`BOSSES`, Reihenfolge `BOSS_ORDER`, besiegte in `sd_bosses`; jeder besiegte schaltet den nächsten frei):
@@ -145,6 +146,7 @@ Bomben treffen nur andere Teams, die Runde endet, wenn höchstens ein Team übri
 | Sprint und Gegner-Weg vorausrechnen | ab Stufe 4 |
 | Gegner aktiv abschneiden | ab Stufe 5 |
 | Zweite Vorschau-Stufe (Sackgassen erkennen) | ab Stufe 6 |
+| Stufe 0 (nur das allererste Duell) | Vorschau 0,45 s, alle 13 Ticks, Fehlerquote 0,22. Stufe 1 schlägt sie in 63 % |
 
 - Der Bot testet 7 Lenkrichtungen (`BOT_DELTAS`) und bewertet Überleben, Abstand zu Hindernissen und Nähe zum Ziel.
 - Ziel-Reihenfolge: Joker, dann Gegner abschneiden, dann Futter, dann Arena-Mitte.
@@ -176,6 +178,9 @@ Bomben treffen nur andere Teams, die Runde endet, wenn höchstens ein Team übri
 | `sd_ach` | Erledigte Erfolge |
 | `sd_owned` | Für Sterne freigeschaltete Designs |
 | `sd_bosses` | Besiegte Bosse `{riese: true, …}` |
+| `sd_tut`, `sd_first` | Übungsrunde erledigt; erstes Duell gegen den Anfänger (Stufe 0) gespielt |
+| `sd_sound` | `{fx, music}`: Töne und Musik an/aus |
+| `sd_gift` | Tägliches Geschenk `{last: Tag, n: Tag 1–7 der Woche}` |
 | `sd_name` | Eigener Name (höchstens 14 Zeichen, bereinigt mit `cleanName`), wird online mitgeschickt |
 | `sd_records` | Rekorde auf diesem Gerät `{id: {v: Wert, d: Tag}}`, siehe `RECS` |
 | `sd_arena`, `sd_clip`, `sd_netmode` | Gewählte Arena, Clip-Aufnahme an/aus, Online-Spielart des Gastgebers |
@@ -251,6 +256,19 @@ Neue Schlüssel sind erlaubt, vorhandene nicht umbenennen: Sonst verliert der Us
 | `RECS`, `records`, `setRecord`, `buildRecordList` | Rekorde: längster Wurm, meiste Futter und längstes Überleben in einer Runde, Sieges-Serie, schnellster Duell-Sieg, beste Futterjagd, schnellster Sieg pro Boss. Zeit = `Match.playTime` (gespielte Sekunden aller Runden). Meldung nur, wenn ein alter Rekord gebrochen wird; nicht im Modus „Zwei Spieler“ |
 | `BOSS_INFO`, `bossesBeaten`, `bossOpen`, `buildBossList` | Bosse für die Oberfläche: Name, Bild, Design, Freischalten. `app.boss` = gewählter Boss |
 | `window.SD` | Zugriff für Tests: `app`, `state`, `input`, `input2`, `Sim`, `Bot`, `Match`, `SKINS`, `ARENAS`, `BOSSES`, `bossesBeaten`, `clip`, `rivals`, `startSolo`, `startDuo`, `goals` |
+
+**Erster Start und Spielgefühl (Schritt 1 des Store-Plans):**
+- Tägliches Geschenk (`giftPanel`, `GIFT_STARS` = 1, 1, 1, 2, 1, 1, 3 ⭐ für Tag 1 bis 7, danach von vorn): `toMenu()`
+  zeigt es statt des Menüs, solange es heute noch nicht abgeholt ist (nicht bei `?join=`).
+- Übungsrunde (`startTutorial`, `TUT`, `app.tut`, `drawTutorial`, Kasten `tutBox`): beim ersten „Spielen“, solange
+  `tutDone()` falsch ist (kein `sd_tut`, Stufe 1, noch kein Duell-Sieg). Schritte: lenken (Drehung über 2,6 rad),
+  3 Futter, Joker (wird vor den Kopf gelegt), dann direkt das erste Duell gegen Stufe 0. Überspringbar, im
+  Regeln-Panel wiederholbar. Zählt nicht für Aufgaben, Rekorde, Clips.
+- Pause (`pauseGame`/`resumeGame`, `app.paused`, Knopf ⏸ unter ✕ und 😀): gegen den Computer und zu zweit, auch
+  automatisch beim Verlassen der App.
+- Musik (`SONG`, `musicTick`): im Spiel erzeugt, Am–F–C–G, in Sudden Death schneller, leiser im Menü. Schalter für
+  Töne und Musik im Regeln- und Pause-Panel (`.fxBtn`, `.musicBtn`). Beim Verlassen der App wird der Ton angehalten.
+- Drei neue Sterne-Designs: Feuerwerk 15 ⭐, Ozean 20 ⭐, Diamant 35 ⭐ (zusammen jetzt 112 ⭐ für alle sechs).
 
 **Startbildschirm:** Oben `drawLogo()` (wippende Buchstaben mit Farbverlauf, darunter kriecht ein kleiner Wurm im
 gewählten Design), in der Mitte ein Demo-Duell Bot gegen Bot in der gewählten Arena. Das Menü-Panel hat eine
@@ -366,6 +384,9 @@ enthält die vollständige Ideenliste mit Empfehlung.
 - Aussehen: Glieder-Würmer mit Gesicht, 19 Designs (9 eingebaut, 10 mit Bildern), Auswahl-Übersicht,
   Bild-Designs aus `skins/` samt Anleitung und Prompts.
 - Effekte: Vibration, Zeitlupe, Konfetti. Tagesaufgaben, Erfolge, Sterne, Sterne-Designs.
+- Store-Plan Schritt 1 (22.11.2026): Übungsrunde, erstes Duell gegen Stufe 0, Pause, Musik und Ton-Schalter,
+  tägliches Geschenk, drei neue Sterne-Designs. Der ganze Store-Plan (Englisch, Store-Unterlagen, App mit Capacitor
+  für Android und iPhone, später Käufe und Werbung) steht in `UEBERGABE.md`.
 - Alles Offene ohne Handy-Rückmeldung (19.11.2026): Turnier zu zweit (Idee 13), Online-Pause und „Warte auf
   Gastgeber …“ (Idee 14, Test im Online-Test), Boss zu zweit online.
 - Ideen 10 und 11 (19.11.2026): Namen und Liste „Meine Gegner“, Rekorde auf dem Gerät.

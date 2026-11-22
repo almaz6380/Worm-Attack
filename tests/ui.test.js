@@ -21,6 +21,14 @@ fs.mkdirSync(shots, { recursive: true });
   const check = (ok, msg) => { console.log(`${ok ? "OK  " : "FAIL"} ${msg}`); if (!ok) failed++; };
 
   await page.goto(URL + "?tag=2026-03-10");            // festes Datum für die Tagesaufgaben
+  // Tägliches Geschenk beim ersten Öffnen am Tag
+  await page.waitForSelector("#giftPanel:not(.hidden)", { timeout: 5000 });
+  await page.screenshot({ path: path.join(shots, "0-geschenk.png") });
+  await page.click("#giftTake");
+  const gf = await page.evaluate(() => ({ stars: SD.goals.stars(), gift: SD.gift, menu: !document.getElementById("menuPanel").classList.contains("hidden") }));
+  check(gf.stars === 1 && gf.gift.n === 1 && gf.gift.last === "2026-03-10" && gf.menu, `Tägliches Geschenk: +1 ⭐ an Tag ${gf.gift.n}, danach das Menü`);
+  await page.reload();
+  check(await page.isVisible("#menuPanel") && !(await page.isVisible("#giftPanel")), "Am selben Tag kein zweites Geschenk");
   await page.waitForTimeout(4500);                       // Demo-Duell im Hintergrund läuft an
   await page.screenshot({ path: path.join(shots, "1-menue.png") });
   check((await page.textContent("#soloBtn")).includes("Stufe 1"), "Menü zeigt Stufe 1");
@@ -60,7 +68,7 @@ fs.mkdirSync(shots, { recursive: true });
   await page.waitForFunction(() => SD.skinsReady, null, { timeout: 10000 });
   await page.click("#skinBtn");
   const tiles = await page.evaluate(() => ({ n: document.querySelectorAll(".skintile").length, total: SD.SKINS.length, img: SD.SKINS.filter(k => k.img).length, locked: document.querySelectorAll(".skintile.locked").length }));
-  check(tiles.n === 19 && tiles.total === 19 && tiles.img === 10, `Übersicht zeigt ${tiles.n} Designs, davon ${tiles.img} mit Bildern, ${tiles.locked} gesperrt`);
+  check(tiles.n === 22 && tiles.total === 22 && tiles.img === 10, `Übersicht zeigt ${tiles.n} Designs, davon ${tiles.img} mit Bildern, ${tiles.locked} gesperrt`);
   await page.click('.skintile[data-id="bonbon"]');
   await page.click("#skinDone");
   check((await page.textContent("#skinBtn")).includes("Bonbon"), "Gewähltes Design steht auf dem Knopf (Bonbon)");
@@ -83,13 +91,48 @@ fs.mkdirSync(shots, { recursive: true });
   await page.waitForTimeout(1200);
   await page.screenshot({ path: path.join(shots, "1d-menue-bilddesign.png") });
 
+  // Erstes Mal „Spielen“: Übungsrunde (lenken, 3 Futter, Joker), danach direkt das erste Duell gegen den Anfänger
   await page.click("#soloBtn");
+  const tu0 = await page.evaluate(() => ({ kind: SD.app.kind, n: SD.app.match.sim.snakes.length, text: document.getElementById("tutText").textContent }));
+  check(tu0.kind === "uebung" && tu0.n === 1 && tu0.text.includes("ziehen"), `Erster Start: Übungsrunde mit nur dem eigenen Wurm („${tu0.text.slice(0, 40)}…“)`);
+  {
+    const b0 = await page.locator("#cv").boundingBox(), x0 = b0.x + b0.width / 2, y0 = b0.y + b0.height * 0.8;
+    await page.mouse.move(x0, y0); await page.mouse.down();
+    for (let k = 0; k < 40 && (await page.evaluate(() => SD.app.tut && SD.app.tut.step)) === 0; k++) { await page.mouse.move(x0 + Math.cos(k * 0.4) * 50, y0 + Math.sin(k * 0.4) * 50); await page.waitForTimeout(40); }
+    await page.mouse.up();
+  }
+  check((await page.evaluate(() => SD.app.tut.step)) === 1, "Lenken erkannt ⇒ Schritt 2 (Futter)");
+  await page.screenshot({ path: path.join(shots, "2b-uebung.png") });
+  for (let k = 0; k < 6 && (await page.evaluate(() => SD.app.tut.step)) === 1; k++) { await page.evaluate(() => { const s = SD.app.match.sim, n = s.snakes[0]; s.foods[0].x = n.x + Math.cos(n.dir) * 0.02; s.foods[0].y = n.y + Math.sin(n.dir) * 0.02; }); await page.waitForTimeout(150); }
+  const tu2 = await page.evaluate(() => ({ step: SD.app.tut.step, power: !!SD.app.match.sim.power, food: SD.goals.stats.food }));
+  check(tu2.step === 2 && tu2.power && tu2.food === 0, "3 Futter ⇒ Schritt 3, ein Joker liegt bereit (Übung zählt nicht für Aufgaben)");
+  await page.evaluate(() => { const s = SD.app.match.sim, n = s.snakes[0]; s.power.x = n.x; s.power.y = n.y; });
+  await page.waitForFunction(() => SD.app.kind === "duell", null, { timeout: 8000 });
+  const fd = await page.evaluate(() => ({ opp: SD.app.oppName, lv: SD.app.match.bots[1].level, tut: JSON.parse(localStorage.getItem("sd_tut")) }));
+  check(fd.lv === 0 && fd.opp.includes("Anfänger") && fd.tut === true, `Übung geschafft ⇒ erstes Duell gegen ${fd.opp}`);
   await page.waitForFunction(() => SD.app.match.phase === "count");
   const sk = await page.evaluate(() => SD.app.skins);
   check(sk[0] === "raupe" && sk[1] !== "raupe", `Im Spiel: eigenes Design ${sk[0]}, Gegner ${sk[1]}`);
   await page.waitForTimeout(1200);
   await page.screenshot({ path: path.join(shots, "3-countdown.png") });
   await page.waitForFunction(() => SD.app.match.phase === "play", null, { timeout: 8000 });
+
+  // Pause: Spiel steht, Ton-Schalter werden gespeichert, „Weiter“ setzt fort; App verlassen pausiert automatisch
+  await page.click("#pauseBtn");
+  const pz0 = await page.evaluate(() => SD.app.match.ticks); await page.waitForTimeout(500);
+  const pz = await page.evaluate(() => ({ ticks: SD.app.match.ticks, panel: !document.getElementById("pausePanel").classList.contains("hidden") }));
+  check(pz.ticks === pz0 && pz.panel, "Pause: Spiel steht still, Pause-Menü sichtbar");
+  await page.click("#pausePanel .fxBtn"); await page.click("#pausePanel .musicBtn");
+  const sd = await page.evaluate(() => JSON.parse(localStorage.getItem("sd_sound")));
+  check(sd.fx === false && sd.music === false && (await page.textContent("#pausePanel .fxBtn")).includes("aus"), "Töne und Musik abschaltbar, wird gespeichert");
+  await page.click("#pausePanel .fxBtn"); await page.click("#pausePanel .musicBtn");
+  await page.click("#resumeBtn"); await page.waitForTimeout(300);
+  check((await page.evaluate(() => SD.app.match.ticks)) > pz0 && !(await page.evaluate(() => SD.app.paused)), "Weiter: Spiel läuft wieder");
+  await page.evaluate(() => { Object.defineProperty(document, "hidden", { value: true, configurable: true }); document.dispatchEvent(new Event("visibilitychange")); });
+  const ap = await page.evaluate(() => SD.app.paused);
+  await page.evaluate(() => { Object.defineProperty(document, "hidden", { value: false, configurable: true }); document.dispatchEvent(new Event("visibilitychange")); });
+  check(ap, "App verlassen ⇒ automatisch Pause");
+  await page.click("#resumeBtn");
 
   // Lenken: nach rechts ziehen ⇒ Schlange dreht Richtung 0 rad (rechts)
   const box = await page.locator("#cv").boundingBox();
@@ -388,6 +431,7 @@ fs.mkdirSync(shots, { recursive: true });
   page2.on("pageerror", e => crashes.push(e.message));
   await page2.route("**/skins/beispiel/glied.png", r => r.abort());
   await page2.goto(URL);
+  await page2.click("#giftTake");
   // anderer Tag ⇒ andere Tagesaufgaben
   const page3 = await ctx2.newPage();
   await page3.goto(URL + "?tag=2026-03-11");
@@ -399,7 +443,9 @@ fs.mkdirSync(shots, { recursive: true });
   const fb = await page2.evaluate(() => { const k = SD.SKINS.find(x => x.id === "beispiel"); return { there: !!k, img: k && k.img }; });
   await page2.evaluate(() => { SD.state.skin = "beispiel"; });
   await page2.click("#soloBtn");
-  await page2.waitForFunction(() => SD.app.match.phase === "play", null, { timeout: 8000 });
+  check((await page2.evaluate(() => SD.app.kind)) === "uebung", "Neuer Spieler: Übungsrunde, überspringbar");
+  await page2.click("#tutSkip");
+  await page2.waitForFunction(() => SD.app.kind === "duell" && SD.app.match.phase === "play", null, { timeout: 8000 });
   await page2.waitForTimeout(500);
   await page2.screenshot({ path: path.join(shots, "6-bild-fehlt.png") });
   check(fb.there && fb.img === null && crashes.length === 0, `Fehlendes Bild: Design bleibt mit eingebauter Darstellung spielbar${crashes.length ? " – " + crashes.join("; ") : ""}`);

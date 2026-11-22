@@ -60,6 +60,15 @@ for (const [hi, lo, min] of [[10, 1, 0.75], [5, 1, 0.65], [10, 5, 0.55]]) {
   check(share >= min, `Stufe ${hi} schlägt Stufe ${lo} in mindestens ${Math.round(min * 100)} % der entschiedenen Runden`);
 }
 
+// 3b) Stufe 0 (Anfänger fürs allererste Duell) ist schwächer als Stufe 1
+{
+  const r = duel(1, 0, 100), share = r.win / Math.max(1, r.win + r.lose);
+  console.log(`     Stufe 1 gegen 0: ${r.win}:${r.lose} = ${(share * 100).toFixed(0)} %`);
+  check(share >= 0.6, "Stufe 1 schlägt den Anfänger (Stufe 0) in mindestens 60 % der Runden");
+  const u = new Sim(5, true, { mode: "uebung" }); for (let k = 0; k < 1200; k++) u.step();
+  check(u.snakes.length === 1 && !u.done && u.snakes[0].alive, "Übungsrunde: nur der eigene Wurm, niemand fliegt raus, kein Ende nach 20 s");
+}
+
 // 4) Ganzes Match läuft bis zum Ende
 const m = new Match(4242, [new Bot(5, 1), new Bot(5, 2)]);
 let guard = 0;
